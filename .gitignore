@@ -1,0 +1,86 @@
+# Python 编译/缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境（常用命名全覆盖）
+venv/
+ENV/
+env/
+.env/
+.venv/
+virtualenv/
+
+# 编辑器/IDE 配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.c9/
+*.launch
+.settings/
+
+# 测试/覆盖率文件
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# 日志文件
+logs/
+*.log
+*.log.*
+
+# 数据库/临时数据文件
+*.sqlite3
+*.db
+*.sql
+*.dump
+
+# 环境变量/密钥文件（绝对不能提交！）
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+
+# 文档/构建相关
+docs/_build/
+docs/_site/
+*.pid
+*.seed
+*.pid.lock
+
+# 其他临时文件
+tmp/
+temp/
+*.tmp
