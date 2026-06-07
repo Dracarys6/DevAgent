@@ -1,14 +1,15 @@
 from pathlib import Path
+import subprocess
 
 MAX_READ_LINES = 200
 
 
 class ReadFileError(Exception):
-    """Raised when read_file receives invalid input."""
+    """读取文件失败时抛出的异常。"""
 
 
 def ensure_workspace_path(workspace: str | Path, path: str | Path) -> Path:
-    """Resolve path and ensure it stays inside workspace."""
+    """解析路径，并确保目标路径位于工作区内。"""
     root = Path(workspace).resolve()
     requested_path = Path(path)
     if requested_path.is_absolute():
@@ -17,7 +18,7 @@ def ensure_workspace_path(workspace: str | Path, path: str | Path) -> Path:
         target = (root / requested_path).resolve()
 
     if not target.is_relative_to(root):
-        raise ReadFileError(f"file is out of workspace: {path}")
+        raise ReadFileError(f"文件位于工作区之外: {path}")
     return target
 
 
@@ -29,22 +30,22 @@ def read_file(
     max_lines: int = MAX_READ_LINES,
     workspace: str | Path | None = None,
 ) -> str:
-    """Read a text file and return content with 1-based line numbers."""
+    """读取文本文件，并返回带有行号的内容。"""
     if workspace is None:
         path = Path(file_path)
     else:
         path = ensure_workspace_path(workspace, file_path)
 
     if start_line < 1:
-        raise ReadFileError("start_line must be greater than or equal to 1")
+        raise ReadFileError("start_line 必须大于或等于 1")
     if end_line is not None and end_line < start_line:
-        raise ReadFileError("end_line must be greater than or equal to start_line")
+        raise ReadFileError("end_line 必须大于或等于 start_line")
     if max_lines < 1:
-        raise ReadFileError("max_lines must be greater than or equal to 1")
+        raise ReadFileError("max_lines 必须大于或等于 1")
     if not path.exists():
-        raise FileNotFoundError(f"file does not exist: {path}")
+        raise FileNotFoundError(f"文件不存在: {path}")
     if not path.is_file():
-        raise ReadFileError(f"path is not a regular file: {path}")
+        raise ReadFileError(f"路径不是普通文件: {path}")
 
     lines = path.read_text(encoding=encoding).splitlines()
     total_lines = len(lines)
@@ -67,7 +68,7 @@ def read_file_safe(
     encoding: str = "utf-8",
     workspace: str | Path | None = None,
 ) -> str:
-    """Compatibility wrapper that returns readable error messages."""
+    """捕获读取异常，并返回便于阅读的错误信息。"""
     try:
         return read_file(
             file_path,
@@ -83,3 +84,36 @@ def read_file_safe(
         ReadFileError,
     ) as exc:
         return f"读取文件失败: {exc}"
+
+
+def search_file(
+    query: str, workspace: str, file_pattern=None, max_chars: int = 20000
+) -> str:
+    root = Path(workspace).resolve()
+    if not root.exists():
+        return f"工作区不存在: {workspace}"
+    if not root.is_dir():
+        return f"工作区不是目录: {workspace}"
+
+    cmd = ["rg", query, "-n", "--no-heading", "--color", "never"]
+    if file_pattern is not None:
+        cmd.extend(["-g", file_pattern])
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=root, timeout=10
+        )
+    except FileNotFoundError:
+        return "未找到 rg 命令，请先安装 ripgrep。"
+    except subprocess.TimeoutExpired:
+        return "搜索超时。"
+
+    if result.returncode == 0:
+        output = result.stdout
+    elif result.returncode == 1:
+        return ""
+    else:
+        return f"搜索执行失败: {result.stderr.strip()}"
+
+    if len(output) > max_chars:
+        output = output[:max_chars] + "\n... 搜索结果过长，已截断 ..."
+    return output

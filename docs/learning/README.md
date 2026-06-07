@@ -35,7 +35,37 @@ study/
 3. 工具函数失败时不要直接崩溃，优先返回结构化错误。
 4. 路径相关代码优先使用 pathlib.Path。
 5. 每天至少补一个测试或一段复盘笔记。
+6. 类名、函数名、变量名和参数名使用英文。
+7. 面向用户的错误信息、执行提示和截断提示使用中文。
 ```
+
+## 本地开发环境
+
+首次创建虚拟环境或重新拉取项目后，在项目根目录执行：
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip install -e .
+```
+
+`python -m pip install -e .` 会把当前项目以 editable 模式安装到虚拟环境中。安装后，修改 `src/devagent` 内的源码会立即生效，不需要重复安装。
+
+此后可以直接运行：
+
+```bash
+python study/search.py
+pytest -q
+```
+
+如果没有激活虚拟环境，也可以明确使用虚拟环境中的命令：
+
+```bash
+.venv/bin/python study/search.py
+.venv/bin/pytest -q
+```
+
+不要在脚本中通过修改 `sys.path` 解决导入问题。正式 Python 项目应使用打包配置和 editable install 管理源码导入。
 
 ## 每日学习记录模板
 
