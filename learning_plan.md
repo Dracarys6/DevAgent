@@ -25,6 +25,41 @@ DevOps 平台后端工程师
 
 ---
 
+## 0. 当前进度与计划维护规则
+
+当前进度：
+
+```text
+已完成 Day 1 到 Day 5
+当前自动化测试：23 个
+已完成正式模块：
+- read_file
+- workspace 路径安全
+- search_code
+- run_shell
+- RunShellResult
+```
+
+计划不是固定不变的课程表。后续每次验收时，根据实际完成情况更新：
+
+```text
+1. 已提前掌握的内容，从后续计划中删除或升级难度
+2. 验收暴露出的薄弱点，加入下一天或周复盘
+3. 项目功能完成后，必须补原理、测试和面试表达
+4. 如果某天任务超过 5 小时，可以拆成两天，不追求机械赶进度
+5. 如果提前完成，可以做扩展任务，但不能跳过测试和复盘
+```
+
+完成状态标记：
+
+```text
+[x] 已完成并验收
+[~] 已实现，仍需完善
+[ ] 尚未开始
+```
+
+---
+
 ## 1. 两个月总目标
 
 两个月结束时，你应该拥有：
@@ -56,25 +91,26 @@ DevOps 平台后端工程师
 
 ## 2. 每天学习时间分配
 
-每天 3 到 5 小时，建议按下面节奏：
+每天 3 到 5 小时，围绕当天项目任务完成学习、实现、测试和项目复盘。
 
 ```text
-30 分钟：复习昨天内容，整理卡点
-60 到 90 分钟：学习当天核心原理
-90 到 150 分钟：写代码完成当天任务
-30 到 60 分钟：写测试、写笔记、准备面试表达
+20 分钟：复习昨天内容和运行已有测试
+50 到 70 分钟：学习当天核心原理
+100 到 160 分钟：完成项目开发任务
+30 到 50 分钟：写测试、重构、补 daily 文档
+20 到 40 分钟：整理与当天项目内容相关的面试表达
 ```
 
-每天必须产出至少一个东西：
+每天开发任务必须形成闭环：
 
 ```text
-一个函数
-一个类
-一个接口
-一个测试
-一段项目笔记
-一个面试问题答案
-一个可运行 Demo
+学习原理
+自己实现
+运行验证
+自动化测试
+验收完善
+daily 文档
+至少一个面试回答
 ```
 
 每天结束前做 5 分钟自查：
@@ -93,9 +129,9 @@ DevOps 平台后端工程师
 
 ```text
 第 1 周：Python 工程基础 + 命令行工具
-第 2 周：Agent Loop + Tool Calling
+第 2 周：统一工具协议 + Agent Loop + Tool Calling
 第 3 周：FastAPI 后端 + 任务状态
-第 4 周：ToolRegistry + PermissionManager + 安全控制
+第 4 周：PermissionManager + 安全控制 + 异步任务
 第 5 周：EventBus + WebSocket + Trace
 第 6 周：CI 诊断 / 日志分析业务 Demo
 第 7 周：数据库 + Evaluation + 上下文压缩
@@ -107,6 +143,46 @@ DevOps 平台后端工程师
 ```text
 完成第 1 到第 6 周，就已经有一个能讲的 AI Agent 后端项目。
 第 7 周和第 8 周用于把项目从“能跑”提升到“中大厂面试可讲”。
+```
+
+### 3.1 每日验收等级
+
+每天结束时按三个等级判断，不要只判断“写没写完”。
+
+```text
+基础通过：
+功能能够运行，理解主要 API。
+
+工程通过：
+有边界处理、异常设计、类型标注和自动化测试。
+
+面试通过：
+能解释设计取舍、风险、替代方案和后续演进。
+```
+
+### 3.2 项目范围控制
+
+两个月主线只实现能够组成完整 DevAgent 闭环的能力。以下内容不默认加入主线：
+
+```text
+多 Agent
+MCP
+向量数据库和复杂 RAG
+Redis
+Celery 等分布式任务队列
+复杂 React 前端
+完整 Docker Sandbox
+多模型供应商同时接入
+```
+
+只有满足下面条件后，才选择其中一个作为扩展：
+
+```text
+命令行 Agent 已经稳定运行
+核心模块有测试
+CI 诊断 Demo 已经完成
+README 和架构说明已经能讲清楚
+扩展能力确实解决当前项目中的真实问题
 ```
 
 ---
@@ -128,7 +204,7 @@ subprocess 命令执行
 pytest 单元测试
 ```
 
-### Day 1：环境与 Python 基础
+### Day 1：环境与 Python 基础 [x]
 
 学习任务：
 
@@ -161,8 +237,8 @@ pytest 怎么发现测试文件？
 面试问题：
 
 ```text
-Python 的 list 和 dict 底层大概有什么特点？
-Python 为什么需要虚拟环境？
+为什么 DevAgent 需要虚拟环境和 editable install？
+为什么正式模块不能在 import 时直接执行 input 或写文件？
 ```
 
 验收标准：
@@ -172,7 +248,7 @@ pytest 可以跑通
 你能解释 venv、pip、pytest 分别解决什么问题
 ```
 
-### Day 2：文件读取工具 read_file
+### Day 2：文件读取工具 read_file [x]
 
 学习任务：
 
@@ -214,7 +290,7 @@ read_file 可以读取 plan.md 指定行
 read_file 不会一次返回超大文件
 ```
 
-### Day 3：路径安全
+### Day 3：路径安全 [x]
 
 学习任务：
 
@@ -255,7 +331,7 @@ resolve() 的作用是什么？
 绝对路径指向项目外会被拒绝
 ```
 
-### Day 4：代码搜索工具 search_code
+### Day 4：代码搜索工具 search_code [x]
 
 学习任务：
 
@@ -296,7 +372,7 @@ grep / rg 这类关键词搜索在 Agent 中有什么价值？
 能搜索当前项目中的 plan.md、Agent、ToolRegistry 等关键词
 ```
 
-### Day 5：Shell 执行工具 run_shell
+### Day 5：Shell 执行工具 run_shell [x]
 
 学习任务：
 
@@ -309,11 +385,13 @@ grep / rg 这类关键词搜索在 Agent 中有什么价值？
 开发任务：
 
 ```text
-1. 实现 run_shell(command, cwd, timeout)
-2. 捕获 stdout、stderr、returncode
-3. 设置 timeout
-4. 限制 cwd 在 workspace 内
-5. 限制输出长度
+1. 实现 run_shell(command, cwd, timeout, workspace)
+2. 定义 RunShellResult，保留 stdout、stderr、returncode
+3. 区分命令业务失败与工具执行层错误
+4. 设置 timeout
+5. 限制 cwd 在 workspace 内
+6. 分别限制 stdout 和 stderr 长度
+7. 处理命令不存在、权限不足和超时
 ```
 
 原理理解：
@@ -337,6 +415,8 @@ stdout 和 stderr 有什么区别？
 能执行 pytest
 超时命令会被终止
 输出不会无限大
+非零退出码不会丢失 stderr 和 returncode
+cwd 越过 workspace 时会被拒绝
 ```
 
 ### Day 6：ToolResult 与错误模型
@@ -344,24 +424,30 @@ stdout 和 stderr 有什么区别？
 学习任务：
 
 ```text
-1. 学习 dataclass 或 Pydantic BaseModel
-2. 学习结构化返回
+1. 对比 dataclass、TypedDict、Pydantic BaseModel
+2. 学习结构化返回和序列化
 3. 学习错误码设计
+4. 区分底层执行结果和统一工具结果
 ```
 
 开发任务：
 
 ```text
-1. 定义 ToolResult
+1. 在 src/devagent/tools/models.py 定义 ToolResult
 2. 字段包括 success、content、metadata、error_code、error_message
-3. read_file、search_code、run_shell 都返回 ToolResult
-4. 补测试
+3. 定义稳定错误码，例如 FILE_NOT_FOUND、PATH_OUTSIDE_WORKSPACE、COMMAND_TIMEOUT
+4. 编写适配函数，将 read_file、search_code、RunShellResult 转为 ToolResult
+5. 保留 RunShellResult 作为底层执行结果，不直接删除
+6. ToolResult 必须可以转成 JSON，供未来 LLM 和 API 使用
+7. 补成功、业务失败、执行异常、JSON 序列化测试
 ```
 
 原理理解：
 
 ```text
 为什么工具不应该直接返回字符串？
+为什么底层 RunShellResult 和上层 ToolResult 可以同时存在？
+异常和错误返回值分别适合什么情况？
 结构化错误对 Agent 自我修复有什么帮助？
 ```
 
@@ -377,6 +463,9 @@ LLM 调工具失败后，如何让它根据错误继续修正？
 ```text
 所有工具返回统一结构
 失败时有明确 error_code
+metadata 保留 returncode、cwd 等机器可读信息
+ToolResult 可以被 JSON 序列化
+调用方不需要解析中文字符串判断错误类型
 ```
 
 ### Day 7：本周复盘
@@ -385,9 +474,12 @@ LLM 调工具失败后，如何让它根据错误继续修正？
 
 ```text
 1. 整理第 1 周代码
-2. 补齐测试
-3. 写一页学习笔记：工具系统的安全边界
-4. 准备 5 个面试问题答案
+2. 删除正式模块中的重复练习实现
+3. 补齐测试并检查覆盖的边界情况
+4. 写一页学习笔记：工具系统的安全边界
+5. 准备 8 个面试问题答案
+6. 画出 read_file、search_code、run_shell 到 ToolResult 的调用图
+7. 运行 ruff 或基础代码检查，可选
 ```
 
 本周必须能讲清楚：
@@ -402,7 +494,7 @@ pytest 在项目中起什么作用？
 
 ---
 
-## 5. 第 2 周：Agent Loop + Tool Calling
+## 5. 第 2 周：统一工具协议 + Agent Loop + Tool Calling
 
 目标：写出命令行版最小 Agent。先用 MockLLMClient，再接真实 LLM API。
 
@@ -421,14 +513,24 @@ max_steps
 
 ### Day 8：BaseTool 与 ToolRegistry
 
+学习任务：
+
+```text
+1. 学习抽象基类 ABC 和泛型基础
+2. 学习 Pydantic 参数模型与 JSON Schema
+3. 理解依赖倒置和注册表模式
+```
+
 开发任务：
 
 ```text
-1. 定义 BaseTool
-2. 每个工具包含 name、description、args_schema、risk_level、execute
-3. 实现 ToolRegistry.register
-4. 实现 ToolRegistry.execute
-5. 注册 read_file、search_code、run_shell
+1. 定义 BaseTool，包含 name、description、args_schema、risk_level、execute
+2. 实现 ReadFileTool、SearchCodeTool、RunShellTool 适配器
+3. 实现 ToolRegistry.register / get / list / execute
+4. 禁止重复注册同名工具
+5. 参数校验失败时返回统一 ToolResult
+6. 注册并执行 read_file、search_code、run_shell
+7. 编写注册、查询、重复注册、未知工具、参数错误测试
 ```
 
 原理理解：
@@ -446,7 +548,24 @@ ToolRegistry 解决什么问题？
 新增一个工具需要改哪些地方？
 ```
 
+验收标准：
+
+```text
+ToolRegistry 不依赖具体工具实现
+工具参数由 Pydantic 校验
+任意工具执行后都返回 ToolResult
+新增工具时不需要修改 Registry 核心逻辑
+```
+
 ### Day 9：MockLLMClient
+
+学习任务：
+
+```text
+1. 理解 system、user、assistant、tool 四类消息
+2. 理解 tool_call_id 的作用
+3. 理解模型响应为何需要内部统一协议
+```
 
 开发任务：
 
@@ -457,6 +576,7 @@ ToolRegistry 解决什么问题？
 4. 第一次返回 search_code tool_call
 5. 第二次返回 read_file tool_call
 6. 第三次返回 final_answer
+7. 测试固定响应序列和调用次数
 ```
 
 原理理解：
@@ -473,6 +593,14 @@ ToolRegistry 解决什么问题？
 为什么 Agent 项目需要 mock LLM？
 ```
 
+验收标准：
+
+```text
+测试不调用网络和真实模型
+MockLLMClient 可以稳定复现多轮工具调用
+ToolCall 参数可以被序列化和校验
+```
+
 ### Day 10：最小 AgentRuntime
 
 开发任务：
@@ -484,6 +612,7 @@ ToolRegistry 解决什么问题？
 4. 如果有 tool_call，执行工具
 5. 把工具结果加入 messages
 6. 如果没有 tool_call，返回 final answer
+7. 保存每轮完整 messages，便于测试和调试
 ```
 
 原理理解：
@@ -501,6 +630,15 @@ max_steps 为什么是必需的？
 Agent 什么时候停止？
 ```
 
+验收标准：
+
+```text
+Agent 能按 MockLLMClient 计划调用 search_code 和 read_file
+工具结果作为 tool message 写回 messages
+最终返回稳定答案
+测试可以断言工具调用顺序
+```
+
 ### Day 11：max_steps、错误处理、重复调用检测
 
 开发任务：
@@ -511,6 +649,7 @@ Agent 什么时候停止？
 3. 参数错误时返回错误给模型
 4. 记录最近工具调用
 5. 简单检测重复调用同一个工具同一参数
+6. 定义 AgentRunResult，记录最终状态、答案、步数和错误
 ```
 
 原理理解：
@@ -528,7 +667,24 @@ Agent 为什么会失控？
 如何处理工具调用失败？
 ```
 
+验收标准：
+
+```text
+达到 max_steps 后能够正常结束
+未知工具和参数错误会反馈给模型
+相同工具和参数连续重复时会被检测
+Agent 失败不会只留下未处理异常
+```
+
 ### Day 12：接入真实 LLM API
+
+学习任务：
+
+```text
+1. 理解 token、context window、temperature 和 tool schema
+2. 理解 API Key 环境变量管理
+3. 理解模型供应商适配层的作用
+```
 
 开发任务：
 
@@ -538,6 +694,8 @@ Agent 为什么会失控？
 3. 构造 tools schema
 4. 解析 tool_calls
 5. 保留 MockLLMClient 用于测试
+6. 对网络错误、限流、超时做最小错误处理
+7. 不把 API Key 写进仓库
 ```
 
 原理理解：
@@ -555,6 +713,15 @@ Prompt 和 tool description 分别控制什么？
 如何降低 Agent 的幻觉？
 ```
 
+验收标准：
+
+```text
+真实模型能调用至少一个工具
+没有 API Key 时给出清晰中文错误
+Mock 测试仍然可以离线运行
+供应商返回结构不会直接泄漏到 AgentRuntime
+```
+
 ### Day 13：命令行 Demo
 
 开发任务：
@@ -564,6 +731,8 @@ Prompt 和 tool description 分别控制什么？
 2. 支持命令行输入问题
 3. 输出每一步工具调用
 4. 输出最终答案
+5. 支持 --workspace 和 --max-steps 参数
+6. 对用户输入和错误做友好展示
 ```
 
 演示命令：
@@ -579,6 +748,14 @@ python -m app.agent.cli "这个项目的入口在哪里？"
 这个 Demo 和普通 ChatBot 有什么区别？
 ```
 
+验收标准：
+
+```text
+从任意目录运行时可以显式指定 workspace
+能够看到工具名、参数、结果摘要和最终答案
+命令失败时不会打印难以理解的完整堆栈
+```
+
 ### Day 14：本周复盘
 
 复盘任务：
@@ -588,6 +765,8 @@ python -m app.agent.cli "这个项目的入口在哪里？"
 2. 画一张 Agent Loop 流程图
 3. 写 10 个面试问答
 4. 整理命令行 Demo 录屏脚本
+5. 复习项目中实际使用的 ABC、Pydantic、dataclass 和异常链
+6. 整理 ToolRegistry 与 Agent Loop 项目深挖问答
 ```
 
 本周必须能讲清楚：
@@ -598,6 +777,14 @@ Tool Calling
 工具结果注入上下文
 max_steps
 mock LLM 的价值
+```
+
+本周最终验收：
+
+```text
+命令行 Agent 可以稳定完成一次代码仓库入口分析
+离线测试不依赖真实 LLM
+能画出 User -> AgentRuntime -> LLMClient -> ToolRegistry -> ToolResult 的调用链
 ```
 
 ---
@@ -618,16 +805,37 @@ async / await
 任务状态机
 ```
 
-每日任务：
+每日任务与验收：
 
 ```text
-Day 15：创建 FastAPI app，实现 GET /health
-Day 16：实现 POST /api/v1/agent/tasks 创建任务
-Day 17：实现 AgentTask 模型和任务状态机
-Day 18：实现 GET /api/v1/agent/tasks/{task_id}
-Day 19：用 BackgroundTasks 或 asyncio.create_task 异步执行 Agent
-Day 20：实现 GET /api/v1/agent/tasks/{task_id}/events
-Day 21：补测试、整理 Swagger 演示流程
+Day 15：创建 FastAPI app、配置模块和 GET /health
+产出：app/main.py、配置读取、health 接口测试
+验收：uvicorn 启动成功，pytest 可使用 TestClient 调接口
+
+Day 16：设计创建任务 API
+产出：CreateTaskRequest、CreateTaskResponse、POST /api/v1/agent/tasks
+验收：非法 max_steps 被 Pydantic 拒绝，响应包含 task_id 和 PENDING
+
+Day 17：实现 AgentTask 与显式状态转移
+产出：TaskStatus、AgentTask、内存 TaskRepository
+验收：非法状态转移被拒绝，状态机有单元测试
+
+Day 18：实现任务查询和取消接口
+产出：GET /tasks/{id}、POST /tasks/{id}/cancel
+验收：任务不存在返回 404，取消后的状态一致
+
+Day 19：学习 asyncio，并异步执行 Agent
+产出：TaskManager、asyncio.create_task 管理、异常回收
+验收：创建接口快速返回；任务在后台变为 RUNNING / DONE / FAILED
+说明：理解 BackgroundTasks 适合响应后小任务，不等同于可靠任务队列
+
+Day 20：实现内存事件记录和事件查询接口
+产出：最小事件模型、GET /tasks/{id}/events
+验收：能看到任务开始、结束和错误事件
+
+Day 21：接口测试、并发基础与本周复盘
+产出：API 集成测试、Swagger 演示步骤、后端原理笔记
+验收：同时创建多个任务不会互相覆盖；能讲清项目为何需要异步任务
 ```
 
 任务状态设计：
@@ -657,6 +865,8 @@ HTTP 请求为什么不能一直阻塞等 Agent 完成？
 用户断开连接后任务怎么办？
 如何查询任务当前执行到哪一步？
 FastAPI 的 async 适合什么场景？
+asyncio.create_task 有什么生命周期风险？
+为什么生产环境长任务最终可能需要独立 Worker 和消息队列？
 ```
 
 验收标准：
@@ -670,7 +880,7 @@ events 接口能返回执行记录
 
 ---
 
-## 7. 第 4 周：ToolRegistry + PermissionManager + 安全控制
+## 7. 第 4 周：PermissionManager + 安全控制 + 异步任务
 
 目标：把工具调用做成真实后端系统，而不是简单函数调用。
 
@@ -687,16 +897,36 @@ events 接口能返回执行记录
 Prompt Injection 防护
 ```
 
-每日任务：
+每日任务与验收：
 
 ```text
-Day 22：把工具参数改成 Pydantic args_schema
-Day 23：ToolRegistry 生成 LLM tool schema
-Day 24：定义 risk_level：LOW / MEDIUM / HIGH / CRITICAL
-Day 25：实现 PermissionManager，支持 allow_once / deny_once
-Day 26：支持 always_allow / always_deny 策略
-Day 27：run_shell 接入权限审批和危险命令拦截
-Day 28：补权限测试，整理安全设计文档
+Day 22：复查 ToolRegistry 与参数 Schema
+产出：LLM tool schema 导出、schema 快照测试
+验收：工具协议只维护一份，不重复定义参数结构
+
+Day 23：定义风险模型和 PermissionRequest
+产出：RiskLevel、PermissionDecision、PermissionRequest
+验收：风险等级和审批状态可以 JSON 序列化
+
+Day 24：实现内存 PermissionManager
+产出：request、resolve、allow_once、deny_once
+验收：未审批的高风险调用无法执行
+
+Day 25：实现 always_allow / always_deny 匹配规则
+产出：PermissionPolicy、最小资源匹配策略
+验收：说明规则粒度，避免“允许一次 pytest”扩大成“允许所有 Shell”
+
+Day 26：设计 CommandGuard
+产出：固定参数列表检查、危险程序 / 参数检测、测试
+验收：拦截明显危险调用；文档明确黑名单不是完整安全方案
+
+Day 27：把 run_shell 接入审批链
+产出：ToolExecutor 调用 PermissionManager 后执行工具
+验收：任务进入 WAITING_PERMISSION，批准后继续，拒绝后返回 ToolResult
+
+Day 28：安全测试与异步等待复盘
+产出：权限绕过测试、Prompt Injection 笔记、安全设计文档
+验收：能讲清楚审批、策略、命令检测、Sandbox 四层防护
 ```
 
 安全规则：
@@ -759,16 +989,37 @@ Trace
 可观测性
 ```
 
-每日任务：
+每日任务与验收：
 
 ```text
-Day 29：定义 BaseEvent 和事件类型
-Day 30：实现内存版 EventBus
-Day 31：AgentRuntime 发布 AgentStarted / AgentFinished / AgentError
-Day 32：工具调用发布 ToolCallStarted / ToolCallFinished / ToolCallFailed
-Day 33：权限流程发布 PermissionRequested / PermissionResolved
-Day 34：实现 WebSocket 事件推送
-Day 35：实现事件回放，补测试和演示脚本
+Day 29：定义事件协议
+产出：BaseEvent、事件类型、task_id、sequence_id、timestamp、payload
+验收：事件可 JSON 序列化；同一任务 sequence_id 单调递增
+
+Day 30：实现内存 EventBus
+产出：publish、subscribe、unsubscribe、事件历史
+验收：一个事件可被多个订阅者收到；失败订阅者不拖垮发布流程
+
+Day 31：AgentRuntime 接入生命周期事件
+产出：AgentStarted、LLMCallStarted、LLMCallFinished、AgentFinished、AgentError
+验收：成功和失败任务都有完整闭环事件
+
+Day 32：工具与权限流程接入事件
+产出：ToolCallStarted / Finished / Failed、PermissionRequested / Resolved
+验收：事件 payload 不泄漏 API Key 等敏感信息
+
+Day 33：实现 SSE，再理解 WebSocket
+产出：SSE 任务事件流接口
+验收：浏览器或 curl 能持续接收服务端事件
+说明：本项目主要是服务端单向推送，先做 SSE 更简单；审批需要双向交互时再用普通 HTTP 或 WebSocket
+
+Day 34：实现 WebSocket 和断线重连协议
+产出：session stream、last_seen_sequence_id
+验收：断线重连后能补发缺失事件，不重复展示已确认事件
+
+Day 35：Trace 回放、网络基础和本周复盘
+产出：历史回放接口、事件时序图、SSE/WebSocket 对比笔记
+验收：能用一次 task_id 回放完整执行轨迹；能解释本项目为何选择 SSE 或 WebSocket
 ```
 
 事件类型：
@@ -791,6 +1042,7 @@ PermissionResolved
 ```text
 为什么 Agent 执行过程适合事件化？
 WebSocket 和普通 HTTP 有什么区别？
+本项目为什么可以先实现 SSE？
 sequence_id 有什么作用？
 断线重连后如何补发事件？
 Trace 和普通日志有什么区别？
@@ -832,16 +1084,36 @@ Git diff
 证据链输出
 ```
 
-每日任务：
+每日任务与验收：
 
 ```text
-Day 36：准备 examples/sample_repo
+Day 36：设计可重复的 sample_repo 和失败场景
+产出：最小代码仓库、失败测试、固定 commit / diff
+验收：不调用 Agent 时，人可以手动复现失败并说明根因
+
 Day 37：实现 git_diff 工具
-Day 38：准备 mock CI 数据，实现 get_ci_result
-Day 39：准备 mock 日志，实现 search_log
-Day 40：设计 CI 失败诊断 Prompt
-Day 41：设计日志根因分析 Prompt
-Day 42：完成两个稳定 Demo，录制演示流程
+产出：GitDiffTool、参数模型、输出截断、错误处理
+验收：合法 commit 返回 diff；非法 commit 返回结构化错误
+
+Day 38：准备 mock CI 数据并实现 get_ci_result
+产出：固定 CI JSON、工具实现、Schema 校验
+验收：工具能返回失败 job、test case、核心日志，不把整份日志全部塞入上下文
+
+Day 39：实现 search_log
+产出：按 task_id / level / keyword 检索的 mock 日志工具
+验收：结果按时间排序，支持截断，明确首个异常点
+
+Day 40：设计证据驱动的 CI 诊断流程
+产出：CI Prompt、诊断报告模型、至少 3 个测试场景
+验收：每个结论引用具体工具证据；缺少证据时明确说明
+
+Day 41：设计日志根因分析流程
+产出：时间线整理、首个异常识别、相关代码搜索链路
+验收：区分根因、后续连锁错误和推测
+
+Day 42：稳定性测试、Git/CI 基础和 Demo
+产出：两个 Demo、失败恢复场景、演示脚本
+验收：连续运行 3 次得到可接受结果；完成 Git/CI 面试笔记
 ```
 
 CI 诊断输出格式：
@@ -874,6 +1146,7 @@ CI 诊断输出格式：
 如何避免 Agent 凭空编造 CI 失败原因？
 为什么要结合日志、代码和 diff 三类信息？
 mock 数据为什么对 Demo 很重要？
+如何区分根因、症状和相关性？
 ```
 
 面试问题：
@@ -898,7 +1171,7 @@ Demo 可以重复运行
 
 ## 10. 第 7 周：数据库 + Evaluation + 上下文压缩
 
-目标：把项目从 Demo 提升为真实后端工程。
+目标：优先完成持久化和最小 Evaluation。上下文压缩属于进阶任务，如果前两项未完成，不强行赶进度。
 
 本周重点原理：
 
@@ -914,19 +1187,40 @@ Evaluation
 上下文压缩
 ```
 
-每日任务：
+每日任务与验收：
 
 ```text
-Day 43：学习 SQL 基础，设计 tasks、events、tool_calls 表
-Day 44：接入 SQLite 或 PostgreSQL
-Day 45：事件落库，支持服务重启后查询历史事件
-Day 46：工具调用记录落库，统计耗时和失败率
-Day 47：准备 20 条 eval cases
-Day 48：实现 eval runner，统计工具命中率和关键词命中率
-Day 49：实现最小上下文压缩，补测试和文档
+Day 43：学习 SQL、索引和事务，设计数据模型
+产出：tasks、events、tool_calls 表设计和关系图
+验收：能解释主键、外键、唯一索引、task_id + sequence_id 约束
+
+Day 44：先接入 SQLite 和 SQLAlchemy
+产出：ORM Model、Repository、数据库迁移或初始化脚本
+验收：业务层不直接散落 SQL；Repository 有测试
+
+Day 45：任务、事件和工具调用落库
+产出：持久化 Repository、服务重启后查询
+验收：事件顺序一致；敏感参数不会原样落库
+
+Day 46：学习事务与并发一致性，完成 Trace 查询
+产出：Trace 查询接口、耗时和失败率统计
+验收：同一 task 的 sequence_id 不冲突；能解释何时需要事务
+
+Day 47：设计最小 eval dataset
+产出：至少 10 条高质量 eval case，而不是机械凑 20 条
+验收：覆盖正确工具、错误恢复、证据引用和权限触发
+
+Day 48：实现 eval runner
+产出：Tool Hit Rate、Answer Keyword Hit Rate、Failure Rate、Latency
+验收：Mock 模型评测完全可重复；真实模型评测记录模型与 Prompt 版本
+
+Day 49：根据进度二选一
+优先项：把 SQLite 切换或兼容 PostgreSQL，并学习索引与 JSONB
+进阶项：实现最小上下文压缩，保留目标、关键观察和最近消息
+验收：只完成一个但讲清原理，不同时做两个半成品
 ```
 
-推荐先 SQLite 后 PostgreSQL：
+推荐先 SQLite，项目稳定后再 PostgreSQL：
 
 ```text
 SQLite：上手快，适合学习 ORM 和表设计
@@ -962,6 +1256,14 @@ Prompt 修改后如何判断变好了？
 长任务触发上下文压缩事件
 ```
 
+第 7 周最低验收：
+
+```text
+必须完成：任务和事件持久化、最小 Evaluation
+尽量完成：PostgreSQL 或上下文压缩，二选一
+不要求：Redis、向量数据库、复杂任务队列
+```
+
 ---
 
 ## 11. 第 8 周：项目打磨 + 面试准备 + 简历包装
@@ -980,16 +1282,36 @@ Demo 脚本
 项目复盘
 ```
 
-每日任务：
+每日任务与验收：
 
 ```text
-Day 50：整理项目目录和 README
-Day 51：画架构图和 Agent Loop 流程图
-Day 52：补核心测试：ToolRegistry、PermissionManager、EventBus
-Day 53：整理 3 个 Demo：代码问答、CI 诊断、权限审批
-Day 54：写项目面试问答 30 题
-Day 55：写简历项目描述，准备 3 分钟版本
-Day 56：模拟面试，查漏补缺
+Day 50：代码质量与项目清理
+产出：删除重复实现、统一命名、配置和错误码、运行完整测试
+验收：新用户按 README 可以在 15 分钟内启动项目
+
+Day 51：架构文档
+产出：系统架构图、Agent Loop 时序图、权限审批时序图
+验收：图和真实代码一致，不画尚未实现的能力
+
+Day 52：测试与失败演练
+产出：核心模块测试、超时、工具失败、拒绝权限、断线重连场景
+验收：能够现场解释一个真实 bug 是如何被测试发现的
+
+Day 53：Demo 与量化结果
+产出：代码问答、CI 诊断、权限审批三个 Demo
+验收：记录成功率、平均步骤、平均耗时等真实数据
+
+Day 54：技术面试准备
+产出：项目问答 30 题、围绕项目实际实现的 Python / 后端 / Agent 深挖
+验收：不看文档口述 10 个项目深挖问题
+
+Day 55：简历与项目表达
+产出：真实简历描述、3 分钟和 10 分钟项目讲法
+验收：只写已经实现且能被追问的能力，不使用夸大指标
+
+Day 56：模拟面试和缺口修复
+产出：至少一次完整模拟面试记录、问题清单、最终修复
+验收：现场启动 Demo、讲架构、解释取舍、回答失败案例
 ```
 
 README 必须包含：
@@ -1033,51 +1355,53 @@ README 清楚
 
 ---
 
-## 12. 高频面试问题清单
+## 12. 项目相关高频面试问题清单
 
-### 12.1 Python 基础
+这里只保留能够从 DevAgent 真实实现继续追问的问题，不承担通用八股复习职责。
+
+### 12.1 项目中的 Python 设计
 
 ```text
-1. list 和 tuple 的区别是什么？
-2. dict 的查询为什么通常很快？
-3. Python 中可变对象和不可变对象有什么区别？
-4. 深拷贝和浅拷贝有什么区别？
-5. 装饰器是什么？
-6. 生成器是什么？有什么优势？
-7. async / await 的作用是什么？
-8. Python 的 GIL 是什么？
-9. dataclass 和普通 class 有什么区别？
-10. Pydantic 解决什么问题？
+1. 为什么 RunShellResult 使用 dataclass，而工具参数更适合使用 Pydantic？
+2. 为什么工具执行层错误使用异常，命令非零退出码却作为结果返回？
+3. 为什么正式模块不能在 import 时执行 input、print 或写文件？
+4. editable install 解决了什么导入问题？
+5. 为什么 workspace 应由调用方传入，而不是写成全局变量？
+6. ToolResult 为什么需要 JSON 序列化？
+7. BaseTool 为什么适合使用抽象基类？
+8. async / await 在 Agent 和 FastAPI 中分别解决什么问题？
+9. 如何用 pytest 的 tmp_path 测试文件与命令工具？
+10. MockLLMClient 为什么比直接 Mock 某个函数更适合测试 Agent Loop？
 ```
 
-### 12.2 后端基础
+### 12.2 项目中的后端设计
 
 ```text
-1. HTTP GET 和 POST 有什么区别？
-2. RESTful API 是什么？
-3. FastAPI 为什么适合 AI 应用后端？
-4. 同步接口和异步接口有什么区别？
-5. 长任务为什么不能阻塞 HTTP 请求？
-6. WebSocket 和 SSE 有什么区别？
-7. 后端如何管理任务状态？
-8. 如何设计错误码？
-9. 如何做接口参数校验？
-10. 如何设计一个可回放的任务系统？
+1. 为什么创建 Agent 任务后先返回 task_id，而不是等待最终答案？
+2. AgentTask 为什么需要显式状态机？
+3. 为什么生产环境不能只依赖 asyncio.create_task 执行可靠长任务？
+4. 本项目为什么可以优先使用 SSE，什么情况下才需要 WebSocket？
+5. 如何设计任务取消，避免状态已经 CANCELLED 但工具仍继续执行？
+6. ToolResult、HTTP 错误响应和 AgentTask FAILED 有什么区别？
+7. Pydantic 参数校验应该放在 API 层、工具层，还是两层都需要？
+8. 如何防止多个并发任务互相覆盖 workspace、事件或权限状态？
+9. sequence_id 如何帮助断线重连和 Trace 回放？
+10. EventBus 为什么能降低 AgentRuntime 与 UI 的耦合？
 ```
 
-### 12.3 数据库基础
+### 12.3 项目中的持久化设计
 
 ```text
-1. 主键和索引有什么区别？
-2. 为什么事件表需要 sequence_id？
-3. JSONB 适合存什么，不适合存什么？
-4. 事务是什么？
-5. 数据库迁移是什么？
-6. 为什么不能所有状态都只放内存？
-7. PostgreSQL 相比 SQLite 的优势是什么？
-8. 如何查询某个 task 的完整 Trace？
-9. tool_calls 表应该存哪些字段？
-10. 如何统计工具失败率和平均耗时？
+1. tasks、events、tool_calls 为什么需要分表？
+2. 为什么 events 需要 task_id + sequence_id 唯一约束？
+3. 任务状态更新和事件写入是否需要事务？
+4. 为什么不能把所有 ToolResult 和事件都只存为一大段文本？
+5. 哪些事件 payload 适合 JSON 字段，哪些字段应该单独建列和索引？
+6. 为什么内存 Repository 适合 MVP，却不适合服务重启后的任务回放？
+7. 如何查询某个 task 的完整 Trace，并保证事件顺序？
+8. tool_calls 表应该保存哪些字段，哪些敏感数据不能保存？
+9. 如何统计工具失败率、平均耗时和 Agent 平均步骤数？
+10. SQLite 切换到 PostgreSQL 时，本项目最可能遇到哪些差异？
 ```
 
 ### 12.4 Agent 原理
