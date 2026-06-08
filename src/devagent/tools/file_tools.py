@@ -84,36 +84,3 @@ def read_file_safe(
         ReadFileError,
     ) as exc:
         return f"读取文件失败: {exc}"
-
-
-def search_file(
-    query: str, workspace: str, file_pattern=None, max_chars: int = 20000
-) -> str:
-    root = Path(workspace).resolve()
-    if not root.exists():
-        return f"工作区不存在: {workspace}"
-    if not root.is_dir():
-        return f"工作区不是目录: {workspace}"
-
-    cmd = ["rg", query, "-n", "--no-heading", "--color", "never"]
-    if file_pattern is not None:
-        cmd.extend(["-g", file_pattern])
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, cwd=root, timeout=10
-        )
-    except FileNotFoundError:
-        return "未找到 rg 命令，请先安装 ripgrep。"
-    except subprocess.TimeoutExpired:
-        return "搜索超时。"
-
-    if result.returncode == 0:
-        output = result.stdout
-    elif result.returncode == 1:
-        return ""
-    else:
-        return f"搜索执行失败: {result.stderr.strip()}"
-
-    if len(output) > max_chars:
-        output = output[:max_chars] + "\n... 搜索结果过长，已截断 ..."
-    return output
