@@ -437,7 +437,7 @@ stdout 和 stderr 有什么区别？
 cwd 越过 workspace 时会被拒绝
 ```
 
-### Day 6：ToolResult 与错误模型
+### Day 6：ToolResult 与错误模型 [x]
 
 学习任务：
 
@@ -486,7 +486,7 @@ ToolResult 可以被 JSON 序列化
 调用方不需要解析中文字符串判断错误类型
 ```
 
-### Day 7：工具适配层与统一调用入口
+### Day 7：工具适配层与统一调用入口 [x]
 
 开发任务：
 
