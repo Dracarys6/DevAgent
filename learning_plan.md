@@ -548,7 +548,7 @@ max_steps
 循环检测
 ```
 
-### Day 8：BaseTool 与 ToolRegistry
+### Day 8：BaseTool 与 ToolRegistry [x]
 
 学习任务：
 

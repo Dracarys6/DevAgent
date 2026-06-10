@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from devagent.tools.file_tools import read_file_safe
+from devagent.tools.read_file_tools import read_file_safe
 
 
 def main() -> None:

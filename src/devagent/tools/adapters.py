@@ -3,8 +3,8 @@ from pathlib import Path
 from collections.abc import Callable
 
 from .models import ErrorCode, ToolResult
-from .file_tools import read_file, MAX_READ_LINES
-from .search_tools import search_code, MAX_SEARCH_CHARS, DEFAULT_SEARCH_TIMEOUT
+from .read_file_tools import read_file, MAX_READ_LINES
+from .search_code_tools import search_code, MAX_SEARCH_CHARS, DEFAULT_SEARCH_TIMEOUT
 from .run_shell_tools import run_shell, MAX_OUTPUT_CHARS, DEFAULT_SHELL_TIMEOUT
 
 

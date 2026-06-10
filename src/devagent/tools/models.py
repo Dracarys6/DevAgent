@@ -3,7 +3,14 @@ from enum import Enum
 from typing import Any
 
 
-class ErrorCode(Enum):
+class RiskLevel(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class ErrorCode(str, Enum):
     READ_FILE_ERROR = "READ_FILE_ERROR"
     SEARCH_ERROR = "SEARCH_ERROR"
     COMMAND_ERROR = "COMMAND_ERROR"
@@ -20,6 +27,10 @@ class ErrorCode(Enum):
     INVALID_COMMAND = "INVALID_COMMAND"
     INVALID_PARAMETER = "INVALID_PARAMETER"
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
+    TOOL_NOT_FOUND = "TOOL_NOT_FOUND"
+    DUPLICATE_TOOL = "DUPLICATE_TOOL"
+    ARGUMENT_VALIDATION_ERROR = "ARGUMENT_VALIDATION_ERROR"
+    TOOL_EXECUTION_ERROR = "TOOL_EXECUTION_ERROR"
 
 
 class ToolResult(BaseModel):

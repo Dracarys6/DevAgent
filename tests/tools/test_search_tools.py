@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from devagent.tools.search_tools import SearchCodeError, search_code
+from devagent.tools.search_code_tools import SearchCodeError, search_code
 
 
 def test_search_code_returns_matching_lines(tmp_path: Path):

@@ -1,1 +1,1 @@
-"""Tool implementations for DevAgent."""
+"""DevAgent 工具系统。"""
