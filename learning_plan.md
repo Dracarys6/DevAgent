@@ -30,14 +30,20 @@ DevOps 平台后端工程师
 当前进度：
 
 ```text
-已完成 Day 1 到 Day 5
-当前自动化测试：23 个
+已完成并验收 Day 1 到 Day 6、Day 8、Day 9
+Day 7 内容已在 Day 6 与 Day 8 开发中覆盖
+当前自动化测试：69 个
 已完成正式模块：
 - read_file
 - workspace 路径安全
 - search_code
 - run_shell
 - RunShellResult
+- ToolResult 与工具适配层
+- BaseTool 与 ToolRegistry
+- 内置工具包装
+- LLMClient Protocol
+- MockLLMClient
 ```
 
 计划不是固定不变的课程表。后续每次验收时，根据实际完成情况更新：
@@ -594,7 +600,7 @@ ToolRegistry 不依赖具体工具实现
 新增工具时不需要修改 Registry 核心逻辑
 ```
 
-### Day 9：MockLLMClient
+### Day 9：MockLLMClient [x]
 
 学习任务：
 
