@@ -30,9 +30,9 @@ DevOps 平台后端工程师
 当前进度：
 
 ```text
-已完成并验收 Day 1 到 Day 6、Day 8、Day 9
+已完成并验收 Day 1 到 Day 6、Day 8 到 Day 10
 Day 7 内容已在 Day 6 与 Day 8 开发中覆盖
-当前自动化测试：69 个
+当前自动化测试：76 个
 已完成正式模块：
 - read_file
 - workspace 路径安全
@@ -44,6 +44,7 @@ Day 7 内容已在 Day 6 与 Day 8 开发中覆盖
 - 内置工具包装
 - LLMClient Protocol
 - MockLLMClient
+- 最小 AgentRuntime 与 Agent Loop
 ```
 
 计划不是固定不变的课程表。后续每次验收时，根据实际完成情况更新：
@@ -644,7 +645,7 @@ MockLLMClient 可以稳定复现多轮工具调用
 ToolCall 参数可以被序列化和校验
 ```
 
-### Day 10：最小 AgentRuntime
+### Day 10：最小 AgentRuntime [x]
 
 开发任务：
 
