@@ -1282,16 +1282,16 @@ pytest tests/test_upload.py
 
 ### 任务清单
 
-* [ ] 搭建 FastAPI 项目结构。
-* [ ] 接入 LLM API。
-* [ ] 定义 AgentTask 数据结构。
-* [ ] 实现基础 Agent Loop。
-* [ ] 支持 LLM tool call 解析。
-* [ ] 实现 ToolRegistry。
-* [ ] 实现 read_file 工具。
-* [ ] 实现 search_code 工具。
-* [ ] 实现 run_shell 工具的 mock 版本。
-* [ ] 实现 max_steps 限制。
+* [] 搭建 FastAPI 项目结构。
+* [] 接入 LLM API。
+* [] 定义 AgentTask 数据结构。
+* [] 实现基础 Agent Loop。
+* [x] 支持 LLM tool call 解析。
+* [x] 实现 ToolRegistry。
+* [x] 实现 read_file 工具。
+* [x] 实现 search_code 工具。
+* [x] 实现 run_shell 工具的 mock 版本。
+* [] 实现 max_steps 限制。
 
 ### 验收标准
 

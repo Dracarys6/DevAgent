@@ -15,7 +15,9 @@ class ToolCall(BaseModel):
         description="工具调用 ID，用于和 tool result 通过 tool_call_id 对应。",
     )
     name: str = Field(min_length=1, description="工具名称。")
-    arguments: dict[str, Any] = Field(default_factory=dict, description="工具调用参数。")
+    arguments: dict[str, Any] = Field(
+        default_factory=dict, description="工具调用参数。"
+    )
 
 
 class LLMResponse(BaseModel):
