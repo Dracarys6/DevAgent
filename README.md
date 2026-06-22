@@ -2,7 +2,7 @@
 
 > 面向研发效能场景的 AI Agent 后端平台
 
-DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、执行轨迹回放和受控多 Agent 编排。
+DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
 当前项目处于持续开发阶段，已完成工具系统、Mock LLM、Agent Loop 与基础防失控能力。
 
@@ -26,9 +26,12 @@ Python 要求：3.11+
 | Mock LLM | 统一 LLM 协议、固定响应序列、请求记录与离线测试 | 已完成 |
 | Agent Loop | 多轮推理、工具调用、结果观察、最终回答 | 已完成 |
 | 防失控保护 | 结构化运行结果、最大步数、工具调用预算、重复调用检测、LLM 异常兜底 | 已完成基础版 |
+| Agent Skills | 面向业务组合 ToolRegistry 工具能力，预留 MCP 扩展 | 规划中 |
 | 权限审批 | 高风险工具审批、策略管理、危险命令防护 | 规划中 |
 | Trace 与事件流 | EventBus、SSE/WebSocket、执行回放 | 规划中 |
 | 研发诊断 | CI 失败诊断、日志根因分析、Git diff 分析 | 规划中 |
+| RAG / Memory | 代码、日志、CI、文档和历史案例检索，上下文压缩 | 规划中 |
+| Evaluation | 工具命中率、证据命中率、延迟、失败率等指标评测 | 规划中 |
 | 多 Agent 编排 | 子任务拆分、并发、预算限制、取消传播 | 规划中 |
 
 ---
@@ -239,13 +242,14 @@ DevAgent/
 
 ```mermaid
 flowchart TD
-    A[工具系统] --> B[Agent Loop]
-    B --> C[FastAPI 与任务状态]
-    C --> D[PermissionManager]
-    D --> E[EventBus 与 Trace]
-    E --> F[CI / 日志诊断]
-    F --> G[数据库与 Evaluation]
-    G --> H[多 Agent 编排]
+    A[Agent Runtime]
+    A --> B[ToolRegistry / Agent Skills]
+    B --> C[FastAPI / ToolExecutor]
+    C --> D[PermissionManager / EventBus / Trace]
+    D --> E[Evaluation + CI 诊断闭环]
+    E --> F[RAG / Memory + 日志根因分析]
+    F --> G[Multi-Agent + 父子 Trace]
+    G --> H[持久化完善 + 项目交付]
 
     style A fill:#2d7d46,color:#fff
     style B fill:#d9e8ff,color:#111

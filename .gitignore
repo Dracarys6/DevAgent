@@ -76,6 +76,11 @@ credentials/
 # 文档/构建相关
 docs/_build/
 docs/_site/
+
+# 本地学习记录，不作为项目交付内容提交
+docs/learning/
+learning_plan.md
+
 *.pid
 *.seed
 *.pid.lock
