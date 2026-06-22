@@ -2,7 +2,12 @@ import json
 from copy import deepcopy
 from typing import Any
 
-from devagent.agent.models import AgentRunResult, AgentRunStatus
+from devagent.agent.models import (
+    AgentRunResult,
+    AgentRunStatus,
+    AgentEvent,
+    AgentEventType,
+)
 from devagent.llm.base import LLMClient
 from devagent.llm.models import LLMResponse, LLMResponseType, ToolCall
 from devagent.tools.models import ToolResult
@@ -48,6 +53,14 @@ class AgentRuntime:
         返回：
             AgentRunResult 结构化结果。
         """
+        events: list[AgentEvent] = []
+        self._add_event(
+            events,
+            AgentEventType.RUN_START,
+            "Agent 运行开始",
+            metadata={"user_input": user_input},
+        )
+
         messages: list[dict[str, Any]] = [
             {
                 "role": "system",
@@ -61,15 +74,34 @@ class AgentRuntime:
 
         for step in range(1, self.max_steps + 1):
             try:
+                self._add_event(
+                    events,
+                    AgentEventType.LLM_START,
+                    "开始调用 LLM",
+                    step=step,
+                    metadata={"message_count": len(messages)},
+                )
                 response: LLMResponse = self.llm_client.chat(messages)
             except Exception as exc:
                 return self._finish_with_error(
                     messages=messages,
+                    events=events,
                     status=AgentRunStatus.LLM_ERROR,
                     steps=step,
                     tool_call_count=tool_call_count,
                     error_message=f"LLM 调用失败: {exc}",
                 )
+
+            self._add_event(
+                events,
+                AgentEventType.LLM_END,
+                "LLM 返回响应",
+                step=step,
+                metadata={
+                    "response_type": response.response_type.value,
+                    "tool_call_count": len(response.tool_calls),
+                },
+            )
 
             if response.response_type == LLMResponseType.TOOL_CALLS:
                 self._append_assistant_tool_calls(messages, response)
@@ -78,6 +110,7 @@ class AgentRuntime:
                     if tool_call_count >= self.max_tool_calls:
                         return self._finish_with_error(
                             messages=messages,
+                            events=events,
                             status=AgentRunStatus.MAX_TOOL_CALLS_EXCEEDED,
                             steps=step,
                             tool_call_count=tool_call_count,
@@ -85,7 +118,6 @@ class AgentRuntime:
                                 f"Agent 超过最大工具调用次数限制: {self.max_tool_calls}"
                             ),
                         )
-
                     signature = self._tool_signature(tool_call)
                     if (
                         self.stop_on_repeated_tool_call
@@ -93,6 +125,7 @@ class AgentRuntime:
                     ):
                         return self._finish_with_error(
                             messages=messages,
+                            events=events,
                             status=AgentRunStatus.REPEATED_TOOL_CALL,
                             steps=step,
                             tool_call_count=tool_call_count,
@@ -101,14 +134,49 @@ class AgentRuntime:
 
                     last_tool_signature = signature
 
+                    self._add_event(
+                        events,
+                        AgentEventType.TOOL_START,
+                        f"开始执行工具: {tool_call.name}",
+                        step=step,
+                        tool_call_id=tool_call.id,
+                        tool_name=tool_call.name,
+                        metadata={
+                            "arguments": tool_call.arguments,
+                        },
+                    )
+
                     tool_result = self._execute_tool_call(tool_call)
                     self._append_tool_result(messages, tool_call, tool_result)
                     tool_call_count += 1
+                    self._add_event(
+                        events,
+                        AgentEventType.TOOL_END,
+                        f"工具执行结束: {tool_call.name}",
+                        step=step,
+                        tool_call_id=tool_call.id,
+                        tool_name=tool_call.name,
+                        metadata={
+                            "success": tool_result.success,
+                            "error_code": tool_result.error_code,
+                        },
+                    )
 
             elif response.response_type == LLMResponseType.FINAL_ANSWER:
                 final_answer = response.content or ""
 
                 messages.append({"role": "assistant", "content": final_answer})
+
+                self._add_event(
+                    events,
+                    AgentEventType.RUN_END,
+                    "Agent 运行成功结束",
+                    step=step,
+                    metadata={
+                        "status": AgentRunStatus.SUCCESS.value,
+                        "tool_call_count": tool_call_count,
+                    },
+                )
 
                 self._save_messages(messages)
                 return AgentRunResult(
@@ -119,10 +187,12 @@ class AgentRuntime:
                     tool_call_count=tool_call_count,
                     error_message=None,
                     messages=deepcopy(messages),
+                    events=deepcopy(events),
                 )
 
         return self._finish_with_error(
             messages=messages,
+            events=events,
             status=AgentRunStatus.MAX_STEPS_EXCEEDED,
             steps=self.max_steps,
             tool_call_count=tool_call_count,
@@ -195,11 +265,28 @@ class AgentRuntime:
     def _finish_with_error(
         self,
         messages: list[dict[str, Any]],
+        events: list[AgentEvent],
         status: AgentRunStatus,
         steps: int,
         tool_call_count: int,
         error_message: str,
     ) -> AgentRunResult:
+
+        self._add_event(
+            events,
+            AgentEventType.ERROR,
+            error_message,
+            step=steps,
+            metadata={"status": status.value},
+        )
+        self._add_event(
+            events,
+            AgentEventType.RUN_END,
+            "Agent 运行失败结束",
+            step=steps,
+            metadata={"status": status.value, "tool_call_count": tool_call_count},
+        )
+
         messages.append({"role": "assistant", "content": error_message})
         self._save_messages(messages)
         return AgentRunResult(
@@ -210,4 +297,26 @@ class AgentRuntime:
             tool_call_count=tool_call_count,
             error_message=error_message,
             messages=deepcopy(messages),
+            events=deepcopy(events),
+        )
+
+    def _add_event(
+        self,
+        events: list[AgentEvent],
+        event_type: AgentEventType,
+        message: str,
+        step: int = 0,
+        tool_call_id: str | None = None,
+        tool_name: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        events.append(
+            AgentEvent(
+                type=event_type,
+                message=message,
+                step=step,
+                tool_call_id=tool_call_id,
+                tool_name=tool_name,
+                metadata=metadata or {},
+            )
         )

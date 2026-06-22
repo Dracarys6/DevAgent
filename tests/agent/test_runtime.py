@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from devagent.agent.runtime import AgentRuntime
-from devagent.agent.models import AgentRunStatus
+from devagent.agent.models import AgentEventType, AgentRunStatus
 from devagent.llm.mock_client import MockLLMClient
 from devagent.llm.models import LLMResponse, ToolCall
 from devagent.tools.builtin import create_builtin_registry
@@ -25,10 +25,15 @@ def create_runtime(
     return runtime, client
 
 
+def event_types(result):
+    return [event.type for event in result.events]
+
+
 def test_runtime_completes_default_mock_workflow():
     runtime, client = create_runtime()
 
     result = runtime.run("请分析项目中的 ToolRegistry")
+    events = result.events
 
     assert result.success is True
     assert result.status == AgentRunStatus.SUCCESS
@@ -47,6 +52,84 @@ def test_runtime_completes_default_mock_workflow():
         "assistant",
     ]
     assert result.messages == runtime.messages
+    assert event_types(result) == [
+        AgentEventType.RUN_START,
+        AgentEventType.LLM_START,
+        AgentEventType.LLM_END,
+        AgentEventType.TOOL_START,
+        AgentEventType.TOOL_END,
+        AgentEventType.LLM_START,
+        AgentEventType.LLM_END,
+        AgentEventType.TOOL_START,
+        AgentEventType.TOOL_END,
+        AgentEventType.LLM_START,
+        AgentEventType.LLM_END,
+        AgentEventType.RUN_END,
+    ]
+
+
+def test_runtime_records_llm_event_details():
+    runtime, _client = create_runtime()
+
+    result = runtime.run("请分析项目")
+
+    llm_starts = [
+        event for event in result.events if event.type == AgentEventType.LLM_START
+    ]
+    llm_ends = [event for event in result.events if event.type == AgentEventType.LLM_END]
+
+    assert [event.step for event in llm_starts] == [1, 2, 3]
+    assert llm_starts[0].metadata["message_count"] == 2
+    assert llm_starts[1].metadata["message_count"] > 2
+    assert llm_ends[0].metadata == {
+        "response_type": "tool_calls",
+        "tool_call_count": 1,
+    }
+    assert llm_ends[-1].metadata == {
+        "response_type": "final_answer",
+        "tool_call_count": 0,
+    }
+
+
+def test_runtime_records_tool_event_details():
+    runtime, _client = create_runtime()
+
+    result = runtime.run("请分析项目")
+
+    tool_starts = [
+        event for event in result.events if event.type == AgentEventType.TOOL_START
+    ]
+    tool_ends = [
+        event for event in result.events if event.type == AgentEventType.TOOL_END
+    ]
+
+    assert tool_starts[0].tool_call_id == "call_search_code_001"
+    assert tool_starts[0].tool_name == "search_code"
+    assert tool_starts[0].metadata["arguments"]["query"] == "ToolRegistry"
+    assert tool_ends[0].tool_call_id == "call_search_code_001"
+    assert tool_ends[0].tool_name == "search_code"
+    assert tool_ends[0].metadata["success"] is True
+    assert tool_ends[0].metadata["error_code"] is None
+
+
+def test_runtime_records_run_start_and_success_run_end_details():
+    runtime, _client = create_runtime()
+
+    result = runtime.run("请分析项目")
+
+    assert result.events[0].type == AgentEventType.RUN_START
+    assert result.events[0].message == "Agent 运行开始"
+    assert result.events[0].step == 0
+    assert result.events[0].metadata == {"user_input": "请分析项目"}
+    assert result.events[0].timestamp.tzinfo is not None
+
+    assert result.events[-1].type == AgentEventType.RUN_END
+    assert result.events[-1].message == "Agent 运行成功结束"
+    assert result.events[-1].step == 3
+    assert result.events[-1].metadata == {
+        "status": "success",
+        "tool_call_count": 2,
+    }
 
 
 def test_runtime_executes_tool_calls_in_expected_order():
@@ -173,6 +256,14 @@ def test_runtime_writes_unknown_tool_error_back_to_messages():
     assert tool_result["success"] is False
     assert tool_result["error_code"] == "TOOL_NOT_FOUND"
 
+    tool_end = next(
+        event for event in result.events if event.type == AgentEventType.TOOL_END
+    )
+    assert tool_end.tool_call_id == "call_unknown"
+    assert tool_end.tool_name == "missing_tool"
+    assert tool_end.metadata["success"] is False
+    assert tool_end.metadata["error_code"] == "TOOL_NOT_FOUND"
+
 
 def test_runtime_stops_at_max_steps():
     repeated_tool_call = LLMResponse.tool_calls_response(
@@ -203,6 +294,17 @@ def test_runtime_stops_at_max_steps():
         "role": "assistant",
         "content": "Agent 超过最大步数限制: 2",
     }
+    assert event_types(result)[-2:] == [
+        AgentEventType.ERROR,
+        AgentEventType.RUN_END,
+    ]
+    assert result.events[-2].message == "Agent 超过最大步数限制: 2"
+    assert result.events[-2].metadata == {"status": "max_steps_exceeded"}
+    assert result.events[-1].message == "Agent 运行失败结束"
+    assert result.events[-1].metadata == {
+        "status": "max_steps_exceeded",
+        "tool_call_count": 2,
+    }
 
 
 def test_runtime_saves_independent_message_snapshots():
@@ -226,6 +328,20 @@ def test_runtime_result_messages_are_independent_from_runtime_messages():
     runtime.messages[0]["content"] = "changed"
 
     assert result.messages[0]["content"] == "你是一个可以调用工具的代码助手"
+
+
+def test_runtime_result_events_are_independent_snapshots():
+    runtime, _client = create_runtime(
+        [LLMResponse.final_answer("first")],
+    )
+
+    result = runtime.run("first run")
+    event_metadata = result.events[0].metadata
+    event_metadata["changed"] = True
+
+    second_result = runtime.run("second run")
+
+    assert second_result.events[0].metadata == {"user_input": "second run"}
 
 
 def test_runtime_stops_when_max_tool_calls_exceeded(tmp_path: Path):
@@ -266,6 +382,11 @@ def test_runtime_stops_when_max_tool_calls_exceeded(tmp_path: Path):
         for message in runtime.messages
         if message["role"] == "tool"
     ] == ["call_read_1"]
+    assert event_types(result)[-2:] == [
+        AgentEventType.ERROR,
+        AgentEventType.RUN_END,
+    ]
+    assert result.events[-2].metadata == {"status": "max_tool_calls_exceeded"}
 
 
 def test_runtime_detects_repeated_tool_call_with_normalized_arguments():
@@ -299,6 +420,16 @@ def test_runtime_detects_repeated_tool_call_with_normalized_arguments():
     assert result.final_answer == ""
     assert result.tool_call_count == 1
     assert result.error_message == "检测到重复工具调用: search_code"
+    assert event_types(result)[-2:] == [
+        AgentEventType.ERROR,
+        AgentEventType.RUN_END,
+    ]
+    assert [
+        event.tool_call_id
+        for event in result.events
+        if event.type == AgentEventType.TOOL_START
+    ] == ["call_1"]
+    assert result.events[-2].metadata == {"status": "repeated_tool_call"}
 
 
 def test_runtime_returns_llm_error_when_client_raises():
@@ -319,3 +450,10 @@ def test_runtime_returns_llm_error_when_client_raises():
     assert result.steps == 1
     assert result.tool_call_count == 0
     assert result.error_message == "LLM 调用失败: boom"
+    assert event_types(result) == [
+        AgentEventType.RUN_START,
+        AgentEventType.LLM_START,
+        AgentEventType.ERROR,
+        AgentEventType.RUN_END,
+    ]
+    assert result.events[-2].metadata == {"status": "llm_error"}

@@ -4,11 +4,11 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具系统、Mock LLM、Agent Loop 与基础防失控能力。
+当前项目处于持续开发阶段，已完成工具系统、Mock LLM、Agent Loop、基础防失控能力与 Agent 事件轨迹。
 
 ```text
-当前进度：ToolResult + ToolRegistry + 内置工具 + MockLLMClient + AgentRuntime + AgentRunResult
-测试状态：81 passed
+当前进度：ToolResult + ToolRegistry + 内置工具 + MockLLMClient + AgentRuntime + AgentRunResult + AgentEvent
+测试状态：85 passed
 Python 要求：3.11+
 ```
 
@@ -26,6 +26,7 @@ Python 要求：3.11+
 | Mock LLM | 统一 LLM 协议、固定响应序列、请求记录与离线测试 | 已完成 |
 | Agent Loop | 多轮推理、工具调用、结果观察、最终回答 | 已完成 |
 | 防失控保护 | 结构化运行结果、最大步数、工具调用预算、重复调用检测、LLM 异常兜底 | 已完成基础版 |
+| Agent 事件轨迹 | 记录 run、LLM、tool、error 事件，支撑后续 CLI、Trace 和 WebSocket | 已完成基础版 |
 | Agent Skills | 面向业务组合 ToolRegistry 工具能力，预留 MCP 扩展 | 规划中 |
 | 权限审批 | 高风险工具审批、策略管理、危险命令防护 | 规划中 |
 | Trace 与事件流 | EventBus、SSE/WebSocket、执行回放 | 规划中 |
@@ -101,7 +102,7 @@ pytest -q
 预期结果：
 
 ```text
-81 passed
+85 passed
 ```
 
 代码搜索工具依赖 [ripgrep](https://github.com/BurntSushi/ripgrep)。请确保本机可以运行：
