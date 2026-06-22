@@ -8,5 +8,8 @@ version = "0.1.0"
 description = "面向研发效能场景的 AI Agent 后端平台"
 requires-python = ">=3.11"
 
+[project.scripts]
+devagent = "devagent.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
