@@ -1,10 +1,15 @@
 from pathlib import Path
 
 from devagent.agent.runtime import AgentRuntime
-from devagent.cli.cli import build_parser, create_demo_responses, main, render_result
+from devagent.cli.cli import (
+    build_parser,
+    create_demo_responses,
+    create_tool_registry,
+    main,
+    render_result,
+)
 from devagent.llm.mock_client import MockLLMClient
 from devagent.tools.builtin import create_builtin_registry
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -32,6 +37,12 @@ def test_build_parser_parses_cli_arguments():
             "--max-tool-calls",
             "5",
             "--show-messages",
+            "--provider",
+            "real",
+            "--model",
+            "test-model",
+            "--base-url",
+            "https://example.test/v1",
         ]
     )
 
@@ -40,6 +51,18 @@ def test_build_parser_parses_cli_arguments():
     assert args.max_steps == 3
     assert args.max_tool_calls == 5
     assert args.show_messages is True
+    assert args.provider == "real"
+    assert args.model == "test-model"
+    assert args.base_url == "https://example.test/v1"
+
+
+def test_create_tool_registry_for_real_provider_excludes_high_risk_tools():
+    registry = create_tool_registry("real")
+
+    assert [tool.name for tool in registry.list()] == [
+        "read_file",
+        "search_code",
+    ]
 
 
 def test_create_demo_responses_uses_given_workspace():
@@ -140,3 +163,61 @@ def test_main_can_show_message_debug_summary(capsys):
     assert exit_code == 0
     assert "调试信息：" in captured.out
     assert "messages 数量：7" in captured.out
+
+
+def test_main_real_provider_without_api_key_returns_two(
+    monkeypatch,
+    tmp_path: Path,
+    capsys,
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DEVAGENT_LLM_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("DEVAGENT_LLM_MODEL", raising=False)
+    monkeypatch.delenv("DEVAGENT_LLM_BASE_URL", raising=False)
+
+    exit_code = main(
+        [
+            "请分析项目",
+            "--workspace",
+            str(PROJECT_ROOT),
+            "--provider",
+            "real",
+            "--model",
+            "test-model",
+        ]
+    )
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "缺少 LLM API Key" in captured.out
+    assert captured.err == ""
+
+
+def test_main_real_provider_without_model_returns_two(
+    monkeypatch,
+    tmp_path: Path,
+    capsys,
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("DEVAGENT_LLM_MODEL", raising=False)
+    monkeypatch.delenv("DEVAGENT_LLM_BASE_URL", raising=False)
+
+    exit_code = main(
+        [
+            "请分析项目",
+            "--workspace",
+            str(PROJECT_ROOT),
+            "--provider",
+            "real",
+        ]
+    )
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "缺少 LLM 模型名称" in captured.out
+    assert captured.err == ""

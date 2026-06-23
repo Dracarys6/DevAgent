@@ -4,11 +4,11 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具系统、Mock LLM、Agent Loop、基础防失控能力、Agent 事件轨迹与命令行 Demo。
+当前项目处于持续开发阶段，已完成工具系统、Mock LLM、真实 LLM 适配层、Agent Loop、基础防失控能力、Agent 事件轨迹与命令行 Demo。
 
 ```text
-当前进度：ToolResult + ToolRegistry + 内置工具 + MockLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI
-测试状态：93 passed
+当前进度：ToolResult + ToolRegistry + 内置工具 + MockLLMClient + OpenAICompatibleLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI
+测试状态：104 passed
 Python 要求：3.11+
 ```
 
@@ -24,6 +24,7 @@ Python 要求：3.11+
 | Shell 执行 | 保留 stdout、stderr、returncode，支持超时和 cwd 限制 | 已完成 |
 | ToolRegistry | 支持注册、查询、Schema 导出、参数校验和统一执行 | 已完成 |
 | Mock LLM | 统一 LLM 协议、固定响应序列、请求记录与离线测试 | 已完成 |
+| 真实 LLM 适配层 | OpenAI-compatible client、tools schema 转换、tool_calls 解析 | 已完成基础版 |
 | Agent Loop | 多轮推理、工具调用、结果观察、最终回答 | 已完成 |
 | 防失控保护 | 结构化运行结果、最大步数、工具调用预算、重复调用检测、LLM 异常兜底 | 已完成基础版 |
 | Agent 事件轨迹 | 记录 run、LLM、tool、error 事件，支撑后续 CLI、Trace 和 WebSocket | 已完成基础版 |
@@ -103,7 +104,7 @@ pytest -q
 预期结果：
 
 ```text
-93 passed
+104 passed
 ```
 
 代码搜索工具依赖 [ripgrep](https://github.com/BurntSushi/ripgrep)。请确保本机可以运行：
@@ -129,6 +130,16 @@ python -m devagent.cli "请分析项目" --workspace .
 ```
 
 输出会展示 LLM 调用、工具调用和最终回答。失败场景会返回非 0 退出码并输出中文错误。
+
+真实 LLM 使用显式开关启用：
+
+```bash
+export DEVAGENT_LLM_API_KEY="你的 key"
+export DEVAGENT_LLM_MODEL="你的模型名"
+devagent "请分析项目中的 ToolRegistry" --workspace . --provider real
+```
+
+`real` 模式当前只向模型暴露低风险工具，避免在 PermissionManager 完成前让真实模型直接调用高风险 Shell 工具。
 
 ---
 

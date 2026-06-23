@@ -1,13 +1,27 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+from devagent.llm.openai_client import (
+    OpenAICompatibleLLMClient,
+    tool_registry_to_openai_tools,
+)
+from devagent.llm.base import LLMClient
 from devagent.agent.models import AgentEvent, AgentEventType, AgentRunResult
 from devagent.agent.runtime import AgentRuntime
 from devagent.llm.mock_client import MockLLMClient
 from devagent.llm.models import LLMResponse, ToolCall
-from devagent.tools.builtin import create_builtin_registry
+from devagent.tools.builtin import (
+    ReadFileTool,
+    SearchCodeTool,
+    create_builtin_registry,
+)
+from devagent.tools.models import RiskLevel
+from devagent.tools.registry import ToolRegistry
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -17,6 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-steps", type=int, default=10)
     parser.add_argument("--max-tool-calls", type=int, default=20)
     parser.add_argument("--show-messages", action="store_true")
+    parser.add_argument("--provider", choices=["mock", "real"], default="mock")
+    parser.add_argument("--model")
+    parser.add_argument("--base-url")
     return parser
 
 
@@ -138,15 +155,54 @@ def create_demo_responses(workspace: str) -> list[LLMResponse]:
     ]
 
 
+def create_low_risk_registry() -> ToolRegistry:
+    registry = ToolRegistry()
+    registry.register(ReadFileTool())
+    registry.register(SearchCodeTool())
+    return registry
+
+
+def create_tool_registry(provider: str) -> ToolRegistry:
+    if provider == "real":
+        return create_low_risk_registry()
+    return create_builtin_registry()
+
+
+def create_llm_client(args, registry: ToolRegistry) -> LLMClient:
+    if args.provider == "mock":
+        workspace_path = Path(args.workspace).resolve()
+        return MockLLMClient(responses=create_demo_responses(str(workspace_path)))
+
+    load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+    api_key = os.getenv("DEVAGENT_LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
+    model = args.model or os.getenv("DEVAGENT_LLM_MODEL")
+    base_url = args.base_url or os.getenv("DEVAGENT_LLM_BASE_URL")
+
+    if not api_key:
+        raise ValueError("缺少 LLM API Key，请设置 DEVAGENT_LLM_API_KEY")
+    if not model:
+        raise ValueError("缺少 LLM 模型名称，请使用 --model 或设置 DEVAGENT_LLM_MODEL")
+
+    return OpenAICompatibleLLMClient(
+        api_key=api_key,
+        model=model,
+        base_url=base_url,
+        tools=tool_registry_to_openai_tools(
+            registry=registry,
+            allowed_risk_levels={RiskLevel.LOW},
+        ),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     try:
         parser = build_parser()
         args = parser.parse_args(argv)
-        workspace_path = Path(args.workspace).resolve()
-        client = MockLLMClient(responses=create_demo_responses(str(workspace_path)))
+        registry = create_tool_registry(args.provider)
+        client = create_llm_client(args=args, registry=registry)
         runtime = AgentRuntime(
             llm_client=client,
-            tool_registry=create_builtin_registry(),
+            tool_registry=registry,
             max_steps=args.max_steps,
             max_tool_calls=args.max_tool_calls,
         )
