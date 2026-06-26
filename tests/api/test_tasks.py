@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 
 from devagent.api.app import app
 
-
 client = TestClient(app)
 
 
@@ -30,6 +29,21 @@ def test_create_agent_task_returns_uuid_task_id():
     data = response.json()
 
     UUID(data["task_id"])
+
+
+def test_create_agent_task_returns_different_task_ids():
+    first = client.post(
+        "/api/v1/agent/tasks",
+        json={"question": "请分析第一个任务"},
+    )
+    second = client.post(
+        "/api/v1/agent/tasks",
+        json={"question": "请分析第二个任务"},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["task_id"] != second.json()["task_id"]
 
 
 def test_create_agent_task_accepts_full_request_payload():

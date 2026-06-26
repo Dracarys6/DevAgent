@@ -1,14 +1,15 @@
-from uuid import uuid4
-
 from fastapi import APIRouter, status
 
 from devagent.api.schemas import (
     AgentTaskCreateRequest,
     AgentTaskCreateResponse,
-    TaskStatus,
 )
+from devagent.task.models import AgentTask
+from devagent.task.repository import InMemoryTaskRepository
 
 router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-tasks"])
+
+repository = InMemoryTaskRepository()
 
 
 @router.post(
@@ -17,9 +18,20 @@ router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-tasks"])
     status_code=status.HTTP_201_CREATED,
 )
 def create_agent_task(
-    _request: AgentTaskCreateRequest,
+    request: AgentTaskCreateRequest,
 ) -> AgentTaskCreateResponse:
+    task = repository.create(
+        AgentTask(
+            question=request.question,
+            workspace=request.workspace,
+            provider=request.provider.value,
+            model=request.model,
+            base_url=request.base_url,
+            max_steps=request.max_steps,
+            max_tool_calls=request.max_tool_calls,
+        )
+    )
     return AgentTaskCreateResponse(
-        task_id=str(uuid4()),
-        status=TaskStatus.PENDING,
+        task_id=task.task_id,
+        status=task.status,
     )

@@ -2,14 +2,12 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from devagent.task.models import TaskStatus
+
 
 class LLMProvider(str, Enum):
     MOCK = "mock"
     REAL = "real"
-
-
-class TaskStatus(str, Enum):
-    PENDING = "PENDING"
 
 
 class AgentTaskCreateRequest(BaseModel):
