@@ -6,22 +6,27 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from devagent.llm.openai_client import (
+from devagent.llm import (
     OpenAICompatibleLLMClient,
     tool_registry_to_openai_tools,
+    LLMClient,
+    MockLLMClient,
+    LLMResponse,
+    ToolCall,
 )
-from devagent.llm.base import LLMClient
-from devagent.agent.models import AgentEvent, AgentEventType, AgentRunResult
-from devagent.agent.runtime import AgentRuntime
-from devagent.llm.mock_client import MockLLMClient
-from devagent.llm.models import LLMResponse, ToolCall
-from devagent.tools.builtin import (
+from devagent.agent import (
+    AgentRuntime,
+    AgentEvent,
+    AgentEventType,
+    AgentRunResult,
+)
+from devagent.tools import (
     ReadFileTool,
     SearchCodeTool,
     create_builtin_registry,
+    RiskLevel,
+    ToolRegistry,
 )
-from devagent.tools.models import RiskLevel
-from devagent.tools.registry import ToolRegistry
 
 
 def build_parser() -> argparse.ArgumentParser:

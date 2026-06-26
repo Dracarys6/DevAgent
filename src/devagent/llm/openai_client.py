@@ -4,7 +4,7 @@ import json
 from copy import deepcopy
 from typing import Any
 
-from devagent.llm.models import LLMResponse, ToolCall
+from .models import LLMResponse, ToolCall
 from devagent.tools.models import RiskLevel
 from devagent.tools.registry import ToolRegistry
 

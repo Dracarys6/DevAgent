@@ -2,7 +2,7 @@ import json
 from copy import deepcopy
 from typing import Any
 
-from devagent.agent.models import (
+from .models import (
     AgentRunResult,
     AgentRunStatus,
     AgentEvent,
