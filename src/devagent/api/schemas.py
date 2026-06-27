@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -23,3 +24,22 @@ class AgentTaskCreateRequest(BaseModel):
 class AgentTaskCreateResponse(BaseModel):
     task_id: str
     status: TaskStatus
+
+
+class AgentTaskResponse(BaseModel):
+    task_id: str
+    question: str
+    workspace: str
+    provider: str
+    model: str | None
+    base_url: str | None
+    max_steps: int
+    max_tool_calls: int
+    status: TaskStatus
+    error_message: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AgentTaskListResponse(BaseModel):
+    tasks: list[AgentTaskResponse]
