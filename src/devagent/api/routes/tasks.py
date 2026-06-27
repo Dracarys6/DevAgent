@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from devagent.api.schemas import (
     AgentTaskCreateRequest,
@@ -6,12 +6,15 @@ from devagent.api.schemas import (
     AgentTaskListResponse,
     AgentTaskResponse,
 )
-from devagent.task.models import AgentTask, InvalidTaskTransitionError, TaskStatus
+from devagent.task.manager import TaskManager
+from devagent.task.models import AgentTask, InvalidTaskTransitionError
 from devagent.task.repository import InMemoryTaskRepository, TaskNotFoundError
 
 router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-tasks"])
 
 repository = InMemoryTaskRepository()
+
+task_manager = TaskManager(repository=repository)
 
 
 @router.get("/list", response_model=AgentTaskListResponse)
@@ -32,19 +35,18 @@ def get_agent_task(task_id: str) -> AgentTaskResponse:
     status_code=status.HTTP_201_CREATED,
 )
 def create_agent_task(
-    request: AgentTaskCreateRequest,
+    request: AgentTaskCreateRequest, background_tasks: BackgroundTasks
 ) -> AgentTaskCreateResponse:
-    task = repository.create(
-        AgentTask(
-            question=request.question,
-            workspace=request.workspace,
-            provider=request.provider.value,
-            model=request.model,
-            base_url=request.base_url,
-            max_steps=request.max_steps,
-            max_tool_calls=request.max_tool_calls,
-        )
+    task = task_manager.create_task(
+        question=request.question,
+        workspace=request.workspace,
+        provider=request.provider.value,
+        model=request.model,
+        base_url=request.base_url,
+        max_steps=request.max_steps,
+        max_tool_calls=request.max_tool_calls,
     )
+    background_tasks.add_task(task_manager.run_task, task.task_id)
     return AgentTaskCreateResponse(
         task_id=task.task_id,
         status=task.status,
@@ -54,7 +56,7 @@ def create_agent_task(
 @router.post("/{task_id}/cancel", response_model=AgentTaskResponse)
 def cancel_agent_task(task_id: str) -> AgentTaskResponse:
     try:
-        task = repository.update_status(task_id, TaskStatus.CANCELLED)
+        task = task_manager.cancel_task(task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InvalidTaskTransitionError as exc:

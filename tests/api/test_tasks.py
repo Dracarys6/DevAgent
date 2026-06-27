@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 
 from devagent.api.app import app
+from devagent.api.routes.tasks import task_manager
 
 client = TestClient(app)
 
@@ -87,7 +88,7 @@ def test_get_agent_task_returns_created_task_detail():
     assert data["provider"] == "mock"
     assert data["max_steps"] == 7
     assert data["max_tool_calls"] == 9
-    assert data["status"] == "PENDING"
+    assert data["status"] == "DONE"
     assert data["error_message"] is None
     assert data["created_at"]
     assert data["updated_at"]
@@ -100,14 +101,12 @@ def test_get_agent_task_returns_404_for_missing_task():
 
 
 def test_cancel_pending_task_then_get_cancelled_status():
-    created = client.post(
-        "/api/v1/agent/tasks",
-        json={"question": "请分析项目"},
+    task = task_manager.create_task(
+        question="请分析项目",
     )
-    task_id = created.json()["task_id"]
 
-    cancelled = client.post(f"/api/v1/agent/tasks/{task_id}/cancel")
-    fetched = client.get(f"/api/v1/agent/tasks/{task_id}")
+    cancelled = client.post(f"/api/v1/agent/tasks/{task.task_id}/cancel")
+    fetched = client.get(f"/api/v1/agent/tasks/{task.task_id}")
 
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "CANCELLED"
@@ -122,14 +121,12 @@ def test_cancel_missing_task_returns_404():
 
 
 def test_cancel_terminal_task_returns_409():
-    created = client.post(
-        "/api/v1/agent/tasks",
-        json={"question": "请分析项目"},
+    task = task_manager.create_task(
+        question="请分析项目",
     )
-    task_id = created.json()["task_id"]
 
-    first_cancel = client.post(f"/api/v1/agent/tasks/{task_id}/cancel")
-    second_cancel = client.post(f"/api/v1/agent/tasks/{task_id}/cancel")
+    first_cancel = client.post(f"/api/v1/agent/tasks/{task.task_id}/cancel")
+    second_cancel = client.post(f"/api/v1/agent/tasks/{task.task_id}/cancel")
 
     assert first_cancel.status_code == 200
     assert second_cancel.status_code == 409
