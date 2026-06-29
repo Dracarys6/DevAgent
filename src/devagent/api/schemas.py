@@ -1,8 +1,10 @@
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
+from devagent.agent import AgentEventType
 from devagent.task.models import TaskStatus
 
 
@@ -43,3 +45,18 @@ class AgentTaskResponse(BaseModel):
 
 class AgentTaskListResponse(BaseModel):
     tasks: list[AgentTaskResponse]
+
+
+class AgentEventResponse(BaseModel):
+    type: AgentEventType
+    message: str
+    step: int
+    tool_call_id: str | None
+    tool_name: str | None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    timestamp: datetime
+
+
+class AgentTaskEventsResponse(BaseModel):
+    task_id: str
+    events: list[AgentEventResponse] = Field(default_factory=list)

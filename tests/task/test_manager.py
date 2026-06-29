@@ -1,6 +1,6 @@
 import pytest
 
-from devagent.agent import AgentRunResult, AgentRunStatus
+from devagent.agent import AgentEvent, AgentEventType, AgentRunResult, AgentRunStatus
 from devagent.task.manager import TaskManager
 from devagent.task.models import InvalidTaskTransitionError, TaskStatus
 from devagent.task.repository import InMemoryTaskRepository
@@ -16,6 +16,10 @@ class SuccessRuntime:
             success=True,
             status=AgentRunStatus.SUCCESS,
             final_answer="执行成功",
+            events=[
+                AgentEvent(type=AgentEventType.RUN_START, message="开始"),
+                AgentEvent(type=AgentEventType.RUN_END, message="结束"),
+            ],
         )
 
 
@@ -25,6 +29,10 @@ class FailedRuntime:
             success=False,
             status=AgentRunStatus.LLM_ERROR,
             error_message="模型调用失败",
+            events=[
+                AgentEvent(type=AgentEventType.RUN_START, message="开始"),
+                AgentEvent(type=AgentEventType.ERROR, message="模型调用失败"),
+            ],
         )
 
 
@@ -65,6 +73,20 @@ def test_run_task_success_marks_task_done():
     assert runtime.questions == ["请分析项目"]
 
 
+def test_run_task_success_saves_events():
+    repository = InMemoryTaskRepository()
+    manager = TaskManager(repository, runtime_factory=lambda task: SuccessRuntime())
+    task = manager.create_task(question="请分析项目")
+
+    manager.run_task(task.task_id)
+
+    events = manager.event_store.list(task.task_id)
+    assert [event.type for event in events] == [
+        AgentEventType.RUN_START,
+        AgentEventType.RUN_END,
+    ]
+
+
 def test_run_task_failed_result_marks_task_failed():
     repository = InMemoryTaskRepository()
     manager = TaskManager(repository, runtime_factory=lambda task: FailedRuntime())
@@ -77,6 +99,20 @@ def test_run_task_failed_result_marks_task_failed():
     assert repository.get(task.task_id).status == TaskStatus.FAILED
 
 
+def test_run_task_failed_result_saves_events():
+    repository = InMemoryTaskRepository()
+    manager = TaskManager(repository, runtime_factory=lambda task: FailedRuntime())
+    task = manager.create_task(question="请分析项目")
+
+    manager.run_task(task.task_id)
+
+    events = manager.event_store.list(task.task_id)
+    assert [event.type for event in events] == [
+        AgentEventType.RUN_START,
+        AgentEventType.ERROR,
+    ]
+
+
 def test_run_task_runtime_exception_marks_task_failed():
     repository = InMemoryTaskRepository()
     manager = TaskManager(repository, runtime_factory=lambda task: RaisingRuntime())
@@ -86,6 +122,19 @@ def test_run_task_runtime_exception_marks_task_failed():
 
     assert updated.status == TaskStatus.FAILED
     assert "任务执行失败: boom" == updated.error_message
+
+
+def test_run_task_runtime_exception_saves_error_event():
+    repository = InMemoryTaskRepository()
+    manager = TaskManager(repository, runtime_factory=lambda task: RaisingRuntime())
+    task = manager.create_task(question="请分析项目")
+
+    manager.run_task(task.task_id)
+
+    events = manager.event_store.list(task.task_id)
+    assert len(events) == 1
+    assert events[0].type == AgentEventType.ERROR
+    assert events[0].message == "任务执行失败: boom"
 
 
 def test_run_task_skips_cancelled_task():

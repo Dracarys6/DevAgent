@@ -1,7 +1,8 @@
 from collections.abc import Callable
 from typing import Protocol
 
-from devagent.agent import AgentRuntime, AgentRunResult
+from devagent.agent import AgentEvent, AgentEventType, AgentRuntime, AgentRunResult
+from devagent.event import InMemoryEventStore
 from devagent.llm.mock_client import MockLLMClient
 from devagent.tools.builtin import create_builtin_registry
 
@@ -22,9 +23,11 @@ class TaskManager:
         self,
         repository: InMemoryTaskRepository,
         runtime_factory: RuntimeFactory | None = None,
+        event_store: InMemoryEventStore | None = None,
     ) -> None:
         self.repository = repository
         self._runtime_factory = runtime_factory or self._create_runtime
+        self.event_store = event_store or InMemoryEventStore()
 
     def _create_runtime(self, task: AgentTask) -> AgentRuntime:
         client = MockLLMClient()
@@ -70,11 +73,20 @@ class TaskManager:
             runtime = self._runtime_factory(task)
             result: AgentRunResult = runtime.run(task.question)
         except Exception as exc:
+            self.event_store.append(
+                task_id,
+                AgentEvent(
+                    type=AgentEventType.ERROR,
+                    message=f"任务执行失败: {exc}",
+                ),
+            )
             return self.repository.update_status(
                 task_id,
                 TaskStatus.FAILED,
                 error_message=f"任务执行失败: {exc}",
             )
+
+        self.event_store.append_many(task_id, result.events)
 
         if result.success:
             return self.repository.update_status(task_id, TaskStatus.DONE)

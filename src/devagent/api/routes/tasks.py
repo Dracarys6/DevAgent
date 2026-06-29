@@ -1,10 +1,13 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
+from devagent.agent import AgentEvent
 from devagent.api.schemas import (
     AgentTaskCreateRequest,
     AgentTaskCreateResponse,
     AgentTaskListResponse,
     AgentTaskResponse,
+    AgentEventResponse,
+    AgentTaskEventsResponse,
 )
 from devagent.task.manager import TaskManager
 from devagent.task.models import AgentTask, InvalidTaskTransitionError
@@ -27,6 +30,16 @@ def get_agent_task_list() -> AgentTaskListResponse:
 def get_agent_task(task_id: str) -> AgentTaskResponse:
     task = _get_task_or_404(task_id)
     return _task_to_response(task)
+
+
+@router.get("/{task_id}/events", response_model=AgentTaskEventsResponse)
+def get_agent_task_events(task_id: str) -> AgentTaskEventsResponse:
+    _get_task_or_404(task_id)
+    events = task_manager.event_store.list(task_id)
+    return AgentTaskEventsResponse(
+        task_id=task_id,
+        events=[_event_to_response(event) for event in events],
+    )
 
 
 @router.post(
@@ -73,3 +86,7 @@ def _get_task_or_404(task_id: str) -> AgentTask:
 
 def _task_to_response(task: AgentTask) -> AgentTaskResponse:
     return AgentTaskResponse(**task.model_dump())
+
+
+def _event_to_response(event: AgentEvent) -> AgentEventResponse:
+    return AgentEventResponse(**event.model_dump())

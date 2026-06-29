@@ -147,6 +147,30 @@ def test_list_agent_tasks_contains_created_task():
     assert task_id in task_ids
 
 
+def test_get_agent_task_events_returns_runtime_events():
+    created = client.post(
+        "/api/v1/agent/tasks",
+        json={"question": "请分析事件接口"},
+    )
+    task_id = created.json()["task_id"]
+
+    response = client.get(f"/api/v1/agent/tasks/{task_id}/events")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["task_id"] == task_id
+    event_types = [event["type"] for event in data["events"]]
+    assert "run_start" in event_types
+    assert "run_end" in event_types
+    assert data["events"][0]["timestamp"]
+
+
+def test_get_agent_task_events_returns_404_for_missing_task():
+    response = client.get("/api/v1/agent/tasks/not-found/events")
+
+    assert response.status_code == 404
+
+
 def test_create_agent_task_rejects_empty_question():
     response = client.post(
         "/api/v1/agent/tasks",
@@ -217,3 +241,4 @@ def test_openapi_schema_contains_create_task_path():
     assert "/api/v1/agent/tasks" in response.json()["paths"]
     assert "/api/v1/agent/tasks/{task_id}" in response.json()["paths"]
     assert "/api/v1/agent/tasks/{task_id}/cancel" in response.json()["paths"]
+    assert "/api/v1/agent/tasks/{task_id}/events" in response.json()["paths"]
