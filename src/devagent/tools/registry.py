@@ -4,6 +4,7 @@ from typing import Any
 
 from .base import BaseTool
 from .models import ToolResult, ErrorCode
+from .schema import tools_to_schemas
 
 
 class ToolRegistryError(Exception):
@@ -31,7 +32,7 @@ class ToolRegistry:
         return sorted(self._tools.values(), key=lambda tool: tool.name)
 
     def schemas(self) -> list[dict[str, Any]]:
-        return [tool.schema() for tool in self.list()]
+        return tools_to_schemas(self.list())
 
     def execute(self, name: str, arguments: dict[str, Any]) -> ToolResult:
         tool = self.get(name)

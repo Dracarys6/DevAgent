@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ValidationError
-
+from .schema import tool_to_schema
 from .models import ToolResult, ErrorCode, RiskLevel
 
 ArgsT = TypeVar("ArgsT", bound=BaseModel)
@@ -48,9 +48,4 @@ class BaseTool(ABC, Generic[ArgsT]):
         raise NotImplementedError
 
     def schema(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "description": self.description,
-            "parameters": self.args_model.model_json_schema(),
-            "risk_level": self.risk_level.value,
-        }
+        return tool_to_schema(self)

@@ -67,6 +67,21 @@ def test_registry_schemas_are_sorted():
     registry.register(AlphaTool())
 
     assert [schema["name"] for schema in registry.schemas()] == ["alpha", "echo"]
+    assert [schema["risk_level"] for schema in registry.schemas()] == [
+        RiskLevel.LOW.value,
+        RiskLevel.LOW.value,
+    ]
+    assert [schema["description"] for schema in registry.schemas()] == [
+        "返回输入文本。",
+        "返回输入文本。",
+    ]
+    assert [
+        schema["parameters"]["properties"]["text"]["title"]
+        for schema in registry.schemas()
+    ] == [
+        "Text",
+        "Text",
+    ]
 
 
 def test_registry_execute_existing_tool():
