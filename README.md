@@ -4,11 +4,11 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具系统、Mock LLM、真实 LLM 适配层、Agent Loop、基础防失控能力、Agent 事件轨迹、命令行 Demo、FastAPI 服务骨架、任务创建/查询/取消 API、任务状态机、内存任务仓库、后台任务执行与任务事件查询。
+当前项目处于持续开发阶段，已完成工具系统、Mock LLM、真实 LLM 适配层、Agent Loop、基础防失控能力、Agent 事件轨迹、命令行 Demo、FastAPI 服务骨架、任务创建/查询/取消 API、任务状态机、内存任务仓库、后台任务执行、任务事件查询与多任务集成测试。
 
 ```text
-当前进度：ToolResult + ToolRegistry + 内置工具 + MockLLMClient + OpenAICompatibleLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI + FastAPI + Task API + AgentTask + InMemoryTaskRepository + Task Query/Cancel API + TaskManager + BackgroundTasks + InMemoryEventStore + Task Events API
-测试状态：162 passed
+当前进度：ToolResult + ToolRegistry + 内置工具 + MockLLMClient + OpenAICompatibleLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI + FastAPI + Task API + AgentTask + InMemoryTaskRepository + Task Query/Cancel API + TaskManager + BackgroundTasks + InMemoryEventStore + Task Events API + Integration Tests
+测试状态：168 passed
 Python 要求：3.11+
 ```
 
@@ -36,6 +36,7 @@ Python 要求：3.11+
 | 内存任务仓库 | `InMemoryTaskRepository` 支持 create/get/list/update_status，并用副本保护内部状态 | 已完成基础版 |
 | 后台任务执行 | `TaskManager` 编排 AgentRuntime，创建任务后后台推进到 DONE / FAILED | 已完成基础版 |
 | 任务事件查询 | `InMemoryEventStore` 保存 Agent events，支持按 task_id 查询执行轨迹 | 已完成基础版 |
+| 多任务集成测试 | 验证任务状态隔离、事件隔离、取消语义和第三周 API 闭环 | 已完成基础版 |
 | Agent Skills | 面向业务组合 ToolRegistry 工具能力，预留 MCP 扩展 | 规划中 |
 | 权限审批 | 高风险工具审批、策略管理、危险命令防护 | 规划中 |
 | Trace 与事件流 | EventBus、SSE/WebSocket、执行回放 | 规划中 |
@@ -111,7 +112,7 @@ pytest -q
 预期结果：
 
 ```text
-162 passed
+168 passed
 ```
 
 代码搜索工具依赖 [ripgrep](https://github.com/BurntSushi/ripgrep)。请确保本机可以运行：
