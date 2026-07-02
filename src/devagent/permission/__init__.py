@@ -7,6 +7,7 @@ from .models import (
     PermissionRequest,
     PermissionStatus,
 )
+from .manager import InMemoryPermissionManager, PermissionRequestNotFoundError
 from devagent.tools.models import RiskLevel
 
 __all__ = [
@@ -16,4 +17,6 @@ __all__ = [
     "PermissionRequest",
     "PermissionStatus",
     "RiskLevel",
+    "InMemoryPermissionManager",
+    "PermissionRequestNotFoundError",
 ]
