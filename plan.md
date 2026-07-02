@@ -1340,24 +1340,27 @@ pytest tests/test_upload.py
 
 ## 9. 开发里程碑
 
-## 9.1 第一阶段：最小 Agent Runtime
+## 9.1 第一阶段：最小 Agent Runtime（已完成基础版）
 
-目标：实现最小可运行 Agent Loop。
+目标：实现最小可运行 Agent Loop，并具备离线测试、真实 LLM 适配和基础防失控能力。
 
-周期：约 1 周。
+当前状态：已和代码实现同步。
 
 ### 任务清单
 
-* [] 搭建 FastAPI 项目结构。
-* [] 接入 LLM API。
-* [] 定义 AgentTask 数据结构。
-* [] 实现基础 Agent Loop。
+* [x] 搭建 FastAPI 项目结构。
+* [x] 接入 OpenAI-compatible LLM 适配层。
+* [x] 定义 AgentTask 数据结构和任务状态机。
+* [x] 实现基础 Agent Loop。
 * [x] 支持 LLM tool call 解析。
 * [x] 实现 ToolRegistry。
 * [x] 实现 read_file 工具。
 * [x] 实现 search_code 工具。
-* [x] 实现 run_shell 工具的 mock 版本。
-* [] 实现 max_steps 限制。
+* [x] 实现 run_shell 工具的受限执行版本。
+* [x] 实现 max_steps 限制。
+* [x] 实现 max_tool_calls 限制。
+* [x] 实现重复工具调用检测。
+* [x] 实现 MockLLMClient 和命令行 Demo。
 
 ### 验收标准
 
@@ -1375,7 +1378,7 @@ Agent 能够：
 
 ---
 
-## 9.2 第二阶段：权限系统 + 事件系统
+## 9.2 第二阶段：权限系统 + 事件系统（进行中）
 
 目标：让 Agent 执行过程可观察，并对高风险工具进行审批。
 
@@ -1383,16 +1386,18 @@ Agent 能够：
 
 ### 任务清单
 
-* [ ] 定义 BaseEvent。
-* [ ] 定义事件类型。
-* [ ] 实现 EventBus。
-* [ ] 实现事件落库。
-* [ ] 实现 PermissionManager。
+* [x] 定义 AgentEvent 基础结构。
+* [x] 定义 Agent 运行事件类型。
+* [x] 在 AgentRuntime 中记录 run、LLM、tool、error 事件。
+* [x] 实现 InMemoryEventStore。
+* [x] 实现任务事件查询 API。
+* [x] 定义 PermissionRequest、PermissionDecision、PermissionStatus、PermissionPolicy。
+* [ ] 实现 InMemoryPermissionManager。
 * [ ] 实现 allow_once / always_allow / deny_once / always_deny。
 * [ ] run_shell 接入权限审批。
-* [ ] 实现 WebSocket 事件推送。
-* [ ] 前端展示工具调用事件。
-* [ ] 前端支持权限审批。
+* [ ] 实现 CommandGuard 危险命令拦截。
+* [ ] 实现 Permission API。
+* [ ] 实现 WebSocket 或 SSE 事件推送。
 
 ### 验收标准
 
@@ -1408,7 +1413,16 @@ pytest tests/
 2. 前端弹出审批；
 3. 用户允许后执行；
 4. 执行过程产生 ToolCallStarted 和 ToolCallFinished 事件；
-5. 事件可在前端实时展示。
+5. 事件可通过 API 查询，并可通过 WebSocket 或 SSE 实时推送。
+
+量化目标：
+
+```text
+1. 100% HIGH / CRITICAL 风险工具调用进入权限审批或被策略拒绝。
+2. 危险命令样例拦截率达到 100%。
+3. 单任务事件查询 p95 延迟低于 100 ms（内存存储、1000 条事件以内）。
+4. Trace 事件完整率达到 100%：RUN_START、LLM_START/END、TOOL_START/END、RUN_END 不缺失。
+```
 
 ---
 
@@ -1446,9 +1460,63 @@ Agent 应该能够：
 4. 查看本次 diff；
 5. 输出有依据的诊断报告。
 
+量化目标：
+
+```text
+1. CI 诊断样例中，失败用例识别准确率达到 90%。
+2. 日志根因分析样例中，首个异常点定位准确率达到 80%。
+3. 诊断报告必须引用至少 2 类证据：CI / 日志 / 代码 / diff。
+4. 从用户问题到首份诊断报告的本地 mock 流程耗时低于 5 秒。
+```
+
 ---
 
-## 9.4 第四阶段：上下文压缩 + Trace + 回放
+## 9.4 第四阶段：RAG / Memory + 上下文压缩
+
+目标：用检索增强提升代码、日志、CI 和项目文档证据质量，同时降低长上下文成本。
+
+周期：约 1 到 2 周。
+
+### 任务清单
+
+* [ ] 定义 Document、Chunk、EvidenceSnippet、RetrievalResult 等 Pydantic 模型。
+* [ ] 实现本地文档 / 代码 / 日志切片器，记录 source、path、line_range、chunk_type。
+* [ ] 实现第一版关键词检索 BM25 或 ripgrep-backed retriever。
+* [ ] 实现 `knowledge_retrieve` 工具，并接入 ToolRegistry。
+* [ ] 实现 evidence rerank 的可替换接口。
+* [ ] 实现 context_compress，将检索结果压缩为 evidence snippets。
+* [ ] 建立 20 条本地 RAG eval cases，标注 expected_sources 和 expected_keywords。
+* [ ] 统计 Evidence Hit Rate、Context Reduction Rate、Retrieval Latency。
+* [ ] 在 CI 诊断和日志根因分析 Prompt 中要求基于 evidence 输出。
+
+### 验收标准
+
+用户输入：
+
+```text
+这个项目的任务事件是在哪里保存和查询的？
+```
+
+Agent 应该能够：
+
+1. 调用 `knowledge_retrieve` 或代码检索工具；
+2. 找到事件存储、任务管理和 API 查询相关文件；
+3. 输出带文件路径和关键证据的回答；
+4. 避免把整文件或大段日志直接塞入上下文。
+
+量化目标：
+
+```text
+1. Top-5 Evidence Hit Rate 达到 80% 以上。
+2. 平均上下文输入字符数相比直接注入完整文件 / 日志降低 40% 以上。
+3. CI / 日志诊断任务中的人工证据查找步骤减少 30% 以上。
+4. 本地样例库检索 p95 延迟低于 800 ms。
+5. 证据引用完整率达到 90%：每条 evidence 包含 source、path、line_range 或等价定位信息。
+```
+
+---
+
+## 9.5 第五阶段：Trace + 回放
 
 目标：支持长任务，并能回放 Agent 执行过程。
 
@@ -1456,12 +1524,10 @@ Agent 应该能够：
 
 ### 任务清单
 
-* [ ] 实现 token 统计。
-* [ ] 实现上下文压缩触发条件。
-* [ ] 实现结构化上下文摘要。
 * [ ] 将 tool call、LLM 输出、权限审批全部落库。
 * [ ] 实现任务事件回放接口。
-* [ ] 前端支持查看历史任务执行轨迹。
+* [ ] 实现事件 sequence_id 和断点续读。
+* [ ] Trace 支持展示工具耗时、错误和证据引用。
 * [ ] 增加异常恢复和失败原因记录。
 
 ### 验收标准
@@ -1474,9 +1540,18 @@ Agent 应该能够：
 4. 可以看到每个工具耗时和结果；
 5. 可以定位 Agent 为什么得出某个结论。
 
+量化目标：
+
+```text
+1. 任务回放事件顺序准确率达到 100%。
+2. 关键事件落库完整率达到 100%。
+3. 单任务 1000 条事件内回放接口 p95 延迟低于 300 ms。
+4. Trace 中可定位最终结论对应证据的比例达到 80% 以上。
+```
+
 ---
 
-## 9.5 第五阶段：评测系统
+## 9.6 第六阶段：评测系统
 
 目标：构建 Agent 的最小 Evaluation 能力。
 
@@ -1522,9 +1597,19 @@ Average latency: 12.5s
 Average tool calls: 3.2
 ```
 
+量化目标：
+
+```text
+1. Tool Hit Rate 达到 85% 以上。
+2. Evidence Hit Rate 达到 80% 以上。
+3. Answer Keyword Hit Rate 达到 80% 以上。
+4. 平均本地 mock 任务延迟低于 10 秒。
+5. 每次 Prompt、工具描述或 RAG 策略调整后，都能输出前后指标对比。
+```
+
 ---
 
-## 9.6 第六阶段：多 Agent 编排
+## 9.7 第七阶段：多 Agent 编排
 
 目标：支持父 Agent 派生子 Agent 执行独立子任务。
 
@@ -1575,9 +1660,18 @@ Average tool calls: 3.2
 8. max_depth 和共享预算可以阻止多 Agent 失控。
 ```
 
+量化目标：
+
+```text
+1. 三子任务并发诊断相比串行执行耗时降低 30% 以上。
+2. 子 Agent allowed_tools 越权调用拦截率达到 100%。
+3. 父任务取消传播到运行中子任务的成功率达到 100%。
+4. 父子 Trace 关联完整率达到 100%。
+```
+
 ---
 
-## 9.7 第七阶段：MCP 客户端，可选
+## 9.8 第八阶段：MCP 客户端，可选
 
 目标：支持接入外部 MCP 工具。
 
@@ -1601,7 +1695,7 @@ MCP 是加分项，不建议一开始就做。
 优先级应该是：
 
 ```text
-Agent Loop > ToolRegistry > PermissionManager > EventBus > 研发效能场景 > Trace/Eval > 多 Agent > MCP
+Agent Loop > ToolRegistry > PermissionManager > EventBus > 研发效能场景 > RAG/Memory > Trace/Eval > 多 Agent > MCP
 ```
 
 ---
@@ -2463,257 +2557,6 @@ RAG 能提高代码和文档检索质量
 MCP 工具能接入 ToolRegistry
 外部工具同样经过 PermissionManager
 ```
-
-### 18.9 前 14 天详细学习计划
-
-如果你现在 Python 和 Agent 都比较小白，建议先按这个计划推进。每天只做一个很小的闭环，避免陷入“看了很多教程但项目没动”的状态。
-
-#### 第 1 天：环境和 Python 基础
-
-任务：
-
-```text
-创建虚拟环境
-安装 pytest、fastapi、uvicorn、pydantic
-学会运行 python 文件
-学会运行 pytest
-```
-
-产出：
-
-```text
-一个 test.py
-一个 tests/test_smoke.py
-pytest 能通过
-```
-
-#### 第 2 天：函数、字典、文件读取
-
-任务：
-
-```text
-实现 read_file(path, start_line, end_line)
-限制最大读取 200 行
-返回带行号内容
-```
-
-产出：
-
-```text
-read_file 可以读取 plan.md 的指定行
-pytest 覆盖正常读取、文件不存在、行号非法
-```
-
-#### 第 3 天：路径安全
-
-任务：
-
-```text
-学习 pathlib
-限制只能读取 workspace 内文件
-禁止 ../ 跳出目录
-```
-
-产出：
-
-```text
-读取 workspace 外文件会失败
-错误返回清晰
-```
-
-#### 第 4 天：命令行搜索
-
-任务：
-
-```text
-学习 subprocess
-实现 search_code(query, root)
-优先调用 rg
-限制输出长度
-```
-
-产出：
-
-```text
-能搜索项目中的 AgentRuntime、ToolRegistry 等关键词
-```
-
-#### 第 5 天：Shell 执行基础
-
-任务：
-
-```text
-实现 run_shell(command, cwd, timeout)
-捕获 stdout、stderr、returncode
-限制 timeout 和输出长度
-```
-
-产出：
-
-```text
-能运行 pytest
-能处理超时命令
-```
-
-#### 第 6 天：工具抽象
-
-任务：
-
-```text
-定义 ToolResult
-定义 BaseTool
-把 read_file、search_code、run_shell 封装成工具类
-```
-
-产出：
-
-```text
-每个工具都有 name、description、args_schema、risk_level、execute
-```
-
-#### 第 7 天：ToolRegistry
-
-任务：
-
-```text
-实现 register(tool)
-实现 get_tool(name)
-实现 execute(name, args)
-参数错误返回 ToolResult
-```
-
-产出：
-
-```text
-可以通过工具名调用 read_file 和 search_code
-```
-
-#### 第 8 天：LLM messages 和 mock agent
-
-任务：
-
-```text
-理解 system / user / assistant / tool message
-先不用真实大模型
-写一个 MockLLMClient，固定返回 tool_call
-```
-
-产出：
-
-```text
-Agent 能根据 MockLLMClient 调用 search_code
-```
-
-#### 第 9 天：最小 Agent Loop
-
-任务：
-
-```text
-实现 AgentRuntime.run
-支持 max_steps
-支持工具结果写回 messages
-支持 final answer
-```
-
-产出：
-
-```text
-命令行输入问题后，Agent 会调用工具并返回答案
-```
-
-#### 第 10 天：接入真实 LLM
-
-任务：
-
-```text
-接入一个真实 LLM API
-把工具 schema 传给模型
-解析模型 tool_calls
-```
-
-产出：
-
-```text
-Agent 能真实分析当前项目入口
-```
-
-#### 第 11 天：FastAPI 基础
-
-任务：
-
-```text
-创建 app/main.py
-实现 GET /health
-实现 POST /api/v1/agent/tasks
-```
-
-产出：
-
-```text
-uvicorn devagent.api.app:app --reload 可以启动
-Swagger 可以看到接口
-```
-
-#### 第 12 天：任务状态
-
-任务：
-
-```text
-定义 AgentTask
-实现 PENDING / RUNNING / DONE / FAILED
-使用内存 dict 保存任务
-```
-
-产出：
-
-```text
-创建任务后可以查询任务状态
-```
-
-#### 第 13 天：事件模型
-
-任务：
-
-```text
-定义 BaseEvent
-Agent 执行时发布 AgentStarted、ToolCallStarted、ToolCallFinished、AgentFinished
-```
-
-产出：
-
-```text
-GET /tasks/{task_id}/events 可以看到执行过程
-```
-
-#### 第 14 天：WebSocket 事件流
-
-任务：
-
-```text
-实现 WebSocket 订阅 session
-Agent 发布事件时推送给客户端
-```
-
-产出：
-
-```text
-浏览器或 WebSocket 客户端能实时看到 Agent 调工具
-```
-
-### 18.10 每周复盘问题
-
-每周结束时，用下面的问题检查自己是否真的掌握了。
-
-```text
-我这周完成了哪个可运行 Demo？
-我能否不看代码讲清楚核心流程？
-哪个模块最容易出 bug？
-我有没有给关键模块写测试？
-这个功能在面试里可以怎么讲？
-下一周最小可交付物是什么？
-```
-
----
 
 ## 19. 风险与解决方案
 
