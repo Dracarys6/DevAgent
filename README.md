@@ -4,11 +4,11 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具系统、工具 Schema 单一来源、权限领域模型、内存 PermissionManager、内存权限策略匹配、Mock LLM、真实 LLM 适配层、Agent Loop、基础防失控能力、Agent 事件轨迹、命令行 Demo、FastAPI 服务骨架、任务创建/查询/取消 API、任务状态机、内存任务仓库、后台任务执行、任务事件查询与多任务集成测试。
+当前项目处于持续开发阶段，已完成工具系统、工具 Schema 单一来源、权限领域模型、内存 PermissionManager、内存权限策略匹配、CommandGuard 危险命令拦截、Mock LLM、真实 LLM 适配层、Agent Loop、基础防失控能力、Agent 事件轨迹、命令行 Demo、FastAPI 服务骨架、任务创建/查询/取消 API、任务状态机、内存任务仓库、后台任务执行、任务事件查询与多任务集成测试。
 
 ```text
-当前进度：ToolResult + ToolRegistry + Tool Schema + Permission Models + InMemoryPermissionManager + InMemoryPermissionPolicyStore + 内置工具 + MockLLMClient + OpenAICompatibleLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI + FastAPI + Task API + AgentTask + InMemoryTaskRepository + Task Query/Cancel API + TaskManager + BackgroundTasks + InMemoryEventStore + Task Events API + Integration Tests
-测试状态：211 passed
+当前进度：ToolResult + ToolRegistry + Tool Schema + Permission Models + InMemoryPermissionManager + InMemoryPermissionPolicyStore + CommandGuard + 内置工具 + MockLLMClient + OpenAICompatibleLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI + FastAPI + Task API + AgentTask + InMemoryTaskRepository + Task Query/Cancel API + TaskManager + BackgroundTasks + InMemoryEventStore + Task Events API + Integration Tests
+测试状态：227 passed
 Python 要求：3.11+
 ```
 
@@ -27,6 +27,7 @@ Python 要求：3.11+
 | 权限领域模型 | `PermissionRequest`、`PermissionDecision`、`PermissionStatus`、`PermissionPolicy` | 已完成基础版 |
 | 内存权限管理器 | `InMemoryPermissionManager` 支持创建、查询、审批、列出待审批请求 | 已完成基础版 |
 | 内存权限策略匹配 | `InMemoryPermissionPolicyStore` 支持 always allow / deny 的工具名、风险等级和参数指纹匹配 | 已完成基础版 |
+| 危险命令拦截 | `CommandGuard` 拦截 `rm -rf /`、`sudo`、`mkfs`、`dd`、`curl/wget \| sh` 等明显危险调用 | 已完成基础版 |
 | Mock LLM | 统一 LLM 协议、固定响应序列、请求记录与离线测试 | 已完成 |
 | 真实 LLM 适配层 | OpenAI-compatible client、tools schema 转换、tool_calls 解析 | 已完成基础版 |
 | Agent Loop | 多轮推理、工具调用、结果观察、最终回答 | 已完成 |
