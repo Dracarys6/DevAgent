@@ -93,6 +93,8 @@ def test_permission_policy_defaults_and_json_serialization():
         name="允许低风险工具",
         decision=PermissionDecision.ALLOW,
         risk_levels=[PermissionRiskLevel.LOW],
+        arguments_fingerprint="fingerprint-1",
+        reason="低风险只读操作",
     )
 
     json_data = policy.model_dump(mode="json")
@@ -100,6 +102,10 @@ def test_permission_policy_defaults_and_json_serialization():
     assert policy.policy_id
     assert policy.enabled is True
     assert policy.tool_name is None
+    assert policy.arguments_fingerprint == "fingerprint-1"
+    assert policy.reason == "低风险只读操作"
     assert json_data["risk_levels"] == ["LOW"]
     assert json_data["decision"] == "ALLOW"
+    assert json_data["arguments_fingerprint"] == "fingerprint-1"
+    assert json_data["reason"] == "低风险只读操作"
     assert isinstance(json_data["created_at"], str)

@@ -4,11 +4,11 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具系统、工具 Schema 单一来源、权限领域模型、内存 PermissionManager、Mock LLM、真实 LLM 适配层、Agent Loop、基础防失控能力、Agent 事件轨迹、命令行 Demo、FastAPI 服务骨架、任务创建/查询/取消 API、任务状态机、内存任务仓库、后台任务执行、任务事件查询与多任务集成测试。
+当前项目处于持续开发阶段，已完成工具系统、工具 Schema 单一来源、权限领域模型、内存 PermissionManager、内存权限策略匹配、Mock LLM、真实 LLM 适配层、Agent Loop、基础防失控能力、Agent 事件轨迹、命令行 Demo、FastAPI 服务骨架、任务创建/查询/取消 API、任务状态机、内存任务仓库、后台任务执行、任务事件查询与多任务集成测试。
 
 ```text
-当前进度：ToolResult + ToolRegistry + Tool Schema + Permission Models + InMemoryPermissionManager + 内置工具 + MockLLMClient + OpenAICompatibleLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI + FastAPI + Task API + AgentTask + InMemoryTaskRepository + Task Query/Cancel API + TaskManager + BackgroundTasks + InMemoryEventStore + Task Events API + Integration Tests
-测试状态：194 passed
+当前进度：ToolResult + ToolRegistry + Tool Schema + Permission Models + InMemoryPermissionManager + InMemoryPermissionPolicyStore + 内置工具 + MockLLMClient + OpenAICompatibleLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI + FastAPI + Task API + AgentTask + InMemoryTaskRepository + Task Query/Cancel API + TaskManager + BackgroundTasks + InMemoryEventStore + Task Events API + Integration Tests
+测试状态：211 passed
 Python 要求：3.11+
 ```
 
@@ -26,6 +26,7 @@ Python 要求：3.11+
 | 工具 Schema | 从 `BaseTool.args_model` 和 `risk_level` 自动导出统一内部工具协议 | 已完成 |
 | 权限领域模型 | `PermissionRequest`、`PermissionDecision`、`PermissionStatus`、`PermissionPolicy` | 已完成基础版 |
 | 内存权限管理器 | `InMemoryPermissionManager` 支持创建、查询、审批、列出待审批请求 | 已完成基础版 |
+| 内存权限策略匹配 | `InMemoryPermissionPolicyStore` 支持 always allow / deny 的工具名、风险等级和参数指纹匹配 | 已完成基础版 |
 | Mock LLM | 统一 LLM 协议、固定响应序列、请求记录与离线测试 | 已完成 |
 | 真实 LLM 适配层 | OpenAI-compatible client、tools schema 转换、tool_calls 解析 | 已完成基础版 |
 | Agent Loop | 多轮推理、工具调用、结果观察、最终回答 | 已完成 |
@@ -41,7 +42,7 @@ Python 要求：3.11+
 | 任务事件查询 | `InMemoryEventStore` 保存 Agent events，支持按 task_id 查询执行轨迹 | 已完成基础版 |
 | 多任务集成测试 | 验证任务状态隔离、事件隔离、取消语义和第三周 API 闭环 | 已完成基础版 |
 | Agent Skills | 面向业务组合 ToolRegistry 工具能力，预留 MCP 扩展 | 规划中 |
-| 权限审批 | 高风险工具审批、策略管理、危险命令防护 | 规划中 |
+| 权限审批 | 高风险工具审批、策略管理、危险命令防护 | 进行中 |
 | Trace 与事件流 | EventBus、SSE/WebSocket、执行回放 | 规划中 |
 | 研发诊断 | CI 失败诊断、日志根因分析、Git diff 分析 | 规划中 |
 | RAG / Memory | 代码、日志、CI、文档和历史案例检索，上下文压缩 | 规划中 |

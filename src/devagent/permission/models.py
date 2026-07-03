@@ -80,3 +80,5 @@ class PermissionPolicy(BaseModel):
     decision: PermissionDecision  # 匹配后允许还是拒绝
     enabled: bool = True  # 策略是否启用
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    arguments_fingerprint: str | None = None  # 策略适用的工具参数指纹
+    reason: str | None = None  # 策略的理由

@@ -9,6 +9,11 @@ from .models import (
 )
 from .manager import InMemoryPermissionManager, PermissionRequestNotFoundError
 from devagent.tools.models import RiskLevel
+from .policy_store import (
+    InMemoryPermissionPolicyStore,
+    PermissionPolicyNotFoundError,
+    fingerprint_arguments,
+)
 
 __all__ = [
     "InvalidPermissionTransitionError",
@@ -19,4 +24,7 @@ __all__ = [
     "RiskLevel",
     "InMemoryPermissionManager",
     "PermissionRequestNotFoundError",
+    "InMemoryPermissionPolicyStore",
+    "PermissionPolicyNotFoundError",
+    "fingerprint_arguments",
 ]

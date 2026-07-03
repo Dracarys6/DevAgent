@@ -1392,8 +1392,8 @@ Agent 能够：
 * [x] 实现 InMemoryEventStore。
 * [x] 实现任务事件查询 API。
 * [x] 定义 PermissionRequest、PermissionDecision、PermissionStatus、PermissionPolicy。
-* [ ] 实现 InMemoryPermissionManager。
-* [ ] 实现 allow_once / always_allow / deny_once / always_deny。
+* [x] 实现 InMemoryPermissionManager。
+* [x] 实现 allow_once / deny_once 请求态和 always_allow / always_deny 策略匹配基础。
 * [ ] run_shell 接入权限审批。
 * [ ] 实现 CommandGuard 危险命令拦截。
 * [ ] 实现 Permission API。

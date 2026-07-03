@@ -17,10 +17,13 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 
 ## Planning Rules
 
-- Use `plan.md` to decide what to build next. If implementation and `plan.md` disagree, update `plan.md` in the same change or explicitly document the gap.
+- Use `plan.md` to decide what to build next. During daily development, record temporary implementation/plan gaps in the daily doc; update `plan.md` only after the weekly development cycle is complete unless the user explicitly asks for an immediate plan change.
 - Keep daily learning docs aligned with the current milestone in `plan.md`; do not let daily docs introduce a separate roadmap.
 - Do not add speculative infrastructure unless it supports a milestone, metric, or demo already described in `plan.md`.
 - Prefer completing one vertical slice before expanding scope: model -> manager/service -> API/runtime integration -> tests -> docs.
+- Every development change must include the corresponding daily or module-level documentation update when behavior, architecture, public API, workflow, or learning notes change.
+- Update `plan.md` and `README.md` during weekly development wrap-up after the week's implementation, verification, and progress review are complete.
+- A development task is not complete until code, tests, and docs are synchronized.
 
 ## Quantified Outcome Rules
 
@@ -57,10 +60,20 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 ## Daily Documentation Rules
 
 - Daily docs should include: goal, context, implementation scope, key design choices, verification, and measurable result.
+- After each development session, update the relevant daily doc or module docs with what changed and how it was verified.
+- Keep `plan.md` and `README.md` for weekly progress synchronization, not per-day churn, unless the user explicitly requests an immediate update.
 - Daily docs must not include a "today not doing" section.
 - Daily docs must not include a preview or plan for tomorrow.
 - If a boundary is important, write it as scope wording, not as a negative checklist.
 - Daily docs should reference the relevant `plan.md` milestone when possible.
+
+## Error Feedback Rules
+
+- When the developer points out a mistake in implementation, planning, testing, documentation, or process, fix the immediate issue first.
+- After fixing the issue, add a concise rule or clarification to `AGENTS.md` if the mistake could reasonably recur.
+- The new rule should describe the prevention pattern, not just the specific incident.
+- If the mistake only affects a narrow module, update the nearest module doc or daily doc as well as `AGENTS.md` when useful.
+- Do not treat feedback as a one-off correction; fold durable lessons back into the project workflow.
 
 ## Design Preferences
 
