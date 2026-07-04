@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 from devagent.agent import AgentEventType
 from devagent.task.models import TaskStatus
+from devagent.permission import PermissionDecision, PermissionStatus
+from devagent.tools.models import RiskLevel
 
 
 class LLMProvider(str, Enum):
@@ -60,3 +62,32 @@ class AgentEventResponse(BaseModel):
 class AgentTaskEventsResponse(BaseModel):
     task_id: str
     events: list[AgentEventResponse] = Field(default_factory=list)
+
+
+class PermissionRequestResponse(BaseModel):
+    request_id: str
+    task_id: str | None
+    tool_call_id: str | None
+    tool_name: str
+    tool_arguments: dict[str, Any]
+    risk_level: RiskLevel
+    reason: str
+    status: PermissionStatus
+    decision: PermissionDecision | None
+    decision_reason: str | None
+    created_at: datetime
+    updated_at: datetime
+    resolved_at: datetime | None
+
+
+class PermissionRequestListResponse(BaseModel):
+    requests: list[PermissionRequestResponse]
+
+
+class PermissionResolveRequest(BaseModel):
+    decision: PermissionDecision
+    decision_reason: str | None = None
+
+
+class PermissionResolveResponse(BaseModel):
+    request: PermissionRequestResponse
