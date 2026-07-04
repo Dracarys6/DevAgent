@@ -1,4 +1,4 @@
-"""权限"""
+"""权限管理模块，提供权限请求、决策和策略的相关功能。"""
 
 from .models import (
     InvalidPermissionTransitionError,

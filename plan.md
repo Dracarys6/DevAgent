@@ -1394,7 +1394,7 @@ Agent 能够：
 * [x] 定义 PermissionRequest、PermissionDecision、PermissionStatus、PermissionPolicy。
 * [x] 实现 InMemoryPermissionManager。
 * [x] 实现 allow_once / deny_once 请求态和 always_allow / always_deny 策略匹配基础。
-* [ ] run_shell 接入权限审批。
+* [x] run_shell 接入 ToolExecutor 权限审批链基础版。
 * [x] 实现 CommandGuard 危险命令拦截。
 * [ ] 实现 Permission API。
 * [ ] 实现 WebSocket 或 SSE 事件推送。

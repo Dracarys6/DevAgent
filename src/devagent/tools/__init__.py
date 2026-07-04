@@ -9,6 +9,12 @@ from .builtin import (
 )
 from .models import ErrorCode, RiskLevel, ToolResult
 from .registry import ToolRegistry
+from .executor import (
+    ToolExecutor,
+    ToolExecutionContext,
+    ToolExecutionResult,
+    ToolExecutionStatus,
+)
 
 __all__ = [
     "BaseTool",
@@ -20,4 +26,8 @@ __all__ = [
     "ToolRegistry",
     "ToolResult",
     "create_builtin_registry",
+    "ToolExecutor",
+    "ToolExecutionContext",
+    "ToolExecutionResult",
+    "ToolExecutionStatus",
 ]
