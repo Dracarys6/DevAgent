@@ -2243,7 +2243,16 @@ Agent 长任务上下文太长怎么办？
 第 4 阶段：EventBus、任务状态、Trace、最小 Evaluation
 第 5 阶段：研发效能业务 Demo：CI 失败诊断与日志根因分析
 第 6 阶段：RAG / Memory、上下文压缩、证据驱动诊断
-第 7 阶段：Multi-Agent 编排、父子 Trace、项目交付
+第 7 阶段：Multi-Agent / 持久化扩展打底
+第 8 阶段：持久化深化、RAG 增强、Multi-Agent 完整化和最终交付
+```
+
+节奏说明：
+
+```text
+前 8 周用于完成核心闭环和关键扩展打底，不作为项目最终交付。
+第 9 到第 12 周作为关键扩展完善期，用来补齐持久化、RAG 质量优化、Multi-Agent 完整性、安全增强和最终交付材料。
+不要为了卡 8 周时间牺牲功能完整性；宁可延长周期，也要保证关键链路可运行、可测试、可评测、可解释。
 ```
 
 阶段优先级说明：
@@ -2495,19 +2504,17 @@ Demo 可以稳定复现
 
 建议学习时间：7 到 14 天。
 
-### 18.7 第 6 阶段：数据库、评测和上下文压缩
+### 18.7 第 6 阶段：RAG / Memory、评测和上下文压缩
 
-这一阶段开始补工程深度。先用 SQLite 练手也可以，熟悉后再换 PostgreSQL。
+这一阶段开始补证据质量和工程深度。先用本地切片、关键词检索和固定评测集跑通闭环，不急着接复杂向量数据库。
 
 需要掌握：
 
 ```text
-SQL 基础
-SQLAlchemy / SQLModel
-Alembic 迁移
-PostgreSQL
-事件落库
-tool call 记录
+文档 / 代码 / 日志切片
+EvidenceSnippet
+关键词检索 / BM25
+检索命中率
 上下文 token 统计
 上下文压缩
 eval case
@@ -2516,33 +2523,35 @@ metrics
 
 练习任务：
 
-1. 把任务、事件、工具调用记录落库。
-2. 实现 `eval_cases` 和 `eval_runs`。
-3. 准备 20 条固定评测问题。
-4. 统计工具命中率、关键词命中率、平均耗时。
-5. 实现最简单的上下文压缩：保留原始目标、关键观察、最近 N 轮消息。
+1. 定义 Document、Chunk、EvidenceSnippet、RetrievalResult。
+2. 实现本地切片器和关键词检索器。
+3. 实现 `knowledge_retrieve` 工具。
+4. 准备 20 条固定评测问题。
+5. 统计工具命中率、证据命中率、关键词命中率、平均耗时。
+6. 实现最简单的上下文压缩：保留原始目标、关键观察、最近 N 轮消息和 evidence snippets。
 
 验收标准：
 
 ```text
-重启服务后仍能查询历史任务
-能回放历史 Trace
+Top-5 Evidence Hit Rate 达到 80% 以上
+平均上下文输入字符数降低 40% 以上
 能运行 eval runner 并输出报告
 长任务不会无限增长上下文
 ```
 
 建议学习时间：10 到 14 天。
 
-### 18.8 第 7 阶段：多 Agent 编排与可选扩展
+### 18.8 第 7 阶段：Multi-Agent、持久化与可选扩展
 
-多 Agent 编排是最终项目交付的一部分，但必须在单 Agent、工具系统、权限系统和 Trace 稳定后实现。RAG 与 MCP 仍属于可选扩展。
+多 Agent 编排是最终项目交付的关键扩展能力，但必须在单 Agent、工具系统、权限系统、Trace、业务 Demo 和 RAG / Evaluation 基线稳定后实现。持久化优先服务 Trace、Evaluation 和权限审计，MCP 仍属于可选扩展。
 
-可选学习内容：
+扩展学习内容：
 
 ```text
 多 Agent：任务拆分、子 Agent、并发、结果汇总
 多 Agent 安全：预算、最大层级、允许工具、取消传播
-RAG：chunk、embedding、向量检索、hybrid search、rerank，可选
+持久化：SQLite / PostgreSQL、事件落库、工具调用记录、权限策略
+RAG 增强：embedding、向量检索、hybrid search、rerank
 MCP：list_tools、call_tool、stdio server、权限接入
 Docker Sandbox：隔离命令执行环境
 前端：React 事件时间线、权限弹窗、Trace 回放页面
@@ -2551,11 +2560,35 @@ Docker Sandbox：隔离命令执行环境
 验收标准：
 
 ```text
-RAG 能提高代码和文档检索质量
 多 Agent 能并发执行日志分析、代码分析、diff 分析
 父子任务 Trace 可回放，预算和取消可控
+重启服务后仍能查询关键历史任务和 Trace
 MCP 工具能接入 ToolRegistry
 外部工具同样经过 PermissionManager
+```
+
+### 18.9 第 8 阶段：关键扩展完善期与最终交付
+
+第 8 周只完成扩展能力打底，不作为最终交付。后续 4 周优先补功能完整度和工程说服力，确保 RAG、Multi-Agent、Trace / Evaluation、持久化和安全增强达到可演示、可测试、可评测的状态。
+
+完善期重点：
+
+```text
+第 9 周：持久化深化，补齐任务、事件、工具调用、权限策略和 Evaluation 结果落库。
+第 10 周：RAG 增强，比较关键词检索、embedding、hybrid search 和 rerank 的效果。
+第 11 周：Multi-Agent 完整化，补齐父子 Trace、预算控制、取消传播和安全增强。
+第 12 周：最终交付，整理 README、架构图、安全设计、Evaluation 报告、Demo 脚本和面试材料。
+```
+
+完善期验收标准：
+
+```text
+核心 Demo 可以稳定复现
+关键指标有前后对比
+Trace 和 Evaluation 能支撑问题定位
+架构图只描述真实已实现能力
+README 能让新用户 15 分钟内启动
+简历表达有数字支撑，但不夸大
 ```
 
 ## 19. 风险与解决方案
@@ -2852,13 +2885,25 @@ EventBus + SSE/WebSocket + Trace 回放
 CI 失败诊断 + Git diff + 日志分析
 
 第 7 周：
-数据库落库 + Evaluation + 上下文压缩
+RAG / Memory + Evaluation + 上下文压缩
 
 第 8 周：
-多 Agent 编排 + 最终 Demo + README + 架构图
+Multi-Agent / 持久化扩展打底 + 阶段 Evaluation + 扩展 backlog
 
-第 8 周以后，可选：
-MCP + Docker Sandbox + Skills
+第 9 周：
+持久化深化 + Trace / Evaluation 数据闭环
+
+第 10 周：
+RAG 增强 + 检索质量优化
+
+第 11 周：
+Multi-Agent 完整化 + 安全增强
+
+第 12 周：
+最终交付 + 简历面试材料 + Demo 稳定性打磨
+
+第 12 周以后，可选：
+MCP + Docker Sandbox + Skills + 前端页面
 ```
 
 ---

@@ -119,7 +119,7 @@ pytest -q
 预期结果：
 
 ```text
-194 passed
+248 passed
 ```
 
 代码搜索工具依赖 [ripgrep](https://github.com/BurntSushi/ripgrep)。请确保本机可以运行：
@@ -154,7 +154,7 @@ export DEVAGENT_LLM_MODEL="你的模型名"
 devagent "请分析项目中的 ToolRegistry" --workspace . --provider real
 ```
 
-`real` 模式当前只向模型暴露低风险工具，避免在 PermissionManager 完成前让真实模型直接调用高风险 Shell 工具。
+`real` 模式默认只向模型暴露低风险工具。高风险工具需要通过 ToolExecutor、CommandGuard 和 PermissionManager 审批链显式接入。
 
 ---
 
@@ -296,7 +296,8 @@ flowchart TD
     D --> E[Evaluation + CI 诊断闭环]
     E --> F[RAG / Memory + 日志根因分析]
     F --> G[Multi-Agent + 父子 Trace]
-    G --> H[持久化完善 + 项目交付]
+    G --> H[持久化 + 安全增强]
+    H --> I[最终交付 + Demo 稳定性]
 
     style A fill:#2d7d46,color:#fff
     style B fill:#d9e8ff,color:#111
@@ -306,6 +307,7 @@ flowchart TD
     style F fill:#f4d7e6,color:#111
     style G fill:#f4d7e6,color:#111
     style H fill:#e3dcff,color:#111
+    style I fill:#e3dcff,color:#111
 ```
 
 详细资料：
