@@ -18,6 +18,12 @@ from .models import (
     ToolCallFinished,
     redact_sensitive_values,
 )
+from .bus import (
+    InMemoryEventBus,
+    EventSubscription,
+    EventSubscriberError,
+    EventBusDeliveryError,
+)
 
 __all__ = [
     "InMemoryEventStore",
@@ -36,4 +42,8 @@ __all__ = [
     "ToolCallFinished",
     "ToolCallStarted",
     "redact_sensitive_values",
+    "InMemoryEventBus",
+    "EventSubscription",
+    "EventSubscriberError",
+    "EventBusDeliveryError",
 ]
