@@ -106,8 +106,8 @@ source .venv/bin/activate
 ### 2. 安装依赖与项目
 
 ```bash
-python -m pip install -r requirements.txt
-python -m pip install -e .
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -e .
 ```
 
 `-e` 表示 editable install。修改 `src/devagent` 中的源码后，无需重新安装。
@@ -115,7 +115,7 @@ python -m pip install -e .
 ### 3. 运行测试
 
 ```bash
-pytest -q
+.venv/bin/pytest -q
 ```
 
 预期结果：
@@ -143,7 +143,7 @@ devagent "请分析项目" --workspace .
 也可以直接使用模块入口：
 
 ```bash
-python -m devagent.cli "请分析项目" --workspace .
+.venv/bin/python -m devagent.cli "请分析项目" --workspace .
 ```
 
 输出会展示 LLM 调用、工具调用和最终回答。失败场景会返回非 0 退出码并输出中文错误。

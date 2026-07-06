@@ -51,6 +51,9 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 
 ## Testing Rules
 
+- Run Python commands through the project virtual environment: `.venv/bin/python`, `.venv/bin/pytest`, `.venv/bin/uvicorn`, or other `.venv/bin/...` entrypoints.
+- Do not use system `python`, `pytest`, or `uvicorn` for this project unless the virtual environment is missing and the user explicitly asks for a fallback.
+- When documenting commands in daily docs, prefer the `.venv/bin/...` form so verification is reproducible.
 - Add pytest tests for every new tool, manager, API route, runtime behavior, and RAG component.
 - Test both success and failure cases.
 - Mock LLM responses instead of calling real models in unit tests.
