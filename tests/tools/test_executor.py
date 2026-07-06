@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from devagent.llm import ToolCall
+from devagent.event import EventType, InMemoryEventBus, InMemorySequenceAllocator
 from devagent.permission import (
     InMemoryPermissionManager,
     InMemoryPermissionPolicyStore,
@@ -93,6 +94,27 @@ def shell_call(arguments: dict[str, Any] | None = None) -> ToolCall:
         name="run_shell",
         arguments=arguments or {"command": ["pytest", "-q"], "cwd": "."},
     )
+
+
+def event_context(
+    *,
+    bus: InMemoryEventBus | None = None,
+    allocator: InMemorySequenceAllocator | None = None,
+    tool_call_id: str | None = "tool_call_1",
+) -> ToolExecutionContext:
+    return ToolExecutionContext(
+        task_id="task_1",
+        session_id="session_1",
+        tool_call_id=tool_call_id,
+        workspace="/workspace",
+        event_bus=bus or InMemoryEventBus(),
+        sequence_allocator=allocator or InMemorySequenceAllocator(),
+    )
+
+
+def list_task_events(context: ToolExecutionContext):
+    assert context.event_bus is not None
+    return context.event_bus.list_events("task_1")
 
 
 def test_low_risk_tool_executes_directly():
@@ -277,3 +299,142 @@ def test_tool_execution_result_is_json_serializable():
     assert dumped["status"] == "WAITING_PERMISSION"
     assert dumped["permission_request"]["tool_name"] == "run_shell"
     assert dumped["permission_request"]["risk_level"] == "HIGH"
+
+
+def test_low_risk_tool_publishes_started_and_finished_events():
+    executor, _permission_manager, _policy_store, _shell_tool = create_executor()
+    context = event_context()
+    tool_call = ToolCall(id="call_echo_1", name="echo", arguments={"text": "hello"})
+
+    result = executor.execute(tool_call, context)
+
+    events = list_task_events(context)
+    assert result.status == ToolExecutionStatus.EXECUTED
+    assert [event.event_type for event in events] == [
+        EventType.TOOL_CALL_STARTED,
+        EventType.TOOL_CALL_FINISHED,
+    ]
+    assert events[0].tool_call_id == "tool_call_1"
+    assert events[0].tool_name == "echo"
+    assert events[0].arguments == {"text": "hello"}
+    assert events[1].success is True
+    assert events[1].payload == {
+        "status": ToolExecutionStatus.EXECUTED.value,
+        "error_code": None,
+    }
+
+
+def test_unknown_tool_publishes_failed_event():
+    executor, _permission_manager, _policy_store, _shell_tool = create_executor()
+    context = event_context(tool_call_id=None)
+
+    result = executor.execute(
+        ToolCall(id="call_missing", name="missing", arguments={}),
+        context,
+    )
+
+    events = list_task_events(context)
+    assert result.tool_result is not None
+    assert result.tool_result.error_code == ErrorCode.TOOL_NOT_FOUND
+    assert [event.event_type for event in events] == [
+        EventType.TOOL_CALL_STARTED,
+        EventType.TOOL_CALL_FAILED,
+    ]
+    assert events[0].tool_call_id == "call_missing"
+    assert events[1].tool_call_id == "call_missing"
+    assert events[1].error_code == ErrorCode.TOOL_NOT_FOUND.value
+    assert events[1].payload["status"] == ToolExecutionStatus.EXECUTED.value
+
+
+def test_guard_block_publishes_failed_event():
+    executor, _permission_manager, _policy_store, _shell_tool = create_executor()
+    context = event_context()
+
+    result = executor.execute(
+        shell_call({"command": ["rm", "-rf", "/"], "cwd": "."}),
+        context,
+    )
+
+    events = list_task_events(context)
+    assert result.status == ToolExecutionStatus.BLOCKED
+    assert [event.event_type for event in events] == [
+        EventType.TOOL_CALL_STARTED,
+        EventType.TOOL_CALL_FAILED,
+    ]
+    assert events[1].error_code == ErrorCode.PERMISSION_DENIED.value
+    assert events[1].payload["status"] == ToolExecutionStatus.BLOCKED.value
+    assert events[1].payload["reason"] == result.reason
+
+
+def test_waiting_permission_publishes_permission_requested_event():
+    executor, _permission_manager, _policy_store, _shell_tool = create_executor()
+    context = event_context()
+
+    result = executor.execute(shell_call(), context)
+
+    events = list_task_events(context)
+    assert result.status == ToolExecutionStatus.WAITING_PERMISSION
+    assert result.permission_request is not None
+    assert [event.event_type for event in events] == [
+        EventType.TOOL_CALL_STARTED,
+        EventType.PERMISSION_REQUESTED,
+    ]
+    assert events[1].request_id == result.permission_request.request_id
+    assert events[1].tool_name == "run_shell"
+    assert events[1].risk_level == RiskLevel.HIGH.value
+    assert events[1].payload["tool_call_id"] == "tool_call_1"
+
+
+def test_tool_event_redacts_sensitive_arguments():
+    executor, _permission_manager, _policy_store, _shell_tool = create_executor()
+    context = event_context()
+
+    executor.execute(
+        ToolCall(
+            id="call_echo_sensitive",
+            name="echo",
+            arguments={
+                "text": "hello",
+                "api_key": "sk-test",
+                "nested": {"token": "secret-token"},
+            },
+        ),
+        context,
+    )
+
+    events = list_task_events(context)
+    assert events[0].arguments["api_key"] == "[REDACTED]"
+    assert events[0].arguments["nested"]["token"] == "[REDACTED]"
+
+
+def test_tool_event_bus_subscriber_error_does_not_fail_execution():
+    executor, _permission_manager, _policy_store, _shell_tool = create_executor()
+    context = event_context()
+    assert context.event_bus is not None
+    context.event_bus.subscribe("task_1", lambda event: 1 / 0)
+
+    result = executor.execute(
+        ToolCall(id="call_echo_1", name="echo", arguments={"text": "hello"}),
+        context,
+    )
+
+    events = list_task_events(context)
+    assert result.status == ToolExecutionStatus.EXECUTED
+    assert [event.event_type for event in events] == [
+        EventType.TOOL_CALL_STARTED,
+        EventType.TOOL_CALL_FINISHED,
+    ]
+
+
+def test_tool_and_permission_events_share_sequence_allocator():
+    executor, _permission_manager, _policy_store, _shell_tool = create_executor()
+    context = event_context(allocator=InMemorySequenceAllocator())
+
+    executor.execute(shell_call(), context)
+
+    events = list_task_events(context)
+    assert [event.event_type for event in events] == [
+        EventType.TOOL_CALL_STARTED,
+        EventType.PERMISSION_REQUESTED,
+    ]
+    assert [event.sequence_id for event in events] == [1, 2]
