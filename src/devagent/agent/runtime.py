@@ -12,6 +12,17 @@ from devagent.llm.base import LLMClient
 from devagent.llm.models import LLMResponse, LLMResponseType, ToolCall
 from devagent.tools.models import ToolResult
 from devagent.tools.registry import ToolRegistry
+from devagent.event import (
+    AgentError,
+    AgentFinished,
+    AgentStarted,
+    BaseEvent,
+    EventBusDeliveryError,
+    InMemoryEventBus,
+    InMemorySequenceAllocator,
+    LLMCallFinished,
+    LLMCallStarted,
+)
 
 
 class AgentRuntime:
@@ -35,6 +46,9 @@ class AgentRuntime:
         max_steps: int = 10,
         max_tool_calls: int = 20,
         stop_on_repeated_tool_call: bool = True,
+        event_bus: InMemoryEventBus | None = None,
+        task_id: str | None = None,
+        session_id: str | None = None,
     ) -> None:
         self.llm_client = llm_client
         self.tool_registry = tool_registry
@@ -46,6 +60,10 @@ class AgentRuntime:
         self.messages: list[dict[str, Any]] = []
         # 保存每次 run 的 messages 快照，方便多轮测试
         self.message_history: list[list[dict[str, Any]]] = []
+        self.event_bus = event_bus
+        self.task_id = task_id or "runtime"
+        self.session_id = session_id
+        self.sequence_allocator = InMemorySequenceAllocator()
 
     def run(self, user_input: str) -> AgentRunResult:
         """
@@ -59,6 +77,15 @@ class AgentRuntime:
             AgentEventType.RUN_START,
             "Agent 运行开始",
             metadata={"user_input": user_input},
+        )
+        self._publish_runtime_event(
+            AgentStarted(
+                task_id=self.task_id,
+                session_id=self.session_id,
+                message="Agent 运行开始",
+                sequence_id=self._next_sequence_id(),
+                user_input=user_input,
+            )
         )
 
         messages: list[dict[str, Any]] = [
@@ -81,8 +108,38 @@ class AgentRuntime:
                     step=step,
                     metadata={"message_count": len(messages)},
                 )
+                self._publish_runtime_event(
+                    LLMCallStarted(
+                        task_id=self.task_id,
+                        session_id=self.session_id,
+                        sequence_id=self._next_sequence_id(),
+                        message="LLM 调用开始",
+                        step=step,
+                        message_count=len(messages),
+                    )
+                )
                 response: LLMResponse = self.llm_client.chat(messages)
             except Exception as exc:
+                self._publish_runtime_event(
+                    AgentError(
+                        task_id=self.task_id,
+                        session_id=self.session_id,
+                        sequence_id=self._next_sequence_id(),
+                        message="LLM 调用失败",
+                        error_message=f"LLM 调用失败: {exc}",
+                        payload={"status": AgentRunStatus.LLM_ERROR.value},
+                    )
+                )
+                self._publish_runtime_event(
+                    AgentFinished(
+                        task_id=self.task_id,
+                        session_id=self.session_id,
+                        sequence_id=self._next_sequence_id(),
+                        message="Agent 运行失败结束",
+                        status=AgentRunStatus.LLM_ERROR.value,
+                        final_answer="",
+                    )
+                )
                 return self._finish_with_error(
                     messages=messages,
                     events=events,
@@ -102,12 +159,50 @@ class AgentRuntime:
                     "tool_call_count": len(response.tool_calls),
                 },
             )
+            self._publish_runtime_event(
+                LLMCallFinished(
+                    task_id=self.task_id,
+                    session_id=self.session_id,
+                    sequence_id=self._next_sequence_id(),
+                    message="LLM 调用结束",
+                    step=step,
+                    response_type=response.response_type.value,
+                    tool_call_count=len(response.tool_calls),
+                )
+            )
 
             if response.response_type == LLMResponseType.TOOL_CALLS:
                 self._append_assistant_tool_calls(messages, response)
 
                 for tool_call in response.tool_calls:
                     if tool_call_count >= self.max_tool_calls:
+
+                        self._publish_runtime_event(
+                            AgentError(
+                                task_id=self.task_id,
+                                session_id=self.session_id,
+                                sequence_id=self._next_sequence_id(),
+                                message=f"Agent 超过最大工具调用次数限制: {self.max_tool_calls}",
+                                error_message=(
+                                    f"Agent 超过最大工具调用次数限制: {self.max_tool_calls}"
+                                ),
+                                payload={
+                                    "status": AgentRunStatus.MAX_TOOL_CALLS_EXCEEDED.value
+                                },
+                            )
+                        )
+
+                        self._publish_runtime_event(
+                            AgentFinished(
+                                task_id=self.task_id,
+                                session_id=self.session_id,
+                                sequence_id=self._next_sequence_id(),
+                                message="Agent 运行失败结束",
+                                status=AgentRunStatus.MAX_TOOL_CALLS_EXCEEDED.value,
+                                final_answer="",
+                            )
+                        )
+
                         return self._finish_with_error(
                             messages=messages,
                             events=events,
@@ -123,6 +218,28 @@ class AgentRuntime:
                         self.stop_on_repeated_tool_call
                         and signature == last_tool_signature
                     ):
+                        self._publish_runtime_event(
+                            AgentError(
+                                task_id=self.task_id,
+                                session_id=self.session_id,
+                                sequence_id=self._next_sequence_id(),
+                                message=f"检测到重复工具调用: {tool_call.name}",
+                                error_message=f"检测到重复工具调用: {tool_call.name}",
+                                payload={"status": AgentRunStatus.REPEATED_TOOL_CALL.value},
+                            )
+                        )
+
+                        self._publish_runtime_event(
+                            AgentFinished(
+                                task_id=self.task_id,
+                                session_id=self.session_id,
+                                sequence_id=self._next_sequence_id(),
+                                message="Agent 运行失败结束",
+                                status=AgentRunStatus.REPEATED_TOOL_CALL.value,
+                                final_answer="",
+                            )
+                        )
+
                         return self._finish_with_error(
                             messages=messages,
                             events=events,
@@ -178,6 +295,21 @@ class AgentRuntime:
                     },
                 )
 
+                self._publish_runtime_event(
+                    AgentFinished(
+                        task_id=self.task_id,
+                        session_id=self.session_id,
+                        sequence_id=self._next_sequence_id(),
+                        message="Agent 运行成功结束",
+                        status=AgentRunStatus.SUCCESS.value,
+                        final_answer=final_answer,
+                        payload={
+                            "status": AgentRunStatus.SUCCESS.value,
+                            "tool_call_count": tool_call_count,
+                        },
+                    )
+                )
+
                 self._save_messages(messages)
                 return AgentRunResult(
                     success=True,
@@ -189,6 +321,31 @@ class AgentRuntime:
                     messages=deepcopy(messages),
                     events=deepcopy(events),
                 )
+
+        self._publish_runtime_event(
+            AgentError(
+                task_id=self.task_id,
+                session_id=self.session_id,
+                sequence_id=self._next_sequence_id(),
+                message=f"Agent 超过最大步数限制: {self.max_steps}",
+                error_message=f"Agent 超过最大步数限制: {self.max_steps}",
+                payload={
+                    "status": AgentRunStatus.MAX_STEPS_EXCEEDED.value,
+                    "tool_call_count": tool_call_count,
+                },
+            )
+        )
+
+        self._publish_runtime_event(
+            AgentFinished(
+                task_id=self.task_id,
+                session_id=self.session_id,
+                sequence_id=self._next_sequence_id(),
+                message="Agent 运行失败结束",
+                status=AgentRunStatus.MAX_STEPS_EXCEEDED.value,
+                final_answer="",
+            )
+        )
 
         return self._finish_with_error(
             messages=messages,
@@ -320,3 +477,20 @@ class AgentRuntime:
                 metadata=metadata or {},
             )
         )
+
+    def _publish_runtime_event(self, event: BaseEvent) -> None:
+        """
+        发布运行时事件到事件总线。
+        """
+        if self.event_bus is None:
+            return
+        try:
+            self.event_bus.publish(event)
+        except EventBusDeliveryError:
+            return
+
+    def _next_sequence_id(self) -> int:
+        """
+        获取下一个 sequence_id。
+        """
+        return self.sequence_allocator.next(self.task_id)

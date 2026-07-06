@@ -6,6 +6,7 @@ from devagent.agent.models import AgentEventType, AgentRunStatus
 from devagent.llm.mock_client import MockLLMClient
 from devagent.llm.models import LLMResponse, ToolCall
 from devagent.tools.builtin import create_builtin_registry
+from devagent.event import EventType, BaseEvent, InMemoryEventBus
 
 
 def create_runtime(
@@ -25,8 +26,33 @@ def create_runtime(
     return runtime, client
 
 
+def create_runtime_with_event_bus(
+    responses: list[LLMResponse] | None = None,
+    max_steps: int = 10,
+    max_tool_calls: int = 20,
+    stop_on_repeated_tool_call: bool = True,
+) -> tuple[AgentRuntime, MockLLMClient]:
+    client = MockLLMClient(responses=responses)
+    runtime = AgentRuntime(
+        llm_client=client,
+        tool_registry=create_builtin_registry(),
+        max_steps=max_steps,
+        max_tool_calls=max_tool_calls,
+        stop_on_repeated_tool_call=stop_on_repeated_tool_call,
+        event_bus=InMemoryEventBus(),
+        task_id="test_task",
+        session_id="test_session",
+    )
+    return runtime, client
+
+
 def event_types(result):
     return [event.type for event in result.events]
+
+
+def runtime_bus_events(runtime: AgentRuntime) -> list[BaseEvent]:
+    assert runtime.event_bus is not None
+    return runtime.event_bus.list_events("test_task")
 
 
 def test_runtime_completes_default_mock_workflow():
@@ -76,7 +102,9 @@ def test_runtime_records_llm_event_details():
     llm_starts = [
         event for event in result.events if event.type == AgentEventType.LLM_START
     ]
-    llm_ends = [event for event in result.events if event.type == AgentEventType.LLM_END]
+    llm_ends = [
+        event for event in result.events if event.type == AgentEventType.LLM_END
+    ]
 
     assert [event.step for event in llm_starts] == [1, 2, 3]
     assert llm_starts[0].metadata["message_count"] == 2
@@ -457,3 +485,166 @@ def test_runtime_returns_llm_error_when_client_raises():
         AgentEventType.RUN_END,
     ]
     assert result.events[-2].metadata == {"status": "llm_error"}
+
+
+def test_runtime_publish_success():
+    runtime, _client = create_runtime_with_event_bus()
+
+    result = runtime.run("测试事件总线")
+
+    events = runtime_bus_events(runtime)
+
+    assert result.success is True
+    assert [event.event_type for event in events] == [
+        EventType.AGENT_STARTED,
+        EventType.LLM_CALL_STARTED,
+        EventType.LLM_CALL_FINISHED,
+        EventType.LLM_CALL_STARTED,
+        EventType.LLM_CALL_FINISHED,
+        EventType.LLM_CALL_STARTED,
+        EventType.LLM_CALL_FINISHED,
+        EventType.AGENT_FINISHED,
+    ]
+    assert {event.task_id for event in events} == {"test_task"}
+    assert {event.session_id for event in events} == {"test_session"}
+    assert events[0].message == "Agent 运行开始"
+    assert events[0].user_input == "测试事件总线"
+    assert events[-1].message == "Agent 运行成功结束"
+    assert events[-1].status == AgentRunStatus.SUCCESS.value
+    assert events[-1].final_answer == result.final_answer
+
+
+def test_runtime_publish_agent_error():
+    runtime, _client = create_runtime_with_event_bus()
+
+    # 模拟 LLM 调用失败
+    class FailingLLMClient:
+        def chat(self, messages):
+            raise RuntimeError("LLM 调用失败")
+
+    runtime.llm_client = FailingLLMClient()
+
+    result = runtime.run("测试事件总线错误")
+
+    events = runtime_bus_events(runtime)
+
+    assert result.success is False
+    assert [event.event_type for event in events] == [
+        EventType.AGENT_STARTED,
+        EventType.LLM_CALL_STARTED,
+        EventType.AGENT_ERROR,
+        EventType.AGENT_FINISHED,
+    ]
+    assert events[2].message == "LLM 调用失败"
+    assert "LLM 调用失败" in events[2].error_message
+    assert events[2].payload == {"status": AgentRunStatus.LLM_ERROR.value}
+    assert events[-1].status == AgentRunStatus.LLM_ERROR.value
+    assert events[-1].final_answer == ""
+
+
+def test_runtime_publish_max_steps_exceeded():
+    runtime, _client = create_runtime_with_event_bus(max_steps=1)
+
+    result = runtime.run("测试最大步数限制事件总线")
+
+    events = runtime_bus_events(runtime)
+
+    assert result.success is False
+    assert result.status == AgentRunStatus.MAX_STEPS_EXCEEDED
+    assert [event.event_type for event in events[-2:]] == [
+        EventType.AGENT_ERROR,
+        EventType.AGENT_FINISHED,
+    ]
+    assert "超过最大步数限制" in events[-2].error_message
+    assert events[-2].payload == {
+        "status": AgentRunStatus.MAX_STEPS_EXCEEDED.value,
+        "tool_call_count": 1,
+    }
+    assert events[-1].message == "Agent 运行失败结束"
+    assert events[-1].status == AgentRunStatus.MAX_STEPS_EXCEEDED.value
+    assert events[-1].final_answer == ""
+
+
+def test_runtime_publish_repeated_tool_call_error():
+    runtime, _client = create_runtime_with_event_bus()
+
+    # 模拟重复工具调用
+    class RepeatedToolCallLLMClient:
+        def __init__(self):
+            self.call_count = 0
+
+        def chat(self, messages):
+            self.call_count += 1
+            if self.call_count == 1:
+                return LLMResponse.tool_calls_response(
+                    [
+                        ToolCall(
+                            id="call_1",
+                            name="search_code",
+                            arguments={"query": "x", "workspace": "."},
+                        )
+                    ]
+                )
+            else:
+                return LLMResponse.tool_calls_response(
+                    [
+                        ToolCall(
+                            id="call_2",
+                            name="search_code",
+                            arguments={"workspace": ".", "query": "x"},
+                        )
+                    ]
+                )
+
+    runtime.llm_client = RepeatedToolCallLLMClient()
+
+    result = runtime.run("测试重复工具调用事件总线")
+
+    events = runtime_bus_events(runtime)
+
+    assert result.success is False
+    assert result.status == AgentRunStatus.REPEATED_TOOL_CALL
+    assert [event.event_type for event in events[-2:]] == [
+        EventType.AGENT_ERROR,
+        EventType.AGENT_FINISHED,
+    ]
+    assert events[-2].error_message == "检测到重复工具调用: search_code"
+    assert events[-2].payload == {"status": AgentRunStatus.REPEATED_TOOL_CALL.value}
+    assert events[-1].message == "Agent 运行失败结束"
+    assert events[-1].status == AgentRunStatus.REPEATED_TOOL_CALL.value
+    assert events[-1].final_answer == ""
+
+
+def test_runtime_event_bus_subscriber_error_does_not_fail_run():
+    runtime, _client = create_runtime_with_event_bus(
+        [LLMResponse.final_answer("done")]
+    )
+
+    assert runtime.event_bus is not None
+    runtime.event_bus.subscribe(
+        task_id="test_task",
+        handler=lambda event: 1 / 0,
+    )
+
+    result = runtime.run("测试事件总线错误")
+    events = runtime_bus_events(runtime)
+
+    assert result.success is True
+    assert result.final_answer == "done"
+    assert [event.event_type for event in events] == [
+        EventType.AGENT_STARTED,
+        EventType.LLM_CALL_STARTED,
+        EventType.LLM_CALL_FINISHED,
+        EventType.AGENT_FINISHED,
+    ]
+
+
+def test_runtime_event_bus_sequence_id_increment():
+    runtime, _client = create_runtime_with_event_bus()
+
+    runtime.run("测试事件总线顺序")
+
+    events = runtime_bus_events(runtime)
+    sequence_ids = [event.sequence_id for event in events]
+
+    assert sequence_ids == list(range(1, len(events) + 1))
