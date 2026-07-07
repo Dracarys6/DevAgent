@@ -63,6 +63,7 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 ## Daily Documentation Rules
 
 - Daily docs should include: goal, context, implementation scope, key design choices, verification, and measurable result.
+- When daily development introduces or relies on unfamiliar APIs, framework primitives, or protocol concepts, add a short learning note explaining what it does, why it is used here, and the key behavior to remember. For example, document FastAPI `StreamingResponse` when building stream/SSE endpoints.
 - After each development session, update the relevant daily doc or module docs with what changed and how it was verified.
 - Keep `plan.md` and `README.md` for weekly progress synchronization, not per-day churn, unless the user explicitly requests an immediate update.
 - Daily docs must not include a "today not doing" section.

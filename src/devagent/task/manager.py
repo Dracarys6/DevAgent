@@ -2,7 +2,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from devagent.agent import AgentEvent, AgentEventType, AgentRuntime, AgentRunResult
-from devagent.event import InMemoryEventStore
+from devagent.event import InMemoryEventStore, InMemoryEventBus
 from devagent.llm.mock_client import MockLLMClient
 from devagent.tools.builtin import create_builtin_registry
 
@@ -11,8 +11,7 @@ from .repository import InMemoryTaskRepository
 
 
 class RuntimeLike(Protocol):
-    def run(self, question: str) -> AgentRunResult:
-        ...
+    def run(self, question: str) -> AgentRunResult: ...
 
 
 RuntimeFactory = Callable[[AgentTask], RuntimeLike]
@@ -24,10 +23,12 @@ class TaskManager:
         repository: InMemoryTaskRepository,
         runtime_factory: RuntimeFactory | None = None,
         event_store: InMemoryEventStore | None = None,
+        event_bus: InMemoryEventBus | None = None,
     ) -> None:
         self.repository = repository
         self._runtime_factory = runtime_factory or self._create_runtime
         self.event_store = event_store or InMemoryEventStore()
+        self.event_bus = event_bus or InMemoryEventBus()
 
     def _create_runtime(self, task: AgentTask) -> AgentRuntime:
         client = MockLLMClient()
@@ -37,6 +38,8 @@ class TaskManager:
             tool_registry=tool_registry,
             max_steps=task.max_steps,
             max_tool_calls=task.max_tool_calls,
+            event_bus=self.event_bus,
+            task_id=task.task_id,
         )
         return runtime
 

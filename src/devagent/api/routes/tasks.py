@@ -12,12 +12,15 @@ from devagent.api.schemas import (
 from devagent.task.manager import TaskManager
 from devagent.task.models import AgentTask, InvalidTaskTransitionError
 from devagent.task.repository import InMemoryTaskRepository, TaskNotFoundError
+from devagent.event import InMemoryEventBus
 
 router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-tasks"])
 
 repository = InMemoryTaskRepository()
 
-task_manager = TaskManager(repository=repository)
+event_bus = InMemoryEventBus()
+
+task_manager = TaskManager(repository=repository, event_bus=event_bus)
 
 
 @router.get("/list", response_model=AgentTaskListResponse)
