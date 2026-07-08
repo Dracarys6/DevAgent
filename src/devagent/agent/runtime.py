@@ -225,7 +225,9 @@ class AgentRuntime:
                                 sequence_id=self._next_sequence_id(),
                                 message=f"检测到重复工具调用: {tool_call.name}",
                                 error_message=f"检测到重复工具调用: {tool_call.name}",
-                                payload={"status": AgentRunStatus.REPEATED_TOOL_CALL.value},
+                                payload={
+                                    "status": AgentRunStatus.REPEATED_TOOL_CALL.value
+                                },
                             )
                         )
 

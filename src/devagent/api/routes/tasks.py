@@ -16,16 +16,16 @@ from devagent.event import InMemoryEventBus
 
 router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-tasks"])
 
-repository = InMemoryTaskRepository()
+task_repository = InMemoryTaskRepository()
 
 event_bus = InMemoryEventBus()
 
-task_manager = TaskManager(repository=repository, event_bus=event_bus)
+task_manager = TaskManager(repository=task_repository, event_bus=event_bus)
 
 
 @router.get("/list", response_model=AgentTaskListResponse)
 def get_agent_task_list() -> AgentTaskListResponse:
-    tasks = repository.list()
+    tasks = task_repository.list()
     return AgentTaskListResponse(tasks=[_task_to_response(task) for task in tasks])
 
 
@@ -82,7 +82,7 @@ def cancel_agent_task(task_id: str) -> AgentTaskResponse:
 
 def _get_task_or_404(task_id: str) -> AgentTask:
     try:
-        return repository.get(task_id)
+        return task_repository.get(task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

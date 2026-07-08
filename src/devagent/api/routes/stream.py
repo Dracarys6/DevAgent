@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from devagent.event import BaseEvent
 from devagent.task import TaskNotFoundError
 
-from .tasks import event_bus, repository
+from .tasks import event_bus, task_repository
 
 router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-stream"])
 
@@ -60,7 +60,7 @@ def stream_agent_task_events(
     task_id: str, after_sequence_id: int | None = Query(default=None, ge=0)
 ) -> StreamingResponse:
     try:
-        repository.get(task_id)
+        task_repository.get(task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
