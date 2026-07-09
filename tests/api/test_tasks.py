@@ -86,6 +86,8 @@ def test_get_agent_task_returns_created_task_detail():
     assert data["question"] == "请分析项目"
     assert data["workspace"] == "."
     assert data["provider"] == "mock"
+    assert data["model"] is None
+    assert data["base_url"] is None
     assert data["max_steps"] == 7
     assert data["max_tool_calls"] == 9
     assert data["status"] == "DONE"
@@ -242,3 +244,15 @@ def test_openapi_schema_contains_create_task_path():
     assert "/api/v1/agent/tasks/{task_id}" in response.json()["paths"]
     assert "/api/v1/agent/tasks/{task_id}/cancel" in response.json()["paths"]
     assert "/api/v1/agent/tasks/{task_id}/events" in response.json()["paths"]
+
+
+def test_openapi_create_task_example_omits_optional_llm_fields():
+    response = client.get("/openapi.json")
+
+    schema = response.json()["components"]["schemas"]["AgentTaskCreateRequest"]
+    example = schema["examples"][0]
+
+    assert example["question"] == "请分析项目结构"
+    assert example["provider"] == "mock"
+    assert "model" not in example
+    assert "base_url" not in example

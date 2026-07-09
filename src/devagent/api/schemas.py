@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from devagent.agent import AgentEventType
 from devagent.task.models import TaskStatus
@@ -16,7 +16,23 @@ class LLMProvider(str, Enum):
 
 
 class AgentTaskCreateRequest(BaseModel):
-    question: str = Field(min_length=1, description="用户问题。")
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "question": "请分析项目结构",
+                    "workspace": ".",
+                    "provider": "mock",
+                    "model": None,
+                    "base_url": None,
+                    "max_steps": 10,
+                    "max_tool_calls": 20,
+                }
+            ]
+        }
+    )
+
+    question: str = Field(min_length=1, description="用户问题")
     workspace: str = Field(default=".", description="工作区路径")
     provider: LLMProvider = Field(default=LLMProvider.MOCK)
     model: str | None = None

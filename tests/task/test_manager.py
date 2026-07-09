@@ -1,8 +1,13 @@
 import pytest
 
 from devagent.agent import AgentEvent, AgentEventType, AgentRunResult, AgentRunStatus
-from devagent.task.manager import TaskManager
-from devagent.task.models import InvalidTaskTransitionError, TaskStatus
+from devagent.llm import MockLLMClient
+from devagent.task.manager import (
+    LLMClientFactory,
+    TaskManager,
+    create_low_risk_registry,
+)
+from devagent.task.models import AgentTask, InvalidTaskTransitionError, TaskStatus
 from devagent.task.repository import InMemoryTaskRepository
 
 
@@ -41,6 +46,15 @@ class RaisingRuntime:
         raise RuntimeError("boom")
 
 
+class RecordingLLMClientFactory:
+    def __init__(self) -> None:
+        self.tool_names: list[str] = []
+
+    def create_client(self, task: AgentTask, tool_registry):
+        self.tool_names = [tool.name for tool in tool_registry.list()]
+        return MockLLMClient()
+
+
 def test_create_task_returns_pending_task():
     repository = InMemoryTaskRepository()
     manager = TaskManager(repository)
@@ -58,6 +72,113 @@ def test_create_task_returns_pending_task():
     assert task.max_steps == 3
     assert task.max_tool_calls == 5
     assert repository.get(task.task_id).status == TaskStatus.PENDING
+
+
+def test_llm_client_factory_creates_mock_client():
+    factory = LLMClientFactory()
+    task = AgentTask(question="请分析项目", provider="mock")
+
+    client = factory.create_client(task, create_low_risk_registry())
+
+    assert isinstance(client, MockLLMClient)
+
+
+def test_llm_client_factory_creates_real_client_from_request_and_env(
+    monkeypatch,
+):
+    created: dict[str, object] = {}
+
+    class FakeOpenAICompatibleLLMClient:
+        def __init__(self, **kwargs) -> None:
+            created.update(kwargs)
+
+    monkeypatch.setattr("devagent.task.manager.load_dotenv", lambda **kwargs: None)
+    monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "devagent.task.manager.OpenAICompatibleLLMClient",
+        FakeOpenAICompatibleLLMClient,
+    )
+    factory = LLMClientFactory()
+    task = AgentTask(
+        question="请分析项目",
+        provider="real",
+        model="test-model",
+        base_url="https://example.test/v1",
+    )
+
+    client = factory.create_client(task, create_low_risk_registry())
+
+    assert isinstance(client, FakeOpenAICompatibleLLMClient)
+    assert created["api_key"] == "test-key"
+    assert created["model"] == "test-model"
+    assert created["base_url"] == "https://example.test/v1"
+    tool_names = [tool["function"]["name"] for tool in created["tools"]]
+    assert tool_names == ["read_file", "search_code"]
+
+
+def test_llm_client_factory_creates_real_client_from_env_defaults(monkeypatch):
+    created: dict[str, object] = {}
+
+    class FakeOpenAICompatibleLLMClient:
+        def __init__(self, **kwargs) -> None:
+            created.update(kwargs)
+
+    monkeypatch.setattr("devagent.task.manager.load_dotenv", lambda **kwargs: None)
+    monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
+    monkeypatch.setenv("DEVAGENT_LLM_MODEL", "env-model")
+    monkeypatch.setenv("DEVAGENT_LLM_BASE_URL", "https://env.example.test/v1")
+    monkeypatch.setattr(
+        "devagent.task.manager.OpenAICompatibleLLMClient",
+        FakeOpenAICompatibleLLMClient,
+    )
+    factory = LLMClientFactory()
+    task = AgentTask(question="请分析项目", provider="real")
+
+    factory.create_client(task, create_low_risk_registry())
+
+    assert created["api_key"] == "test-key"
+    assert created["model"] == "env-model"
+    assert created["base_url"] == "https://env.example.test/v1"
+
+
+def test_llm_client_factory_rejects_real_client_without_api_key(monkeypatch):
+    monkeypatch.setattr("devagent.task.manager.load_dotenv", lambda **kwargs: None)
+    monkeypatch.delenv("DEVAGENT_LLM_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    factory = LLMClientFactory()
+    task = AgentTask(question="请分析项目", provider="real", model="test-model")
+
+    with pytest.raises(ValueError, match="缺少 LLM API Key"):
+        factory.create_client(task, create_low_risk_registry())
+
+
+def test_llm_client_factory_rejects_real_client_without_model(monkeypatch):
+    monkeypatch.setattr("devagent.task.manager.load_dotenv", lambda **kwargs: None)
+    monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
+    monkeypatch.delenv("DEVAGENT_LLM_MODEL", raising=False)
+    factory = LLMClientFactory()
+    task = AgentTask(question="请分析项目", provider="real")
+
+    with pytest.raises(ValueError, match="缺少 LLM 模型名称"):
+        factory.create_client(task, create_low_risk_registry())
+
+
+def test_default_runtime_uses_low_risk_tools_for_real_provider():
+    repository = InMemoryTaskRepository()
+    llm_client_factory = RecordingLLMClientFactory()
+    manager = TaskManager(
+        repository,
+        llm_client_factory=llm_client_factory,
+    )
+    task = manager.create_task(
+        question="请分析项目",
+        provider="real",
+        model="test-model",
+    )
+
+    manager._create_runtime(task)
+
+    assert llm_client_factory.tool_names == ["read_file", "search_code"]
 
 
 def test_run_task_success_marks_task_done():
