@@ -4,6 +4,7 @@ from devagent.api.routes import (
     permissions_router,
     stream_router,
     websocket_router,
+    traces_router,
 )
 from devagent.config import get_config
 
@@ -15,6 +16,7 @@ app.include_router(tasks_router)
 app.include_router(permissions_router)
 app.include_router(stream_router)
 app.include_router(websocket_router)
+app.include_router(traces_router)
 
 
 @app.get("/health")
