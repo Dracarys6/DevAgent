@@ -41,6 +41,8 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 
 - Keep core runtime logic independent from CLI or Web UI.
 - Use typed Pydantic models for messages, tool calls, tool results, permissions, tasks, events, traces, and RAG records.
+- Use Better Comments-style markers for explanatory inline comments: `# *` for important context, `# !` for warnings or safety constraints, `# ?` for questions that require confirmation, and `# TODO:` for concrete pending work. Use the equivalent comment syntax in non-Python files.
+- Keep markers semantically meaningful; do not tag every comment. Continue to use docstrings for public APIs and longer contract documentation.
 - Avoid putting provider-specific logic directly inside `AgentRuntime`.
 - Tool execution must return a unified `ToolResult`.
 - Never throw raw tool errors directly to the runtime loop.
@@ -53,6 +55,7 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 
 - Run Python commands through the project virtual environment: `.venv/bin/python`, `.venv/bin/pytest`, `.venv/bin/uvicorn`, or other `.venv/bin/...` entrypoints.
 - Do not use system `python`, `pytest`, or `uvicorn` for this project unless the virtual environment is missing and the user explicitly asks for a fallback.
+- When passing inline code or documentation text through a shell command, quote it so backticks, `$()`, and other shell substitutions cannot execute embedded commands.
 - When documenting commands in daily docs, prefer the `.venv/bin/...` form so verification is reproducible.
 - Add pytest tests for every new tool, manager, API route, runtime behavior, and RAG component.
 - Test both success and failure cases.
@@ -78,6 +81,18 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 - The new rule should describe the prevention pattern, not just the specific incident.
 - If the mistake only affects a narrow module, update the nearest module doc or daily doc as well as `AGENTS.md` when useful.
 - Do not treat feedback as a one-off correction; fold durable lessons back into the project workflow.
+
+## Git Commit Rules
+
+- Use the format `<type>(<scope>): <Chinese summary>` for new commits.
+- Use one of these types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, or `chore`.
+- Use `dayXX` as the scope for a day's main learning/development delivery. For focused fixes or maintenance, use the module scope, such as `runtime`, `tools`, `rag`, `api`, or `agents`.
+- Write a concise Chinese summary that states the completed behavior or outcome. Avoid vague subjects such as "update code" or "modify files", and do not end the subject with punctuation.
+- Keep one commit focused on one complete topic. Include its code, tests, and corresponding daily or module documentation in the same commit.
+- Add a commit body only when it helps explain an important design reason, migration note, or measurable outcome. Do not use test pass counts as the main outcome.
+- Mark breaking changes with `!`, for example `refactor(runtime)!: 调整工具调用接口`.
+- Examples: `feat(day37): 实现受限 Git 工具`, `fix(runtime): 修复工具异常未转换为 ToolResult`, and `docs(agents): 补充 Git 提交信息规范`.
+- Treat `git push` as a separate action after committing. Run it only when the user explicitly requests a push; never invoke it through validation, command substitution, or an automated acceptance step.
 
 ## Design Preferences
 
