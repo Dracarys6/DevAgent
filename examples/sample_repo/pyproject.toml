@@ -1,0 +1,4 @@
+[project]
+name = "example_repo"
+version = "0.1.0"
+description = "可复现 CI 失败样例仓库"
