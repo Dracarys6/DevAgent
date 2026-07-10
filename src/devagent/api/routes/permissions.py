@@ -16,9 +16,9 @@ permission_manager = InMemoryPermissionManager()
 router = APIRouter(prefix="/api/v1/permissions", tags=["permissions"])
 
 
-# 查询 pending 状态的权限请求
 @router.get("/pending", response_model=PermissionRequestListResponse)
 def get_pending_requests() -> PermissionRequestListResponse:
+    """查询所有处于 pending 状态的权限请求。"""
     pending_requests = permission_manager.list_pending()
     return PermissionRequestListResponse(
         requests=[_request_to_response(request) for request in pending_requests]

@@ -5,8 +5,12 @@ from pydantic import BaseModel
 from devagent.tools.models import RiskLevel
 
 
-# 避免循环导入，定义一个协议类来表示工具的 schema 来源
 class ToolSchemaSource(Protocol):
+    """描述 schema 转换所需的最小工具接口。
+
+    使用协议可以避免该模块反向导入 ``BaseTool`` 而产生循环依赖。
+    """
+
     name: str
     description: str
     args_model: type[BaseModel]

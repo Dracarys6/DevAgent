@@ -56,9 +56,9 @@ class AgentRuntime:
         self.max_steps = max_steps
         self.max_tool_calls = max_tool_calls
         self.stop_on_repeated_tool_call = stop_on_repeated_tool_call
-        # 保存最近一次 run 的完整 messages
+        # * 最近一次 run 的完整消息，用于调试与检查。
         self.messages: list[dict[str, Any]] = []
-        # 保存每次 run 的 messages 快照，方便多轮测试
+        # * 每次 run 的消息快照，用于多轮测试。
         self.message_history: list[list[dict[str, Any]]] = []
         self.event_bus = event_bus
         self.task_id = task_id or "runtime"

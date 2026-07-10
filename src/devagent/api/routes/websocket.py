@@ -44,13 +44,13 @@ async def stream_session_events(
     subscription = None
 
     try:
-        # 历史补发
+        # * 先补发断线期间的历史事件。
         for event in event_bus.list_events(
             task_id, after_sequence_id=last_seen_sequence_id
         ):
             await websocket.send_json(format_websocket_event(event))
 
-        # 实时推送
+        # * 再订阅后续实时事件。
         subscription = event_bus.subscribe(
             task_id,
             lambda event: loop.call_soon_threadsafe(queue.put_nowait, event),

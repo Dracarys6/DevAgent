@@ -44,7 +44,7 @@ def to_openai_messages(
     api_messages = deepcopy(internal_messages)
 
     for message in api_messages:
-        # Runtime 调试用 metadata 不是 Chat Completions 标准消息字段。
+        # ! metadata 仅供 Runtime 调试，发送前必须移除非标准字段。
         message.pop("metadata", None)
 
         if message.get("role") != "assistant":

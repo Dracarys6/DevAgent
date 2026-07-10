@@ -48,7 +48,7 @@ def search_code(
     if file_pattern is not None:
         command.extend(["--glob", file_pattern])
 
-    # Everything after -- is treated as a positional argument, not an rg option.
+    # ! ``--`` 将后续值限定为位置参数，防止 query 被 rg 解析为选项。
     command.extend(["--", query, "."])
 
     try:

@@ -14,7 +14,8 @@ from .models import PermissionDecision, PermissionRequest, PermissionStatus
 
 
 class PermissionRequestNotFoundError(KeyError):
-    # 权限请求未找到
+    """查询的权限请求不存在。"""
+
     pass
 
 
@@ -45,7 +46,7 @@ class InMemoryPermissionManager:
         sequence_allocator: InMemorySequenceAllocator | None = None,
         session_id: str | None = None,
     ) -> PermissionRequest:
-        # 创建一次权限请求
+        """创建并保存权限请求，然后发布请求事件。"""
         request = PermissionRequest(
             task_id=task_id,
             tool_call_id=tool_call_id,
@@ -66,13 +67,13 @@ class InMemoryPermissionManager:
         return deepcopy(request)
 
     def get_request(self, request_id: str) -> PermissionRequest:
-        # 创建一次权限请求
+        """返回权限请求的深拷贝，避免外部修改内部状态。"""
         if request_id not in self._requests:
             raise PermissionRequestNotFoundError(f"权限请求不存在: {request_id}")
         return deepcopy(self._requests[request_id])
 
     def _get_stored_request(self, request_id: str) -> PermissionRequest:
-        # 获取存储的权限请求对象（非深拷贝）
+        """返回内部存储对象，仅供需要修改状态的管理器方法使用。"""
         if request_id not in self._requests:
             raise PermissionRequestNotFoundError(f"权限请求不存在: {request_id}")
         return self._requests[request_id]
@@ -86,7 +87,7 @@ class InMemoryPermissionManager:
         sequence_allocator: InMemorySequenceAllocator | None = None,
         session_id: str | None = None,
     ) -> PermissionRequest:
-        # 批准或拒绝权限请求
+        """解决权限请求并发布处理结果事件。"""
         request = self._get_stored_request(request_id)
         request.resolve(decision, decision_reason)
         self._publish_event(
@@ -100,7 +101,7 @@ class InMemoryPermissionManager:
         return deepcopy(request)
 
     def list_pending(self) -> list[PermissionRequest]:
-        # 列出所有待处理
+        """列出所有待处理的权限请求。"""
         return [
             deepcopy(r)
             for r in self._requests.values()

@@ -24,8 +24,8 @@ class BaseTool(ABC, Generic[ArgsT]):
     args_model: type[ArgsT]
     risk_level: RiskLevel
 
-    # 校验参数并调用
     def invoke(self, raw_arguments: dict[str, Any]) -> ToolResult:
+        """校验原始参数并执行工具，将异常统一转换为 ``ToolResult``。"""
         metadata = {"tool_name": self.name}
         try:
             args = self.args_model.model_validate(raw_arguments)

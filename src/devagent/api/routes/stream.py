@@ -21,19 +21,19 @@ def format_sse_event(event: BaseEvent) -> str:
     )
 
 
-# * 历史补发
 def iter_existing_sse_events(
     task_id: str, after_sequence_id: int | None = None
 ) -> Iterator[str]:
+    """按序列号补发任务的已有 SSE 事件。"""
     events = event_bus.list_events(task_id, after_sequence_id=after_sequence_id)
     for event in events:
         yield format_sse_event(event)
 
 
-# * 实时订阅
 def stream_task_events(
     task_id: str, after_sequence_id: int | None = None
 ) -> Iterator[str]:
+    """先补发历史事件，再持续推送任务的实时 SSE 事件。"""
     queue: Queue[BaseEvent] = Queue()
 
     try:
@@ -44,13 +44,13 @@ def stream_task_events(
         subscription = event_bus.subscribe(task_id, queue.put)
         while True:
             try:
-                event = queue.get(timeout=15)  # * 15 秒超时
+                event = queue.get(timeout=15)  # * 空闲 15 秒后发送心跳
             except Empty:
-                yield ": keep-alive\n\n"  # 心跳
+                yield ": keep-alive\n\n"
                 continue
             yield format_sse_event(event)
-    # finally 逻辑一定会走到，用于流式传输清理
     finally:
+        # ! 无论流正常结束还是异常中断，都必须清理订阅。
         if "subscription" in locals():
             event_bus.unsubscribe(subscription.subscription_id)
 
