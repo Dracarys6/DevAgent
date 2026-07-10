@@ -59,6 +59,7 @@ def test_builtin_tools_export_expected_risk_levels():
     }
 
     assert risk_levels_by_name == {
+        "git_diff": RiskLevel.LOW.value,
         "read_file": RiskLevel.LOW.value,
         "run_shell": RiskLevel.HIGH.value,
         "search_code": RiskLevel.LOW.value,

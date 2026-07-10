@@ -2,6 +2,7 @@
 
 from .base import BaseTool
 from .builtin import (
+    GitDiffTool,
     ReadFileTool,
     RunShellTool,
     SearchCodeTool,
@@ -19,6 +20,7 @@ from .executor import (
 __all__ = [
     "BaseTool",
     "ErrorCode",
+    "GitDiffTool",
     "ReadFileTool",
     "RiskLevel",
     "RunShellTool",

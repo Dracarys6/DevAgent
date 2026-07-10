@@ -1,10 +1,12 @@
 from pydantic import BaseModel, Field
 from .base import BaseTool
 from .models import RiskLevel, ToolResult
+from .git_tools import GitDiffArgs
 from .adapters import (
     read_file_as_tool_result,
     search_code_as_tool_result,
     run_shell_as_tool_result,
+    git_diff_as_tool_result,
 )
 from .registry import ToolRegistry
 
@@ -64,9 +66,20 @@ class RunShellTool(BaseTool[RunShellArgs]):
         return run_shell_as_tool_result(**args.model_dump())
 
 
+class GitDiffTool(BaseTool[GitDiffArgs]):
+    name = "git_diff"
+    description = "读取指定 Git commit 的 diff，用于分析代码变更证据。"
+    args_model = GitDiffArgs
+    risk_level = RiskLevel.LOW
+
+    def execute(self, args: GitDiffArgs) -> ToolResult:
+        return git_diff_as_tool_result(**args.model_dump())
+
+
 def create_builtin_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(ReadFileTool())
     registry.register(SearchCodeTool())
     registry.register(RunShellTool())
+    registry.register(GitDiffTool())
     return registry

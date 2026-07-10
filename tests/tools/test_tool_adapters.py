@@ -1,10 +1,12 @@
 from pathlib import Path
+import subprocess
 import sys
 
 from devagent.tools.adapters import (
     read_file_as_tool_result,
     run_shell_as_tool_result,
     search_code_as_tool_result,
+    git_diff_as_tool_result,
 )
 from devagent.tools.models import ErrorCode
 
@@ -91,7 +93,11 @@ def test_run_shell_as_tool_result_success(tmp_path: Path):
 
 def test_run_shell_as_tool_result_preserves_nonzero_returncode(tmp_path: Path):
     result = run_shell_as_tool_result(
-        [sys.executable, "-c", "import sys; print('bad', file=sys.stderr); sys.exit(7)"],
+        [
+            sys.executable,
+            "-c",
+            "import sys; print('bad', file=sys.stderr); sys.exit(7)",
+        ],
         cwd=tmp_path,
     )
 
@@ -117,3 +123,96 @@ def test_run_shell_as_tool_result_blocks_cwd_outside_workspace(tmp_path: Path):
 
     assert result.success is False
     assert result.error_code == ErrorCode.PATH_OUTSIDE_WORKSPACE
+
+
+def test_git_diff_as_tool_result_success(
+    git_repo_with_commit: tuple[Path, str],
+):
+    repo, commit_id = git_repo_with_commit
+
+    result = git_diff_as_tool_result(commit_id, repo)
+
+    assert result.success is True
+    assert "diff --git" in result.content
+    assert result.metadata["commit_id"] == commit_id
+    assert result.error_code is None
+
+
+def test_git_diff_as_tool_result_invalid_commit(
+    git_repo_with_commit: tuple[Path, str],
+):
+    repo, _ = git_repo_with_commit
+
+    result = git_diff_as_tool_result("invalid_commit_id", repo)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.COMMAND_EXECUTION_FAILED
+    assert result.error_message is not None
+    assert "invalid_commit_id" in result.error_message
+
+
+def test_git_diff_as_tool_result_empty_commit_id(
+    git_repo_with_commit: tuple[Path, str],
+):
+    repo, _ = git_repo_with_commit
+
+    result = git_diff_as_tool_result(" ", repo)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.INVALID_PARAMETER
+
+
+def test_git_diff_as_tool_result_missing_workspace(tmp_path: Path):
+    result = git_diff_as_tool_result("commit_id", tmp_path / "missing")
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.WORKSPACE_NOT_FOUND
+
+
+def test_git_diff_as_tool_result_non_git_workspace(tmp_path: Path):
+    result = git_diff_as_tool_result("HEAD", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.COMMAND_EXECUTION_FAILED
+
+
+def test_git_diff_as_tool_result_maps_command_not_found(tmp_path: Path, monkeypatch):
+    def raise_command_not_found(*args, **kwargs):
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(
+        "devagent.tools.git_tools.subprocess.run",
+        raise_command_not_found,
+    )
+
+    result = git_diff_as_tool_result("HEAD", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.COMMAND_NOT_FOUND
+
+
+def test_git_diff_as_tool_result_maps_timeout(tmp_path: Path, monkeypatch):
+    def raise_timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(["git", "show"], timeout=0.01)
+
+    monkeypatch.setattr("devagent.tools.git_tools.subprocess.run", raise_timeout)
+
+    result = git_diff_as_tool_result("HEAD", tmp_path, timeout=0.01)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.COMMAND_TIMEOUT
+
+
+def test_git_diff_as_tool_result_maps_permission_error(tmp_path: Path, monkeypatch):
+    def raise_permission_error(*args, **kwargs):
+        raise PermissionError("git")
+
+    monkeypatch.setattr(
+        "devagent.tools.git_tools.subprocess.run",
+        raise_permission_error,
+    )
+
+    result = git_diff_as_tool_result("HEAD", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.PERMISSION_DENIED

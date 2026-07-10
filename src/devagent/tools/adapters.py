@@ -6,6 +6,7 @@ from .models import ErrorCode, ToolResult
 from .read_file_tools import read_file, MAX_READ_LINES
 from .search_code_tools import search_code, MAX_SEARCH_CHARS, DEFAULT_SEARCH_TIMEOUT
 from .run_shell_tools import run_shell, MAX_OUTPUT_CHARS, DEFAULT_SHELL_TIMEOUT
+from .git_tools import DEFAULT_GIT_TIMEOUT, MAX_GIT_DIFF_CHARS, git_diff
 
 
 def _error_code_from_exception(
@@ -75,6 +76,25 @@ def _run_shell_error_code(error: Exception) -> ErrorCode:
             ("工作目录不是目录", ErrorCode.NOT_A_FILE),
             ("未找到命令", ErrorCode.COMMAND_NOT_FOUND),
             ("执行超时", ErrorCode.COMMAND_TIMEOUT),
+        ),
+    )
+
+
+def _git_diff_error_code(error: Exception) -> ErrorCode:
+    return _error_code_from_exception(
+        error,
+        default=ErrorCode.GIT_DIFF_ERROR,
+        message_rules=(
+            ("commit_id 不能为空", ErrorCode.INVALID_PARAMETER),
+            ("max_chars", ErrorCode.INVALID_PARAMETER),
+            ("timeout", ErrorCode.INVALID_PARAMETER),
+            ("工作区不存在", ErrorCode.WORKSPACE_NOT_FOUND),
+            ("工作区不是目录", ErrorCode.WORKSPACE_NOT_DIR),
+            ("未找到 git 命令", ErrorCode.COMMAND_NOT_FOUND),
+            ("没有权限执行 git 命令", ErrorCode.PERMISSION_DENIED),
+            ("执行超时", ErrorCode.COMMAND_TIMEOUT),
+            ("工作区不是 Git 仓库", ErrorCode.COMMAND_EXECUTION_FAILED),
+            ("无法读取 Git commit", ErrorCode.COMMAND_EXECUTION_FAILED),
         ),
     )
 
@@ -189,4 +209,25 @@ def run_shell_as_tool_result(
         default_error_code=ErrorCode.COMMAND_ERROR,
         error_message_prefix="执行命令失败",
         error_code_mapper=_run_shell_error_code,
+    )
+
+
+def git_diff_as_tool_result(
+    commit_id: str,
+    workspace: str | Path,
+    max_chars: int = MAX_GIT_DIFF_CHARS,
+    timeout: float = DEFAULT_GIT_TIMEOUT,
+) -> ToolResult:
+    metadata = {
+        "commit_id": commit_id,
+        "workspace": str(workspace),
+        "max_chars": max_chars,
+        "timeout": timeout,
+    }
+    return _to_tool_result(
+        action=lambda: git_diff(commit_id, workspace, max_chars, timeout),
+        metadata=metadata,
+        default_error_code=ErrorCode.GIT_DIFF_ERROR,
+        error_message_prefix="读取 Git diff 失败",
+        error_code_mapper=_git_diff_error_code,
     )
