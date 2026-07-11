@@ -2,10 +2,11 @@
 
 from .base import BaseTool
 from .builtin import (
-    GitDiffTool,
     ReadFileTool,
     RunShellTool,
     SearchCodeTool,
+    GitDiffTool,
+    GetCIResultTool,
     create_builtin_registry,
 )
 from .models import ErrorCode, RiskLevel, ToolResult
@@ -20,6 +21,7 @@ from .executor import (
 __all__ = [
     "BaseTool",
     "ErrorCode",
+    "GetCIResultTool",
     "GitDiffTool",
     "ReadFileTool",
     "RiskLevel",

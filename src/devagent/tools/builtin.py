@@ -2,11 +2,13 @@ from pydantic import BaseModel, Field
 from .base import BaseTool
 from .models import RiskLevel, ToolResult
 from .git_tools import GitDiffArgs
+from .ci_tools import GetCIResultArgs
 from .adapters import (
     read_file_as_tool_result,
     search_code_as_tool_result,
     run_shell_as_tool_result,
     git_diff_as_tool_result,
+    get_ci_result_as_tool_result,
 )
 from .registry import ToolRegistry
 
@@ -76,10 +78,21 @@ class GitDiffTool(BaseTool[GitDiffArgs]):
         return git_diff_as_tool_result(**args.model_dump())
 
 
+class GetCIResultTool(BaseTool[GetCIResultArgs]):
+    name = "get_ci_result"
+    description = "按 commit_id 读取 CI 失败 job、测试用例和核心日志。"
+    args_model = GetCIResultArgs
+    risk_level = RiskLevel.LOW
+
+    def execute(self, args: GetCIResultArgs) -> ToolResult:
+        return get_ci_result_as_tool_result(**args.model_dump())
+
+
 def create_builtin_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(ReadFileTool())
     registry.register(SearchCodeTool())
     registry.register(RunShellTool())
     registry.register(GitDiffTool())
+    registry.register(GetCIResultTool())
     return registry

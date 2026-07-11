@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 from devagent.tools.builtin import (
+    GetCIResultTool,
     GitDiffTool,
     ReadFileTool,
     RunShellTool,
@@ -59,9 +60,7 @@ def test_git_diff_tool_returns_commit_patch(
 ):
     repo, commit_id = git_repo_with_commit
 
-    result = GitDiffTool().invoke(
-        {"commit_id": commit_id, "workspace": str(repo)}
-    )
+    result = GitDiffTool().invoke({"commit_id": commit_id, "workspace": str(repo)})
 
     assert result.success is True
     assert "diff --git a/app.py b/app.py" in result.content
@@ -76,7 +75,25 @@ def test_git_diff_tool_validates_arguments_before_execution(tmp_path: Path):
     assert result.error_code == ErrorCode.ARGUMENT_VALIDATION_ERROR
 
 
+def test_get_ci_result_tool_returns_failed_evidence():
+    result = GetCIResultTool().invoke({"commit_id": "abc123"})
+
+    assert result.success is True
+    assert "unit-tests" in result.content
+    assert "assert 3 >= 12" in result.content
+
+
+def test_get_ci_result_tool_validates_arguments_before_execution():
+    result = GetCIResultTool().invoke(
+        {"commit_id": "abc123", "max_log_chars": 0}
+    )
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.ARGUMENT_VALIDATION_ERROR
+
+
 def test_builtin_tool_risk_levels():
+    assert GetCIResultTool.risk_level == RiskLevel.LOW
     assert GitDiffTool.risk_level == RiskLevel.LOW
     assert ReadFileTool.risk_level == RiskLevel.LOW
     assert SearchCodeTool.risk_level == RiskLevel.LOW
@@ -101,6 +118,7 @@ def test_create_builtin_registry_registers_all_tools():
     registry = create_builtin_registry()
 
     assert [tool.name for tool in registry.list()] == [
+        "get_ci_result",
         "git_diff",
         "read_file",
         "run_shell",

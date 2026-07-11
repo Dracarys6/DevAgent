@@ -2,7 +2,10 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
 from devagent.tools.adapters import (
+    get_ci_result_as_tool_result,
     read_file_as_tool_result,
     run_shell_as_tool_result,
     search_code_as_tool_result,
@@ -216,3 +219,61 @@ def test_git_diff_as_tool_result_maps_permission_error(tmp_path: Path, monkeypat
 
     assert result.success is False
     assert result.error_code == ErrorCode.PERMISSION_DENIED
+
+
+def test_get_ci_result_as_tool_result_success():
+    result = get_ci_result_as_tool_result("abc123")
+
+    assert result.success is True
+    assert "test_large_upload_uses_dynamic_timeout" in result.content
+    assert result.metadata["commit_id"] == "abc123"
+    assert result.metadata["max_log_chars"] == 4_000
+
+
+@pytest.mark.parametrize(
+    ("commit_id", "data_dir", "max_log_chars", "error_code"),
+    [
+        ("invalid", ".", 4_000, ErrorCode.INVALID_PARAMETER),
+        ("abcdef", "missing", 4_000, ErrorCode.WORKSPACE_NOT_FOUND),
+        ("ffffff", "examples/sample_ci", 4_000, ErrorCode.FILE_NOT_FOUND),
+        ("abc123", "examples/sample_ci", 0, ErrorCode.INVALID_PARAMETER),
+    ],
+)
+def test_get_ci_result_as_tool_result_maps_errors(
+    commit_id: str,
+    data_dir: str,
+    max_log_chars: int,
+    error_code: ErrorCode,
+):
+    result = get_ci_result_as_tool_result(commit_id, data_dir, max_log_chars)
+
+    assert result.success is False
+    assert result.content == ""
+    assert result.error_code == error_code
+    assert result.error_message is not None
+
+
+def test_get_ci_result_as_tool_result_maps_permission_error(
+    tmp_path: Path,
+    monkeypatch,
+):
+    (tmp_path / "abcdef.json").write_text("{}", encoding="utf-8")
+
+    def raise_permission_error(*args, **kwargs):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(Path, "read_text", raise_permission_error)
+
+    result = get_ci_result_as_tool_result("abcdef", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.PERMISSION_DENIED
+
+
+def test_get_ci_result_as_tool_result_maps_result_path_directory(tmp_path: Path):
+    (tmp_path / "abcdef.json").mkdir()
+
+    result = get_ci_result_as_tool_result("abcdef", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.NOT_A_FILE

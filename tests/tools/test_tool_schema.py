@@ -33,8 +33,7 @@ def test_tool_to_schema_uses_pydantic_args_model():
     assert schema["risk_level"] == RiskLevel.LOW.value
     assert schema["parameters"]["properties"]["query"]["description"] == "查询内容"
     assert (
-        schema["parameters"]["properties"]["max_results"]["description"]
-        == "最大结果数"
+        schema["parameters"]["properties"]["max_results"]["description"] == "最大结果数"
     )
     assert "query" in schema["parameters"]["required"]
 
@@ -53,12 +52,10 @@ def test_tools_to_schemas_keeps_input_order():
 
 def test_builtin_tools_export_expected_risk_levels():
     schemas = create_builtin_registry().schemas()
-    risk_levels_by_name = {
-        schema["name"]: schema["risk_level"]
-        for schema in schemas
-    }
+    risk_levels_by_name = {schema["name"]: schema["risk_level"] for schema in schemas}
 
     assert risk_levels_by_name == {
+        "get_ci_result": RiskLevel.LOW.value,
         "git_diff": RiskLevel.LOW.value,
         "read_file": RiskLevel.LOW.value,
         "run_shell": RiskLevel.HIGH.value,

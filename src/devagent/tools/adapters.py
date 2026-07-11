@@ -7,6 +7,11 @@ from .read_file_tools import read_file, MAX_READ_LINES
 from .search_code_tools import search_code, MAX_SEARCH_CHARS, DEFAULT_SEARCH_TIMEOUT
 from .run_shell_tools import run_shell, MAX_OUTPUT_CHARS, DEFAULT_SHELL_TIMEOUT
 from .git_tools import DEFAULT_GIT_TIMEOUT, MAX_GIT_DIFF_CHARS, git_diff
+from .ci_tools import (
+    DEFAULT_CI_LOG_CHARS,
+    get_ci_result,
+    DEFAULT_CI_DATA_DIR,
+)
 
 
 def _error_code_from_exception(
@@ -95,6 +100,23 @@ def _git_diff_error_code(error: Exception) -> ErrorCode:
             ("执行超时", ErrorCode.COMMAND_TIMEOUT),
             ("工作区不是 Git 仓库", ErrorCode.COMMAND_EXECUTION_FAILED),
             ("无法读取 Git commit", ErrorCode.COMMAND_EXECUTION_FAILED),
+        ),
+    )
+
+
+def _ci_result_error_code(error: Exception) -> ErrorCode:
+    return _error_code_from_exception(
+        error,
+        default=ErrorCode.CI_RESULT_ERROR,
+        message_rules=(
+            ("commit_id 必须", ErrorCode.INVALID_PARAMETER),
+            ("max_log_chars", ErrorCode.INVALID_PARAMETER),
+            ("CI 数据目录不存在", ErrorCode.WORKSPACE_NOT_FOUND),
+            ("CI 数据路径不是目录", ErrorCode.WORKSPACE_NOT_DIR),
+            ("未找到 commit 对应的 CI 数据文件", ErrorCode.FILE_NOT_FOUND),
+            ("CI 数据路径不是文件", ErrorCode.NOT_A_FILE),
+            ("CI 数据文件位于 data_dir 之外", ErrorCode.PATH_OUTSIDE_WORKSPACE),
+            ("没有权限读取 CI 数据文件", ErrorCode.PERMISSION_DENIED),
         ),
     )
 
@@ -230,4 +252,23 @@ def git_diff_as_tool_result(
         default_error_code=ErrorCode.GIT_DIFF_ERROR,
         error_message_prefix="读取 Git diff 失败",
         error_code_mapper=_git_diff_error_code,
+    )
+
+
+def get_ci_result_as_tool_result(
+    commit_id: str,
+    data_dir: str | Path = DEFAULT_CI_DATA_DIR,
+    max_log_chars: int = DEFAULT_CI_LOG_CHARS,
+) -> ToolResult:
+    metadata = {
+        "commit_id": commit_id,
+        "data_dir": str(data_dir),
+        "max_log_chars": max_log_chars,
+    }
+    return _to_tool_result(
+        action=lambda: get_ci_result(commit_id, data_dir, max_log_chars),
+        metadata=metadata,
+        default_error_code=ErrorCode.CI_RESULT_ERROR,
+        error_message_prefix="读取 CI 结果失败",
+        error_code_mapper=_ci_result_error_code,
     )
