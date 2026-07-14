@@ -39,6 +39,7 @@ def test_tool_registry_to_openai_tools_can_filter_by_risk_level():
         "git_diff",
         "read_file",
         "search_code",
+        "search_log",
     }
 
 

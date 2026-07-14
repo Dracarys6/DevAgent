@@ -3,12 +3,14 @@ from .base import BaseTool
 from .models import RiskLevel, ToolResult
 from .git_tools import GitDiffArgs
 from .ci_tools import GetCIResultArgs
+from .log_tools import SearchLogArgs
 from .adapters import (
     read_file_as_tool_result,
     search_code_as_tool_result,
     run_shell_as_tool_result,
     git_diff_as_tool_result,
     get_ci_result_as_tool_result,
+    search_log_as_tool_result,
 )
 from .registry import ToolRegistry
 
@@ -88,6 +90,16 @@ class GetCIResultTool(BaseTool[GetCIResultArgs]):
         return get_ci_result_as_tool_result(**args.model_dump())
 
 
+class SearchLogTool(BaseTool[SearchLogArgs]):
+    name = "search_log"
+    description = "按 task_id、日志级别和关键词检索日志，并返回首个异常点。"
+    args_model = SearchLogArgs
+    risk_level = RiskLevel.LOW
+
+    def execute(self, args: SearchLogArgs) -> ToolResult:
+        return search_log_as_tool_result(**args.model_dump())
+
+
 def create_builtin_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(ReadFileTool())
@@ -95,4 +107,5 @@ def create_builtin_registry() -> ToolRegistry:
     registry.register(RunShellTool())
     registry.register(GitDiffTool())
     registry.register(GetCIResultTool())
+    registry.register(SearchLogTool())
     return registry

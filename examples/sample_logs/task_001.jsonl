@@ -1,0 +1,6 @@
+{"timestamp":"2026-07-13T09:00:00Z","sequence_id":1,"task_id":"task_001","level":"INFO","service":"api","message":"收到大文件上传请求","source":"src/sample_app/api.py:20","context":{"size_mb":100,"bandwidth_mb_s":10}}
+{"timestamp":"2026-07-13T09:00:01Z","sequence_id":2,"task_id":"task_001","level":"DEBUG","service":"uploader","message":"构建上传 timeout","source":"src/sample_app/uploader.py:30","context":{"timeout_seconds":3}}
+{"timestamp":"2026-07-13T09:00:04Z","sequence_id":3,"task_id":"task_001","level":"ERROR","service":"uploader","message":"UploadTimeoutError: 上传在 3 秒后超时","source":"src/sample_app/uploader.py:42","context":{"timeout_seconds":3,"expected_seconds":12}}
+{"timestamp":"2026-07-13T09:00:05Z","sequence_id":4,"task_id":"task_001","level":"WARNING","service":"retry","message":"上传失败，准备第一次重试","source":"src/sample_app/retry.py:18","context":{"attempt":1}}
+{"timestamp":"2026-07-13T09:00:09Z","sequence_id":5,"task_id":"task_001","level":"ERROR","service":"retry","message":"RetryExhaustedError: 上传重试仍然失败","source":"src/sample_app/retry.py:31","context":{"attempt":1}}
+{"timestamp":"2026-07-13T09:00:10Z","sequence_id":6,"task_id":"task_001","level":"CRITICAL","service":"task","message":"上传任务失败结束","source":"src/sample_app/task.py:55","context":{"status":"failed"}}

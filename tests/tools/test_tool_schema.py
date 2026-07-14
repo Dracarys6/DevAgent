@@ -60,6 +60,7 @@ def test_builtin_tools_export_expected_risk_levels():
         "read_file": RiskLevel.LOW.value,
         "run_shell": RiskLevel.HIGH.value,
         "search_code": RiskLevel.LOW.value,
+        "search_log": RiskLevel.LOW.value,
     }
 
 

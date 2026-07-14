@@ -12,6 +12,12 @@ from .ci_tools import (
     get_ci_result,
     DEFAULT_CI_DATA_DIR,
 )
+from .log_tools import (
+    DEFAULT_LOG_DATA_DIR,
+    DEFAULT_MAX_LOG_CHARS,
+    DEFAULT_MAX_LOG_ENTRIES,
+    search_log,
+)
 
 
 def _error_code_from_exception(
@@ -117,6 +123,26 @@ def _ci_result_error_code(error: Exception) -> ErrorCode:
             ("CI 数据路径不是文件", ErrorCode.NOT_A_FILE),
             ("CI 数据文件位于 data_dir 之外", ErrorCode.PATH_OUTSIDE_WORKSPACE),
             ("没有权限读取 CI 数据文件", ErrorCode.PERMISSION_DENIED),
+        ),
+    )
+
+
+def _search_log_error_code(error: Exception) -> ErrorCode:
+    return _error_code_from_exception(
+        error,
+        default=ErrorCode.LOG_SEARCH_ERROR,
+        message_rules=(
+            ("task_id 只能", ErrorCode.INVALID_PARAMETER),
+            ("level", ErrorCode.INVALID_PARAMETER),
+            ("keyword", ErrorCode.INVALID_PARAMETER),
+            ("max_entries", ErrorCode.INVALID_PARAMETER),
+            ("max_chars", ErrorCode.INVALID_PARAMETER),
+            ("日志数据目录不存在", ErrorCode.WORKSPACE_NOT_FOUND),
+            ("日志数据路径不是目录", ErrorCode.WORKSPACE_NOT_DIR),
+            ("未找到 task_id 对应的日志数据文件", ErrorCode.FILE_NOT_FOUND),
+            ("日志数据路径不是文件", ErrorCode.NOT_A_FILE),
+            ("日志数据文件位于 data_dir 之外", ErrorCode.PATH_OUTSIDE_WORKSPACE),
+            ("没有权限读取日志数据文件", ErrorCode.PERMISSION_DENIED),
         ),
     )
 
@@ -271,4 +297,31 @@ def get_ci_result_as_tool_result(
         default_error_code=ErrorCode.CI_RESULT_ERROR,
         error_message_prefix="读取 CI 结果失败",
         error_code_mapper=_ci_result_error_code,
+    )
+
+
+def search_log_as_tool_result(
+    task_id: str,
+    level: str | None = None,
+    keyword: str | None = None,
+    data_dir: str | Path = DEFAULT_LOG_DATA_DIR,
+    max_entries: int = DEFAULT_MAX_LOG_ENTRIES,
+    max_chars: int = DEFAULT_MAX_LOG_CHARS,
+) -> ToolResult:
+    metadata = {
+        "task_id": task_id,
+        "level": level,
+        "keyword": keyword,
+        "data_dir": str(data_dir),
+        "max_entries": max_entries,
+        "max_chars": max_chars,
+    }
+    return _to_tool_result(
+        action=lambda: search_log(
+            task_id, level, keyword, data_dir, max_entries, max_chars
+        ),
+        metadata=metadata,
+        default_error_code=ErrorCode.LOG_SEARCH_ERROR,
+        error_message_prefix="搜索日志失败",
+        error_code_mapper=_search_log_error_code,
     )

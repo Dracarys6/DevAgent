@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -10,7 +11,9 @@ from devagent.tools.adapters import (
     run_shell_as_tool_result,
     search_code_as_tool_result,
     git_diff_as_tool_result,
+    search_log_as_tool_result,
 )
+
 from devagent.tools.models import ErrorCode
 
 
@@ -277,3 +280,60 @@ def test_get_ci_result_as_tool_result_maps_result_path_directory(tmp_path: Path)
 
     assert result.success is False
     assert result.error_code == ErrorCode.NOT_A_FILE
+
+
+def test_search_log_as_tool_result_success():
+    result = search_log_as_tool_result(task_id="task_001", keyword="timeout")
+
+    assert result.success is True
+    content = json.loads(result.content)
+    assert content["first_anomaly"]["sequence_id"] == 3
+    assert [entry["sequence_id"] for entry in content["entries"]] == [2, 3]
+    assert result.metadata["task_id"] == "task_001"
+
+
+@pytest.mark.parametrize(
+    ("task_id", "level", "data_dir", "max_entries", "error_code"),
+    [
+        ("../secret", None, ".", 50, ErrorCode.INVALID_PARAMETER),
+        ("task_001", "verbose", ".", 50, ErrorCode.INVALID_PARAMETER),
+        ("task_test", None, "missing", 50, ErrorCode.WORKSPACE_NOT_FOUND),
+        ("task_404", None, "examples/sample_logs", 50, ErrorCode.FILE_NOT_FOUND),
+        ("task_001", None, "examples/sample_logs", 0, ErrorCode.INVALID_PARAMETER),
+    ],
+)
+def test_search_log_as_tool_result_maps_errors(
+    task_id: str,
+    level: str | None,
+    data_dir: str,
+    max_entries: int,
+    error_code: ErrorCode,
+):
+    result = search_log_as_tool_result(
+        task_id=task_id,
+        level=level,
+        data_dir=data_dir,
+        max_entries=max_entries,
+    )
+
+    assert result.success is False
+    assert result.content == ""
+    assert result.error_code == error_code
+    assert result.error_message is not None
+
+
+def test_search_log_as_tool_result_maps_permission_error(
+    tmp_path: Path,
+    monkeypatch,
+):
+    (tmp_path / "task_test.jsonl").write_text("{}", encoding="utf-8")
+
+    def raise_permission_error(*args, **kwargs):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(Path, "read_text", raise_permission_error)
+
+    result = search_log_as_tool_result("task_test", data_dir=tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.PERMISSION_DENIED

@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -7,6 +8,7 @@ from devagent.tools.builtin import (
     ReadFileTool,
     RunShellTool,
     SearchCodeTool,
+    SearchLogTool,
     create_builtin_registry,
 )
 from devagent.tools.models import ErrorCode, RiskLevel
@@ -84,9 +86,23 @@ def test_get_ci_result_tool_returns_failed_evidence():
 
 
 def test_get_ci_result_tool_validates_arguments_before_execution():
-    result = GetCIResultTool().invoke(
-        {"commit_id": "abc123", "max_log_chars": 0}
-    )
+    result = GetCIResultTool().invoke({"commit_id": "abc123", "max_log_chars": 0})
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.ARGUMENT_VALIDATION_ERROR
+
+
+def test_search_log_tool_returns_first_anomaly():
+    result = SearchLogTool().invoke({"task_id": "task_001", "keyword": "retry"})
+
+    assert result.success is True
+    content = json.loads(result.content)
+    assert content["first_anomaly"]["sequence_id"] == 3
+    assert [entry["sequence_id"] for entry in content["entries"]] == [4, 5]
+
+
+def test_search_log_tool_validates_arguments_before_execution():
+    result = SearchLogTool().invoke({"task_id": "task_001", "max_entries": 0})
 
     assert result.success is False
     assert result.error_code == ErrorCode.ARGUMENT_VALIDATION_ERROR
@@ -97,6 +113,7 @@ def test_builtin_tool_risk_levels():
     assert GitDiffTool.risk_level == RiskLevel.LOW
     assert ReadFileTool.risk_level == RiskLevel.LOW
     assert SearchCodeTool.risk_level == RiskLevel.LOW
+    assert SearchLogTool.risk_level == RiskLevel.LOW
     assert RunShellTool.risk_level == RiskLevel.HIGH
 
 
@@ -123,4 +140,5 @@ def test_create_builtin_registry_registers_all_tools():
         "read_file",
         "run_shell",
         "search_code",
+        "search_log",
     ]
