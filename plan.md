@@ -1442,7 +1442,26 @@ pytest tests/
 * [ ] 准备一个示例代码仓库。
 * [ ] 设计 CI 失败诊断 Prompt。
 * [ ] 设计日志根因分析 Prompt。
-* [ ] 实现诊断报告生成。
+* [ ] 定义 DiagnosisReport、Evidence、Finding、Recommendation 等结构化诊断契约。
+* [ ] 实现 provider 无关的 DiagnosisService，负责证据标准化、Prompt 构造、LLMClient 调用和报告校验。
+* [ ] 实现 `POST /api/v1/diagnoses/ci`，返回通过 Pydantic 校验的 DiagnosisReport 或结构化错误。
+* [ ] 使用 MockLLMClient / 固定 LLMClient 完成可重复集成测试；真实 provider 只用于显式 smoke test。
+
+### 诊断执行边界
+
+诊断 Prompt 只描述推理策略，DiagnosisReport 只定义输出契约。二者本身不代表业务闭环已经完成。应用层必须显式串联：
+
+```text
+get_ci_result / git_diff / search_code / search_log
+  -> Evidence 标准化
+  -> DiagnosisInput
+  -> CI / 日志诊断 Prompt
+  -> LLMClient.chat()
+  -> DiagnosisReport.model_validate_json()
+  -> FastAPI 诊断接口
+```
+
+`DiagnosisService` 不直接创建特定厂商 SDK 客户端，而是依赖已有 `LLMClient` 接口。自动化测试必须注入 Mock 或固定响应，不能访问真实模型网络。模型返回非法 JSON、未知 evidence_id 或不满足报告状态约束时，服务应返回结构化诊断错误，不把原始异常泄漏到 API 或 AgentRuntime。
 
 ### 验收标准
 
@@ -1458,7 +1477,9 @@ Agent 应该能够：
 2. 找到失败测试；
 3. 检索相关代码；
 4. 查看本次 diff；
-5. 输出有依据的诊断报告。
+5. 调用 LLMClient 生成候选诊断；
+6. 使用 DiagnosisReport 校验报告和证据引用；
+7. 通过 FastAPI 诊断接口输出有依据的结构化报告。
 
 量化目标：
 
@@ -1467,6 +1488,8 @@ Agent 应该能够：
 2. 日志根因分析样例中，首个异常点定位准确率达到 80%。
 3. 诊断报告必须引用至少 2 类证据：CI / 日志 / 代码 / diff。
 4. 从用户问题到首份诊断报告的本地 mock 流程耗时低于 5 秒。
+5. 固定诊断 case 连续运行 3 次结果均通过 DiagnosisReport 校验。
+6. 工具失败、模型非法 JSON 和悬空 evidence_id 均返回结构化错误或 insufficient_evidence，不产生无依据的 diagnosed 报告。
 ```
 
 ---

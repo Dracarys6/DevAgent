@@ -19,6 +19,8 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 
 - Use `plan.md` to decide what to build next. During daily development, record temporary implementation/plan gaps in the daily doc; update `plan.md` only after the weekly development cycle is complete unless the user explicitly asks for an immediate plan change.
 - Keep daily learning docs aligned with the current milestone in `plan.md`; do not let daily docs introduce a separate roadmap.
+- Keep `learning_plan.md` at milestone level: retain stage goals, daily scope, deliverables, and acceptance criteria; put API tutorials, detailed principles, implementation steps, and interview notes in the corresponding daily docs.
+- After condensing or restructuring a planning range, audit every Day heading in the full affected week so adjacent days keep the same level of detail and no tutorial-style section is left behind.
 - Do not add speculative infrastructure unless it supports a milestone, metric, or demo already described in `plan.md`.
 - Prefer completing one vertical slice before expanding scope: model -> manager/service -> API/runtime integration -> tests -> docs.
 - Every development change must include the corresponding daily or module-level documentation update when behavior, architecture, public API, workflow, or learning notes change.
