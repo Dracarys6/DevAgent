@@ -5,11 +5,13 @@ from devagent.diagnosis import (
     Confidence,
     DiagnosisInput,
     DiagnosisReport,
+    DiagnosisScenario,
     DiagnosisStatus,
     Evidence,
     EvidenceKind,
     Finding,
     FindingKind,
+    LogDiagnosisInput,
     MissingEvidence,
     Recommendation,
 )
@@ -193,3 +195,177 @@ def test_diagnosis_models_reject_unknown_fields():
 
     with pytest.raises(ValidationError, match="extra_forbidden"):
         Evidence.model_validate(data)
+
+
+def test_log_diagnosis_input_accepts_task_evidence():
+    evidence = make_evidence()
+    diagnosis_input = LogDiagnosisInput(
+        report_id="report_abc123",
+        task_id="task_001",
+        evidence=[evidence],
+    )
+
+    assert diagnosis_input.evidence[0].evidence_id == "E1"
+    assert diagnosis_input.task_id == "task_001"
+
+
+def test_log_diagnosis_input_rejects_duplicate_evidence_id():
+    evidence = make_evidence()
+
+    with pytest.raises(ValidationError, match="evidence_id 不能重复"):
+        LogDiagnosisInput(
+            report_id="report_abc123",
+            task_id="task_001",
+            evidence=[evidence, evidence],
+        )
+
+
+def test_log_diagnosis_input_rejects_invalid_task_id():
+    with pytest.raises(ValidationError, match="task_id"):
+        LogDiagnosisInput(
+            report_id="report_abc123",
+            task_id="invalid task id!",
+            evidence=[make_evidence()],
+        )
+
+
+def test_log_diagnosis_input_rejects_unknown_fields():
+    data = LogDiagnosisInput(
+        report_id="report_task_001",
+        task_id="task_001",
+        evidence=[make_evidence()],
+    ).model_dump()
+    data["unexpected"] = "ignored contract drift"
+
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        LogDiagnosisInput.model_validate(data)
+
+
+def make_task_001_log_report() -> DiagnosisReport:
+    evidence = [
+        make_evidence(
+            "E1",
+            kind=EvidenceKind.LOG,
+            tool_name="search_log",
+            source="task_001",
+            locator="sequence_id=3",
+            excerpt="UploadTimeoutError: 上传在 3 秒后超时",
+        ),
+        make_evidence(
+            "E2",
+            kind=EvidenceKind.LOG,
+            tool_name="search_log",
+            source="task_001",
+            locator="sequence_id=5",
+            excerpt="RetryExhaustedError: 上传重试仍然失败",
+        ),
+        make_evidence(
+            "E3",
+            kind=EvidenceKind.LOG,
+            tool_name="search_log",
+            source="task_001",
+            locator="sequence_id=6",
+            excerpt="上传任务失败结束",
+        ),
+        make_evidence(
+            "E4",
+            kind=EvidenceKind.CODE,
+            tool_name="read_file",
+            source="examples/sample_repo/src/sample_app/uploader.py",
+            locator="UploadManager.build_upload_timeout",
+            excerpt="return self.config.min_timeout_seconds",
+        ),
+    ]
+    return DiagnosisReport(
+        report_id="report_task_001",
+        scenario=DiagnosisScenario.LOG_FAILURE,
+        target="task_001",
+        status=DiagnosisStatus.DIAGNOSED,
+        summary="上传任务在 uploader timeout 后重试耗尽并失败。",
+        findings=[
+            Finding(
+                kind=FindingKind.SYMPTOM,
+                statement="上传任务最终失败。",
+                confidence=Confidence.CONFIRMED,
+                evidence_ids=["E3"],
+            ),
+            Finding(
+                kind=FindingKind.SYMPTOM,
+                statement="最早观察到的异常是 uploader timeout。",
+                confidence=Confidence.CONFIRMED,
+                evidence_ids=["E1"],
+            ),
+            Finding(
+                kind=FindingKind.SYMPTOM,
+                statement="timeout 后发生重试耗尽。",
+                confidence=Confidence.CONFIRMED,
+                evidence_ids=["E2"],
+            ),
+            Finding(
+                kind=FindingKind.ROOT_CAUSE,
+                statement="timeout 计算可能固定使用了最小值。",
+                confidence=Confidence.LIKELY,
+                evidence_ids=["E1", "E4"],
+            ),
+        ],
+        evidence=evidence,
+        recommendations=[
+            Recommendation(
+                action="检查并修复动态 timeout 的使用方式。",
+                rationale="日志和代码共同指向 timeout 计算未生效。",
+                evidence_ids=["E1", "E4"],
+                verification_steps=[
+                    "运行 sample_repo 上传测试",
+                    "确认日志不再出现 3 秒 timeout",
+                ],
+            )
+        ],
+    )
+
+
+def test_task_001_log_report_distinguishes_timeline_roles():
+    report = make_task_001_log_report()
+
+    assert report.scenario == DiagnosisScenario.LOG_FAILURE
+    assert report.findings[0].evidence_ids == ["E3"]
+    assert report.findings[1].evidence_ids == ["E1"]
+    assert report.findings[2].evidence_ids == ["E2"]
+    assert report.findings[3].confidence == Confidence.LIKELY
+    assert report.findings[3].evidence_ids == ["E1", "E4"]
+
+
+def test_task_001_log_report_round_trips_through_json():
+    report = make_task_001_log_report()
+
+    assert DiagnosisReport.model_validate_json(report.model_dump_json()) == report
+
+
+def test_task_002_success_logs_require_missing_failure_evidence():
+    report = DiagnosisReport(
+        report_id="report_task_002",
+        scenario=DiagnosisScenario.LOG_FAILURE,
+        target="task_002",
+        status=DiagnosisStatus.INSUFFICIENT_EVIDENCE,
+        summary="当前日志显示任务成功，没有观察到失败证据。",
+        evidence=[
+            make_evidence(
+                "E1",
+                kind=EvidenceKind.LOG,
+                tool_name="search_log",
+                source="task_002",
+                locator="sequence_id=2",
+                excerpt="上传任务成功",
+            )
+        ],
+        missing_evidence=[
+            MissingEvidence(
+                needed="失败任务对应的 task_id 或 Trace",
+                reason="task_002 没有异常或失败终态。",
+                suggested_tool="search_log",
+            )
+        ],
+    )
+
+    assert report.status == DiagnosisStatus.INSUFFICIENT_EVIDENCE
+    assert report.findings == []
+    assert report.missing_evidence[0].suggested_tool == "search_log"

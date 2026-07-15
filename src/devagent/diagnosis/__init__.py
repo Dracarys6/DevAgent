@@ -10,6 +10,7 @@ from .models import (
     DiagnosisStatus,
     DiagnosisReport,
     DiagnosisInput,
+    LogDiagnosisInput,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "DiagnosisStatus",
     "DiagnosisReport",
     "DiagnosisInput",
+    "LogDiagnosisInput",
 ]

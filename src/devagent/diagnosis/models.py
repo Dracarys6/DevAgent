@@ -127,6 +127,21 @@ class DiagnosisInput(DiagnosisModel):
         return self
 
 
+class LogDiagnosisInput(DiagnosisModel):
+    report_id: str = Field(min_length=1)
+    task_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+    workspace: str = Field(default=".", min_length=1)
+    evidence: list[Evidence] = Field(default_factory=list)
+    missing_evidence: list[MissingEvidence] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_unique_evidence_ids(self) -> "LogDiagnosisInput":
+        _validate_unique_evidence_ids(
+            [item.evidence_id for item in self.evidence]
+        )
+        return self
+
+
 def _validate_unique_evidence_ids(evidence_ids: list[str]) -> None:
     if len(evidence_ids) != len(set(evidence_ids)):
         raise ValueError("evidence_id 不能重复")
