@@ -15,7 +15,7 @@
 
 ### 1.2 一句话介绍
 
-DevAgent 是一个面向研发效能场景的企业级 AI Agent 后端框架，支持代码仓库分析、CI 失败诊断、日志根因分析、工具调用、RAG/Memory、权限审批、执行轨迹观测和受控 Multi-Agent 协作。
+DevAgent 是一个面向研发效能场景的企业级 AI Agent 后端框架，支持代码仓库分析、代码合入审查、CI 失败诊断、日志根因分析、工具调用、RAG/Memory、权限审批、执行轨迹观测和受控 Multi-Agent 协作。
 
 ### 1.3 项目目标
 
@@ -28,7 +28,7 @@ DevAgent 是一个面向研发效能场景的企业级 AI Agent 后端框架，�
 3. 实现 PermissionManager：对高风险工具进行权限审批和策略持久化。
 4. 实现 EventBus：将 LLM 输出、工具调用、权限审批、错误、子 Agent 事件统一抽象为事件。
 5. 实现 WebSocket / SSE 流式推送：前端或 TUI 可以实时展示 Agent 执行过程。
-6. 实现研发效能业务场景：支持代码分析、日志根因分析、CI 失败诊断。
+6. 实现研发效能业务场景：支持代码仓库分析、代码合入审查、日志根因分析、CI 失败诊断。
 7. 实现 RAG / Memory：面向代码、日志、CI、项目文档和历史案例做检索增强与上下文压缩。
 8. 实现 Trace 与 Evaluation：记录每次 Agent 的执行轨迹，用于调试、回放和质量评估。
 9. 实现受控 Multi-Agent 编排：支持父 Agent 拆分任务、并发执行子任务、预算限制、取消传播和结果汇总。
@@ -51,7 +51,7 @@ DevAgent 是一个面向研发效能场景的企业级 AI Agent 后端框架，�
 
 ```text
 我设计了一个可控、可观测、可评估、可扩展的 Agent Runtime，
-并把它落到了 CI 诊断和日志根因分析这两个真实研发场景里。
+并把它落到了代码合入审查、CI 诊断和日志根因分析等真实研发场景里。
 ```
 
 ---
@@ -171,7 +171,25 @@ Agent 执行过程：
 3. 总结任务调度流程。
 4. 给出关键类、函数、调用链。
 
-#### 场景四：安全工具调用
+#### 场景四：代码合入审查
+
+用户输入：
+
+```text
+分析 feature/payment 相对 main 的代码变更，指出阻塞合入的问题和修改建议。
+```
+
+Agent 执行过程：
+
+1. 调用 `git_compare(base_ref, head_ref)` 获取合入范围、变更文件和 diff hunk。
+2. 调用 `read_file()` / `search_code()` 补充受影响实现、调用方和测试上下文。
+3. 将 diff、代码和仓库规范标准化为可定位 Evidence。
+4. 按正确性、安全、兼容性、性能、可维护性和测试缺口分析风险。
+5. 输出结构化 `CodeReviewReport`，每条 finding 包含严重级别、文件行号、证据、修改建议和验证方式。
+
+第一版只提供审查建议，不自动修改代码、创建提交、批准或执行合入。核心服务先支持本地 Git ref，并通过平台无关的 `PullRequestSource` / `ReviewPublisher` 接口接入 GitHub Pull Request。GitHub App 是首个平台适配：PR webhook 触发审查，报告以非阻塞摘要评论和可定位的 inline comment 回写，不执行 approve、request changes、merge，也不设置 required check。
+
+#### 场景五：安全工具调用
 
 用户输入：
 
@@ -239,7 +257,7 @@ PermissionManager 应该拦截，并返回拒绝结果。
                                             │
             ┌───────────────────────────────▼───────────────────────────────┐
             │                            Tools                              │
-            │ read_file / search_code / run_shell / git_diff                │
+            │ read_file / search_code / run_shell / git_diff / git_compare  │
             │ search_log / get_ci_result / knowledge_retrieve / MCP         │
             └───────────────────────────────┬───────────────────────────────┘
                                             │
@@ -304,6 +322,7 @@ Agent 不直接调用具体函数，而是通过工具名和参数调用 ToolReg
 
 ```text
 CodeAnalysisSkill = search_code + read_file + git_diff
+MergeReviewSkill = git_compare + search_code + read_file
 CIDiagnosisSkill = get_ci_result + search_log + search_code + git_diff
 ShellExecutionSkill = run_shell + PermissionManager + CommandGuard
 KnowledgeSkill = knowledge_retrieve + rerank + context_compress
@@ -673,6 +692,22 @@ class ToolResult:
   "commit_id": "abc123"
 }
 ```
+
+#### git_compare
+
+功能：比较 `base_ref...head_ref` 的合入范围，返回变更文件、状态、diff hunk 和截断元数据，为代码合入审查提供稳定证据。
+
+输入：
+
+```json
+{
+  "base_ref": "main",
+  "head_ref": "feature/payment",
+  "workspace": "."
+}
+```
+
+该工具只读取 Git 对象，不执行 checkout、merge、commit 或 push。
 
 #### get_ci_result
 
@@ -1378,7 +1413,7 @@ Agent 能够：
 
 ---
 
-## 9.2 第二阶段：权限系统 + 事件系统（进行中）
+## 9.2 第二阶段：权限系统 + 事件系统（已完成基础版）
 
 目标：让 Agent 执行过程可观察，并对高风险工具进行审批。
 
@@ -1397,7 +1432,7 @@ Agent 能够：
 * [x] run_shell 接入 ToolExecutor 权限审批链基础版。
 * [x] 实现 CommandGuard 危险命令拦截。
 * [x] 实现 Permission API。
-* [ ] 实现 WebSocket 或 SSE 事件推送。
+* [x] 实现 SSE 和 WebSocket 事件推送、断线重连与 Trace 查询回放。
 
 ### 验收标准
 
@@ -1428,24 +1463,36 @@ pytest tests/
 
 ## 9.3 第三阶段：研发效能业务工具
 
-目标：支持 CI 失败诊断、日志分析、Git diff 分析。
+目标：支持 CI 失败诊断、日志分析、Git diff 分析和代码合入审查。
 
 周期：约 1 到 2 周。
 
+当前状态：Day 36 到 Day 40 已完成并验收；Day 41 日志根因分析契约正在开发；诊断 service/API 与代码合入审查尚未开始。
+
 ### 任务清单
 
-* [ ] 实现 git_diff 工具。
-* [ ] 实现 get_ci_result 工具。
-* [ ] 实现 search_log 工具。
-* [ ] 准备 mock CI 数据。
-* [ ] 准备 mock 日志数据。
-* [ ] 准备一个示例代码仓库。
-* [ ] 设计 CI 失败诊断 Prompt。
+* [x] 实现 git_diff 工具。
+* [x] 实现 get_ci_result 工具。
+* [x] 实现 search_log 工具。
+* [x] 准备 mock CI 数据。
+* [x] 准备 mock 日志数据。
+* [x] 准备一个示例代码仓库。
+* [x] 设计 CI 失败诊断 Prompt。
 * [ ] 设计日志根因分析 Prompt。
-* [ ] 定义 DiagnosisReport、Evidence、Finding、Recommendation 等结构化诊断契约。
+* [x] 定义 DiagnosisReport、Evidence、Finding、Recommendation 等结构化诊断契约。
 * [ ] 实现 provider 无关的 DiagnosisService，负责证据标准化、Prompt 构造、LLMClient 调用和报告校验。
 * [ ] 实现 `POST /api/v1/diagnoses/ci`，返回通过 Pydantic 校验的 DiagnosisReport 或结构化错误。
 * [ ] 使用 MockLLMClient / 固定 LLMClient 完成可重复集成测试；真实 provider 只用于显式 smoke test。
+* [ ] 实现 `git_compare(base_ref, head_ref, workspace)`，安全读取合入范围和 diff hunk。
+* [ ] 定义 `CodeReviewReport`、`ReviewFinding`、`ReviewSeverity`、`ReviewCategory` 等结构化审查契约。
+* [ ] 实现 provider 无关的 `CodeReviewService`，负责变更证据采集、Prompt 构造、LLMClient 调用和报告校验。
+* [ ] 实现 `POST /api/v1/reviews/code`，输入 `base_ref`、`head_ref` 和 workspace，返回结构化审查报告或证据不足状态。
+* [ ] 定义 `PullRequestSource`、`ReviewPublisher` 和 `WebhookDeliveryStore` 协议，让核心审查服务不依赖 GitHub SDK 或内存存储。
+* [ ] 实现 GitHub App adapter：校验 webhook 签名、解析 PR base/head SHA、读取变更、触发审查并回写建议。
+* [ ] 实现 `POST /api/v1/integrations/github/webhooks`；首版用有界内存 DeliveryStore 保证 delivery ID 幂等，并更新同一条带标记的摘要评论，避免重复刷屏。
+* [ ] 建立包含正确性、安全、兼容性、性能和测试缺口的固定 merge review eval cases。
+* [ ] 在专用 GitHub 测试仓库安装真实 GitHub App，创建包含已知缺陷的真实 PR，完成真实 webhook、installation token、代码审查和评论回写 smoke test。
+* [ ] 将真实 PR URL、base/head SHA、delivery GUID、report_id、摘要/inline comment URL、各阶段耗时和验收结论记录到 `docs/evaluation/github_pr_smoke.md`；不得记录任何凭据。
 
 ### 诊断执行边界
 
@@ -1462,6 +1509,44 @@ get_ci_result / git_diff / search_code / search_log
 ```
 
 `DiagnosisService` 不直接创建特定厂商 SDK 客户端，而是依赖已有 `LLMClient` 接口。自动化测试必须注入 Mock 或固定响应，不能访问真实模型网络。模型返回非法 JSON、未知 evidence_id 或不满足报告状态约束时，服务应返回结构化诊断错误，不把原始异常泄漏到 API 或 AgentRuntime。
+
+代码合入审查复用 Evidence、LLMClient、ToolRegistry 和 Evaluation 基础设施，但不复用 `DiagnosisReport`：诊断回答“为什么失败”，审查回答“这次变更引入了什么可行动风险”。审查链路必须显式串联：
+
+```text
+git_compare
+  -> 变更文件与 diff hunk Evidence
+  -> read_file / search_code 补充上下文
+  -> CodeReviewInput
+  -> Merge Review Prompt
+  -> LLMClient.chat()
+  -> CodeReviewReport.model_validate_json()
+  -> FastAPI 审查接口
+```
+
+每条 finding 必须绑定变更行或受影响代码证据；默认不输出纯格式偏好。信息不足时返回 missing_evidence，不得把推测升级为阻塞合入的问题。第一版只读且只给建议，不执行代码修改、commit、merge 或 push。
+
+GitHub PR 适配链路：
+
+```text
+GitHub pull_request webhook
+  -> X-Hub-Signature-256 校验 + delivery_id 幂等
+  -> GitHubPullRequestSource 转换为 ChangeSet / Evidence
+  -> CodeReviewService
+  -> GitHubReviewPublisher 更新摘要评论和有效 inline comments
+```
+
+首版只处理 `opened`、`reopened`、`synchronize` 和 `ready_for_review` 事件。签名必须基于原始 request body 计算 HMAC-SHA256，并使用常量时间比较后再解析 payload。GitHub App 使用最小权限：Metadata read、Contents read、Pull requests write。Inline comment 使用当前 diff 的 `line` / `side` 定位；无法稳定映射时降级写入摘要，不使用逐步淘汰的 `position`。自动化测试使用固定 webhook payload 和 FakeGitHubClient，不访问 GitHub 网络；App 私钥、installation token 和 webhook secret 不进入日志、Trace 或报告。
+
+Webhook 接口应在完成签名、事件类型和幂等检查后尽快返回 `202 Accepted`，将耗时审查交给 TaskManager 后台执行，避免 GitHub 因同步等待 LLM 而判定 delivery 超时。真实 PR 验证属于显式手动 smoke test，不进入 pytest：先用固定 LLM 响应验证 GitHub 链路，再用显式配置的真实 provider 完成一次完整代码分析。开发期可使用 HTTPS 转发服务连接本地 webhook，但只允许专用非敏感测试仓库；真实项目代码应使用受控公网服务或自托管转发。
+
+真实 PR 最小验收流程：
+
+```text
+1. 打开包含已知 HIGH / CRITICAL 缺陷的 PR，验证 opened delivery、报告和评论。
+2. 推送修复或新增 commit，验证 synchronize 触发重新审查并更新原摘要评论。
+3. 从 GitHub App Recent deliveries 手动 redeliver，验证相同 delivery 不重复创建任务或评论。
+4. 核对 GitHub delivery 响应、DevAgent Trace、CodeReviewReport 与 PR 评论可以通过 report_id 关联。
+```
 
 ### 验收标准
 
@@ -1492,6 +1577,20 @@ Agent 应该能够：
 6. 工具失败、模型非法 JSON 和悬空 evidence_id 均返回结构化错误或 insufficient_evidence，不产生无依据的 diagnosed 报告。
 ```
 
+代码合入审查量化目标：
+
+```text
+1. 固定 eval 集中 HIGH / CRITICAL 风险召回率达到 85% 以上。
+2. 可行动 finding 准确率达到 70% 以上，误报率不高于 20%。
+3. Finding 证据引用完整率达到 100%，文件与行号可定位率达到 100%。
+4. 相比整文件注入，平均审查上下文字符数降低 40% 以上。
+5. 小型本地样例仓库的 diff 采集与证据预处理 p95 延迟低于 1 秒，不含 LLM 网络耗时。
+6. 固定审查任务的人工证据查找步骤相比手工 diff 浏览减少 30% 以上。
+7. 无效 webhook 签名拒绝率、重复 delivery 去重率和固定 fixture 评论行号映射正确率均达到 100%。
+8. 真实 PR 的 opened、synchronize 和 redelivery 三步 smoke test 全部成功，已知缺陷被引用到真实 diff 行，且 PR 中始终只有一条 DevAgent 摘要评论。
+9. 真实 PR 从 webhook 接收至摘要评论发布的端到端耗时目标低于 60 秒，并记录工具、LLM 和发布阶段耗时。
+```
+
 ---
 
 ## 9.4 第四阶段：RAG / Memory + 上下文压缩
@@ -1510,7 +1609,7 @@ Agent 应该能够：
 * [ ] 实现 context_compress，将检索结果压缩为 evidence snippets。
 * [ ] 建立 20 条本地 RAG eval cases，标注 expected_sources 和 expected_keywords。
 * [ ] 统计 Evidence Hit Rate、Context Reduction Rate、Retrieval Latency。
-* [ ] 在 CI 诊断和日志根因分析 Prompt 中要求基于 evidence 输出。
+* [ ] 在 CI 诊断、日志根因分析和代码合入审查中接入检索 evidence。
 
 ### 验收标准
 
@@ -1746,6 +1845,9 @@ devagent/
         permissions.py
         stream.py
         traces.py
+        diagnoses.py
+        reviews.py
+        github_webhooks.py
       websocket.py
 
     agent/
@@ -1789,6 +1891,32 @@ devagent/
       models.py
       repository.py
 
+    diagnosis/
+      models.py
+      service.py
+
+    review/
+      models.py
+      service.py
+
+    integrations/
+      github/
+        client.py
+        models.py
+        pull_request_source.py
+        review_publisher.py
+        webhook.py
+
+    prompts/
+      ci_diagnosis.py
+      log_diagnosis.py
+      code_review.py
+
+    memory/
+      models.py
+      chunker.py
+      retriever.py
+
     storage/
       database.py
       models.py
@@ -1821,6 +1949,12 @@ devagent/
     api/
     permission/
     event/
+    diagnosis/
+    review/
+    integrations/
+    prompts/
+    memory/
+    eval/
     multi_agent/
     integration/
 ```
@@ -1892,6 +2026,23 @@ devagent/
 - 修复建议
 ```
 
+### 11.4 代码合入审查 Prompt 模板
+
+```text
+用户希望你分析 base_ref...head_ref 的待合入代码变更。
+
+你应该按以下步骤进行：
+1. 获取合入范围、变更文件和 diff hunk。
+2. 读取受影响实现、调用方、测试和仓库规范。
+3. 只报告能由证据支持、开发者可以采取行动的问题。
+4. 按 correctness、security、compatibility、performance、maintainability、test_gap 分类。
+5. 区分 critical、high、medium、low 严重级别，不把风格偏好写成阻塞问题。
+6. 为每条 finding 提供文件、行号、evidence_ids、修改建议和验证方式。
+7. 证据不足时记录 missing_evidence，不猜测不存在的问题。
+
+最终只输出与 CodeReviewReport 匹配的 JSON。
+```
+
 ---
 
 ## 12. 安全设计
@@ -1939,6 +2090,19 @@ devagent/
 3. 高风险工具永远走权限审批。
 4. 对外部内容进行引用标记。
 5. Agent 不允许根据日志中的文本改变系统策略。
+```
+
+### 12.4 GitHub App 与 Webhook 安全
+
+```text
+1. 使用 GitHub App installation token，不使用个人 PAT 作为长期凭据。
+2. 使用 webhook secret 对原始 request body 计算 HMAC-SHA256，通过常量时间比较校验 X-Hub-Signature-256，并在解析 payload 前拒绝无效签名。
+3. 使用 X-GitHub-Delivery 做幂等，重复事件不得重复触发审查或刷评论。
+4. GitHub App 只申请 Metadata read、Contents read、Pull requests write。
+5. 仓库必须经过 allowlist / workspace 映射，payload 中的路径和 ref 不能直接作为本地命令参数。
+6. App 私钥、installation token 和 webhook secret 必须脱敏，不写入 Event、Trace、日志或报告。
+7. 首版评论是非阻塞建议，不执行 approve、request changes、merge 或 required check。
+8. Inline comment 使用 `line` / `side` 映射当前 diff；映射失败时降级到摘要评论，不使用 `position`。
 ```
 
 ---
@@ -2015,6 +2179,9 @@ Latency：平均耗时
 Cost：平均 token 成本
 Failure Rate：失败率
 Permission Trigger Rate：权限触发率
+Review High-Risk Recall：固定合入缺陷中 HIGH / CRITICAL 问题的召回率
+Review Actionable Precision：输出 finding 中真实且可行动问题的比例
+Review False Positive Rate：无缺陷或无关变更中被错误报告的问题比例
 ```
 
 ### 14.3 评测用例类型
@@ -2024,6 +2191,7 @@ Permission Trigger Rate：权限触发率
 CI 失败诊断类
 日志根因分析类
 Git diff 风险分析类
+代码合入审查类
 工具失败恢复类
 权限审批类
 上下文压缩类
@@ -2085,7 +2253,25 @@ pytest tests/
 * Agent 执行命令；
 * 工具结果实时展示。
 
-### 15.4 Demo 四：上下文压缩
+### 15.4 Demo 四：代码合入审查
+
+用户输入：
+
+```text
+GitHub PR #42 更新后自动审查本次变更，并给出关键问题和修改建议。
+```
+
+展示点：
+
+* Agent 获取 `base_ref...head_ref` diff；
+* Agent 补充读取受影响代码、调用方和测试；
+* 每条 finding 引用具体文件、行号和 evidence；
+* 报告按严重级别排序并给出修改与验证建议；
+* GitHub webhook 通过签名校验和 delivery 幂等后触发审查；
+* DevAgent 更新 PR 摘要评论，并只在行号可映射时发布 inline comment；
+* 无证据时明确说明，不 approve、request changes、修改或合入代码。
+
+### 15.5 Demo 五：上下文压缩
 
 构造一个长任务：
 
@@ -2110,7 +2296,7 @@ pytest tests/
 ### 16.2 简历描述版本一
 
 ```text
-设计并实现面向研发效能场景的 AI Agent 后端平台，支持代码仓库分析、CI 失败诊断和日志根因分析；系统采用 Agent Runtime + EventBus + ToolRegistry 架构，实现多轮工具调用、权限审批、流式事件推送和执行过程可观测。
+设计并实现面向研发效能场景的 AI Agent 后端平台，支持代码仓库分析、代码合入审查、CI 失败诊断和日志根因分析；系统采用 Agent Runtime + EventBus + ToolRegistry 架构，实现多轮工具调用、权限审批、流式事件推送和执行过程可观测。
 ```
 
 ### 16.3 简历描述版本二
@@ -2265,17 +2451,18 @@ Agent 长任务上下文太长怎么办？
 第 3 阶段：FastAPI 后端 + ToolExecutor + 权限控制
 第 4 阶段：EventBus、任务状态、Trace、最小 Evaluation
 第 5 阶段：研发效能业务 Demo：CI 失败诊断与日志根因分析
-第 6 阶段：RAG / Memory、上下文压缩、证据驱动诊断
-第 7 阶段：Multi-Agent / 持久化扩展打底
-第 8 阶段：持久化深化、RAG 增强、Multi-Agent 完整化和最终交付
+第 6 阶段：代码合入审查与 Review Evaluation
+第 7 阶段：RAG / Memory、上下文压缩、证据驱动诊断
+第 8 阶段：Multi-Agent / 持久化扩展打底
+第 9 阶段：持久化深化、RAG 增强、Multi-Agent 完整化和最终交付
 ```
 
 节奏说明：
 
 ```text
-前 8 周用于完成核心闭环和关键扩展打底，不作为项目最终交付。
-第 9 到第 12 周作为关键扩展完善期，用来补齐持久化、RAG 质量优化、Multi-Agent 完整性、安全增强和最终交付材料。
-不要为了卡 8 周时间牺牲功能完整性；宁可延长周期，也要保证关键链路可运行、可测试、可评测、可解释。
+前 9 周用于完成核心闭环和关键扩展打底，不作为项目最终交付。
+第 10 到第 13 周作为关键扩展完善期，用来补齐持久化、RAG 质量优化、Multi-Agent 完整性、安全增强和最终交付材料。
+不要为了卡固定周数牺牲功能完整性；宁可延长周期，也要保证关键链路可运行、可测试、可评测、可解释。
 ```
 
 阶段优先级说明：
@@ -2527,7 +2714,30 @@ Demo 可以稳定复现
 
 建议学习时间：7 到 14 天。
 
-### 18.7 第 6 阶段：RAG / Memory、评测和上下文压缩
+### 18.7 第 6 阶段：代码合入审查与 Review Evaluation
+
+这一阶段把已有 Git diff、代码搜索和证据契约组合成独立业务闭环。第一版分析本地 `base_ref...head_ref`，只输出建议，不自动修改、提交或批准合入。
+
+练习任务：
+
+1. 定义 `CodeReviewReport`、风险分类和严重级别。
+2. 实现只读 `git_compare` 和变更 Evidence 采集。
+3. 设计只报告可行动问题的 Merge Review Prompt。
+4. 实现 `CodeReviewService` 和 `POST /api/v1/reviews/code`。
+5. 建立固定缺陷与无缺陷样例，统计召回率、准确率和误报率。
+
+验收标准：
+
+```text
+每条 finding 都能定位到文件、行号和 evidence
+HIGH / CRITICAL 风险召回率达到 85% 以上
+可行动 finding 准确率达到 70% 以上，误报率不高于 20%
+审查链路不执行 checkout、merge、commit 或 push
+```
+
+建议学习时间：7 到 10 天。
+
+### 18.8 第 7 阶段：RAG / Memory、评测和上下文压缩
 
 这一阶段开始补证据质量和工程深度。先用本地切片、关键词检索和固定评测集跑通闭环，不急着接复杂向量数据库。
 
@@ -2564,7 +2774,7 @@ Top-5 Evidence Hit Rate 达到 80% 以上
 
 建议学习时间：10 到 14 天。
 
-### 18.8 第 7 阶段：Multi-Agent、持久化与可选扩展
+### 18.9 第 8 阶段：Multi-Agent、持久化与可选扩展
 
 多 Agent 编排是最终项目交付的关键扩展能力，但必须在单 Agent、工具系统、权限系统、Trace、业务 Demo 和 RAG / Evaluation 基线稳定后实现。持久化优先服务 Trace、Evaluation 和权限审计，MCP 仍属于可选扩展。
 
@@ -2590,17 +2800,17 @@ MCP 工具能接入 ToolRegistry
 外部工具同样经过 PermissionManager
 ```
 
-### 18.9 第 8 阶段：关键扩展完善期与最终交付
+### 18.10 第 9 阶段：关键扩展完善期与最终交付
 
-第 8 周只完成扩展能力打底，不作为最终交付。后续 4 周优先补功能完整度和工程说服力，确保 RAG、Multi-Agent、Trace / Evaluation、持久化和安全增强达到可演示、可测试、可评测的状态。
+第 9 周只完成扩展能力打底，不作为最终交付。后续 4 周优先补功能完整度和工程说服力，确保 RAG、Multi-Agent、Trace / Evaluation、持久化和安全增强达到可演示、可测试、可评测的状态。
 
 完善期重点：
 
 ```text
-第 9 周：持久化深化，补齐任务、事件、工具调用、权限策略和 Evaluation 结果落库。
-第 10 周：RAG 增强，比较关键词检索、embedding、hybrid search 和 rerank 的效果。
-第 11 周：Multi-Agent 完整化，补齐父子 Trace、预算控制、取消传播和安全增强。
-第 12 周：最终交付，整理 README、架构图、安全设计、Evaluation 报告、Demo 脚本和面试材料。
+第 10 周：持久化深化，补齐任务、事件、工具调用、权限策略和 Evaluation 结果落库。
+第 11 周：RAG 增强，比较关键词检索、embedding、hybrid search 和 rerank 的效果。
+第 12 周：Multi-Agent 完整化，补齐父子 Trace、预算控制、取消传播和安全增强。
+第 13 周：最终交付，整理 README、架构图、安全设计、Evaluation 报告、Demo 脚本和面试材料。
 ```
 
 完善期验收标准：
@@ -2688,7 +2898,8 @@ MCP
 7. 示例 CI 日志
 8. 示例 Agent Trace
 9. Evaluation 报告
-10. 简历项目描述
+10. GitHub App 配置与权限说明
+11. 简历项目描述
 ```
 
 README 推荐结构：
@@ -2726,6 +2937,7 @@ Demo 示例
 - 代码搜索
 - 文件读取
 - Git diff 分析
+- 代码合入审查与修改建议
 - CI 失败诊断
 - 日志根因分析
 - Shell 测试执行
@@ -2875,7 +3087,7 @@ Agent 自动调用 CI、代码搜索、diff 工具
 ```text
 我做的是一个面向研发效能场景的 AI Agent 后端平台。它不是简单的 RAG 问答，而是把一次复杂研发问题分析拆成规划、工具调用、结果观察和总结几个阶段。
 
-系统支持代码仓库分析、CI 失败诊断和日志根因分析。用户可以问“这次 CI 为什么失败”或者“某个 task_id 的任务为什么失败”，Agent 会自动调用 CI 查询、日志检索、代码搜索、Git diff 等工具，然后基于真实证据生成诊断报告。
+系统支持代码仓库分析、代码合入审查、CI 失败诊断和日志根因分析。用户可以让 Agent 审查待合入 diff，也可以问“这次 CI 为什么失败”或者“某个 task_id 的任务为什么失败”；Agent 会自动调用 Git、CI、日志和代码检索工具，然后基于真实证据生成结构化报告。
 
 架构上，我实现了 Agent Runtime、ToolRegistry、PermissionManager 和 EventBus。Agent Runtime 负责多轮工具调用闭环；ToolRegistry 统一管理工具；PermissionManager 对 Shell、文件写入等高风险操作做审批；EventBus 将 LLM 流式输出、工具调用、权限审批和错误信息抽象成事件，通过 WebSocket 实时推送给前端，同时落库用于 Trace 和任务回放。
 
@@ -2908,24 +3120,27 @@ EventBus + SSE/WebSocket + Trace 回放
 CI 失败诊断 + Git diff + 日志分析
 
 第 7 周：
-RAG / Memory + Evaluation + 上下文压缩
+代码合入审查 + 结构化修改建议 + Review Evaluation
 
 第 8 周：
-Multi-Agent / 持久化扩展打底 + 阶段 Evaluation + 扩展 backlog
+RAG / Memory + Evaluation + 上下文压缩
 
 第 9 周：
-持久化深化 + Trace / Evaluation 数据闭环
+Multi-Agent / 持久化扩展打底 + 阶段 Evaluation + 扩展 backlog
 
 第 10 周：
-RAG 增强 + 检索质量优化
+持久化深化 + Trace / Evaluation 数据闭环
 
 第 11 周：
-Multi-Agent 完整化 + 安全增强
+RAG 增强 + 检索质量优化
 
 第 12 周：
+Multi-Agent 完整化 + 安全增强
+
+第 13 周：
 最终交付 + 简历面试材料 + Demo 稳定性打磨
 
-第 12 周以后，可选：
+第 13 周以后，可选：
 MCP + Docker Sandbox + Skills + 前端页面
 ```
 

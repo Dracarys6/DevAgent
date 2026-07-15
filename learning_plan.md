@@ -1,6 +1,6 @@
 # DevAgent 秋招开发学习计划
 
-目标：用 8 到 12 周，每天 3 到 5 小时，围绕 DevAgent 项目系统提升 Python、后端开发、AI Agent 开发、工程设计和面试表达能力，争取秋招投递中大厂 AI 应用开发 / 后端开发岗位时，有一个能讲深、能演示、能扩展的项目。
+目标：用 8 到 13 周，每天 3 到 5 小时，围绕 DevAgent 项目系统提升 Python、后端开发、AI Agent 开发、工程设计和面试表达能力，争取秋招投递中大厂 AI 应用开发 / 后端开发岗位时，有一个能讲深、能演示、能扩展的项目。
 
 适用岗位：
 
@@ -30,39 +30,16 @@ DevOps 平台后端工程师
 当前进度：
 
 ```text
-已完成并验收 Day 1 到 Day 6、Day 8 到 Day 24
-Day 7 内容已在 Day 6 与 Day 8 开发中覆盖
-当前自动化测试：308 个
+已完成并验收 Day 1 到 Day 40
+Day 7 内容已在 Day 6 与 Day 8 开发中覆盖，并已按完成状态维护
+Day 41 日志根因分析契约正在开发
 已完成正式模块：
-- read_file
-- workspace 路径安全
-- search_code
-- run_shell
-- RunShellResult
-- ToolResult 与工具适配层
-- BaseTool 与 ToolRegistry
-- tools/schema.py 工具 Schema 单一来源
-- PermissionRequest、PermissionDecision、PermissionStatus、PermissionPolicy
-- InMemoryPermissionManager 内存权限管理器
-- 内置工具包装
-- LLMClient Protocol
-- MockLLMClient
-- 最小 AgentRuntime 与 Agent Loop
-- AgentRunResult 与 Agent 防失控基础
-- AgentEvent 与执行轨迹基础
-- 命令行 Agent Demo
-- OpenAI-compatible 真实 LLM 适配层
-- FastAPI app、配置模块与 GET /health
-- POST /api/v1/agent/tasks 任务创建 API
-- AgentTask、TaskStatus 与显式状态转移
-- InMemoryTaskRepository 内存任务仓库
-- GET /api/v1/agent/tasks/{task_id} 任务查询 API
-- POST /api/v1/agent/tasks/{task_id}/cancel 任务取消 API
-- TaskManager 任务生命周期编排
-- FastAPI BackgroundTasks 后台执行 Agent
-- InMemoryEventStore 内存事件仓库
-- GET /api/v1/agent/tasks/{task_id}/events 任务事件查询 API
-- tests/integration 多任务状态、事件隔离和取消语义测试
+- 文件、代码搜索、Shell、Git diff、CI 结果和结构化日志工具
+- BaseTool、ToolRegistry、ToolResult、参数 Schema 与 ToolExecutor
+- PermissionManager、PolicyStore、CommandGuard 与 Permission API
+- AgentRuntime、LLMClient、TaskManager 与任务状态机
+- EventBus、EventStore、SSE / WebSocket、Trace 查询与回放
+- CI / 日志可复现 fixture、证据模型和 CI 诊断输出契约
 ```
 
 计划不是固定不变的课程表。后续每次验收时，根据实际完成情况更新：
@@ -87,7 +64,7 @@ Day 7 内容已在 Day 6 与 Day 8 开发中覆盖
 
 ## 1. 阶段总目标
 
-前 8 周结束时，你应该拥有一个能演示、能评测、能讲清楚架构取舍的核心版本，但这不是项目最终交付：
+前 9 周结束时，你应该拥有一个能演示、能评测、能讲清楚架构取舍的核心版本，但这不是项目最终交付：
 
 ```text
 1. 一个可运行的 DevAgent 后端项目
@@ -95,13 +72,13 @@ Day 7 内容已在 Day 6 与 Day 8 开发中覆盖
 3. 一个 FastAPI 后端服务
 4. Agent Runtime、ToolRegistry、PermissionManager、EventBus 四个核心模块
 5. read_file、search_code、run_shell、git_diff、get_ci_result、search_log 工具
-6. CI 失败诊断和日志根因分析 Demo
+6. 代码合入审查、CI 失败诊断和日志根因分析 Demo
 7. 最小 Evaluation、Trace 回放、上下文压缩和研发知识 Memory
 8. README、架构说明、安全设计、评测报告、面试问答文档
 9. 一套能讲 3 分钟、10 分钟、30 分钟的项目表达
 ```
 
-第 9 到第 12 周用于把核心版本补成完整工程作品。只有 RAG、Multi-Agent、Trace / Evaluation、持久化和安全增强等关键扩展完成后，项目才算真正完成：
+第 10 到第 13 周用于把核心版本补成完整工程作品。只有 RAG、Multi-Agent、Trace / Evaluation、持久化和安全增强等关键扩展完成后，项目才算真正完成：
 
 ```text
 1. 持久化完善：SQLite / PostgreSQL、事件落库、工具调用记录、权限策略持久化
@@ -116,7 +93,7 @@ Day 7 内容已在 Day 6 与 Day 8 开发中覆盖
 ```text
 1. 我不是只做 ChatBot，而是实现可控、可观测、可评估的 Agent Runtime。
 2. 我不是只写几个工具，而是设计 Agent Skills / Tool Calling 扩展协议。
-3. 我不是只做 Demo，而是用 CI 诊断和日志根因分析证明 Agent 能解决真实研发问题。
+3. 我不是只做 Demo，而是用代码合入审查、CI 诊断和日志根因分析证明 Agent 能解决真实研发问题。
 4. 我不是只追求能跑，而是补齐权限鉴权、Trace、Evaluation、RAG/Memory 和 Multi-Agent。
 ```
 
@@ -160,7 +137,7 @@ daily 文档
 
 ---
 
-## 3. 8 到 12 周学习主线
+## 3. 8 到 13 周学习主线
 
 ```text
 第 1 周：Python 工程基础 + 命令行工具
@@ -169,20 +146,21 @@ daily 文档
 第 4 周：PermissionManager + 安全控制 + ToolExecutor
 第 5 周：EventBus + SSE/WebSocket + Trace
 第 6 周：研发效能业务 Demo + CI / 日志诊断
-第 7 周：RAG / Memory + Evaluation + 上下文压缩
-第 8 周：Multi-Agent / 持久化扩展打底
-第 9 周：持久化深化 + Trace / Evaluation 数据闭环
-第 10 周：RAG 增强 + 质量优化
-第 11 周：Multi-Agent 完整化 + 安全增强
-第 12 周：最终交付 + 简历面试材料 + Demo 稳定性打磨
+第 7 周：代码合入审查 + 结构化修改建议 + Review Evaluation
+第 8 周：RAG / Memory + Evaluation + 上下文压缩
+第 9 周：Multi-Agent / 持久化扩展打底
+第 10 周：持久化深化 + Trace / Evaluation 数据闭环
+第 11 周：RAG 增强 + 质量优化
+第 12 周：Multi-Agent 完整化 + 安全增强
+第 13 周：最终交付 + 简历面试材料 + Demo 稳定性打磨
 ```
 
 最低成功标准：
 
 ```text
 完成第 1 到第 5 周，就已经有一个能演示、能评测的 AI Agent 后端项目。
-第 6 周到第 8 周用于把项目从“能跑”提升到“具备核心业务和扩展雏形”。
-第 9 周到第 12 周用于完善 RAG、Multi-Agent、持久化、安全和指标报告；第 12 周完成后才进入最终交付状态。
+第 6 周到第 9 周用于把项目从“能跑”提升到“具备核心业务和扩展雏形”。
+第 10 周到第 13 周用于完善 RAG、Multi-Agent、持久化、安全和指标报告；第 13 周完成后才进入最终交付状态。
 ```
 
 六条长期主线：
@@ -213,7 +191,7 @@ daily 文档
 
 ### 3.2 项目范围控制
 
-前 8 周核心主线只实现能够组成完整 DevAgent 闭环的能力。以下内容不默认加入主线：
+前 9 周核心主线只实现能够组成完整 DevAgent 闭环的能力。以下内容不默认加入主线：
 
 ```text
 MCP
@@ -633,7 +611,7 @@ Day 34：实现 WebSocket 和断线重连协议 [x]
 接口：WS /api/v1/sessions/{session_id}/stream?last_seen_sequence_id=N
 验收：断线重连后能补发缺失事件，不重复展示已确认事件
 
-Day 35：Trace 查询与回放接口
+Day 35：Trace 查询与回放接口 [x]
 产出：src/devagent/trace/service.py、src/devagent/api/routes/traces.py
 接口：GET /api/v1/agent/tasks/{task_id}/trace
 验收：按 sequence_id 返回完整执行轨迹，并包含工具耗时与最终状态
@@ -714,32 +692,32 @@ Git diff
 每日任务与验收：
 
 ```text
-Day 36：设计可重复的 sample_repo 和失败场景
+Day 36：设计可重复的 sample_repo 和失败场景 [x]
 产出：examples/sample_repo/、examples/sample_repo/tests/
 验收：不调用 Agent 时，人可以手动复现失败并说明根因
 
-Day 37：实现 git_diff 工具
+Day 37：实现 git_diff 工具 [x]
 产出：src/devagent/tools/git_tools.py、tests/tools/test_git_tools.py
 工具接口：git_diff(commit_id, workspace) -> ToolResult
 验收：合法 commit 返回 diff；非法 commit 返回结构化错误
 
-Day 38：准备 mock CI 数据并实现 get_ci_result
+Day 38：准备 mock CI 数据并实现 get_ci_result [x]
 产出：examples/sample_ci/abc123.json、src/devagent/tools/ci_tools.py
 工具接口：get_ci_result(commit_id) -> ToolResult
 验收：工具能返回失败 job、test case、核心日志，不把整份日志全部塞入上下文
 
-Day 39：实现 search_log
+Day 39：实现 search_log [x]
 产出：examples/sample_logs/、src/devagent/tools/log_tools.py
 工具接口：search_log(task_id, level=None, keyword=None) -> ToolResult
 验收：结果按时间排序，支持截断，明确首个异常点
 
-Day 40：设计证据驱动的 CI 诊断流程
+Day 40：设计证据驱动的 CI 诊断流程 [x]
 产出：src/devagent/prompts/ci_diagnosis.py、src/devagent/diagnosis/models.py
 类型：DiagnosisReport、Evidence、Recommendation
 边界：只完成输出契约、Prompt 和固定 JSON 校验，不调用 LLM API 或 HTTP API
 验收：每个结论引用具体工具证据；缺少证据时明确说明；非法 evidence 引用无法通过 Pydantic 校验
 
-Day 41：设计日志根因分析流程
+Day 41：设计日志根因分析流程 [~]
 产出：src/devagent/prompts/log_diagnosis.py、tests/prompts/test_log_diagnosis.py
 边界：复用 DiagnosisReport 契约，先完成日志诊断 Prompt 和固定报告测试
 验收：区分根因、后续连锁错误和推测；首个异常只能作为根因候选
@@ -819,9 +797,103 @@ Demo 可以重复运行
 
 ---
 
-## 10. 第 7 周：RAG / Memory + Evaluation + 上下文压缩
+## 10. 第 7 周：代码合入审查 + 结构化修改建议
 
-目标：把第 6 周的 CI 诊断、日志根因分析和代码问答从“能跑”提升到“证据可检索、质量可评测、上下文可控”。
+目标：实现平台无关的代码合入审查闭环，根据 `base_ref...head_ref` 分析待合入变更，并以 GitHub App 作为首个平台适配，通过 Pull Request webhook 触发审查和回写非阻塞建议。
+
+本周重点原理：
+
+```text
+three-dot diff 与 merge base
+变更 hunk 和受影响上下文
+代码审查风险分类与严重级别
+证据驱动 finding
+误报、漏报与可行动建议
+结构化输出和 Review Evaluation
+GitHub App、webhook 签名与 delivery 幂等
+平台 adapter 与核心服务解耦
+```
+
+每日任务与验收：
+
+```text
+Day 43：定义代码审查领域模型与风险分类
+产出：src/devagent/review/models.py、tests/review/test_models.py
+类型：CodeReviewInput、CodeReviewReport、ReviewFinding、ReviewSeverity、ReviewCategory
+验收：每条 finding 必须包含文件、行号、evidence_ids、修改建议和验证方式；悬空证据引用被拒绝
+
+Day 44：实现 git_compare 与变更证据采集
+产出：扩展 src/devagent/tools/git_tools.py、tests/tools/test_git_tools.py
+接口：git_compare(base_ref, head_ref, workspace) -> ToolResult
+验收：使用 merge base 读取变更范围；保留文件状态、hunk 定位和截断元数据；不执行 checkout、merge、commit 或 push
+
+Day 45：设计证据驱动的 Merge Review Prompt
+产出：src/devagent/prompts/code_review.py、tests/prompts/test_code_review.py
+边界：只报告证据支持的可行动问题，区分 correctness、security、compatibility、performance、maintainability、test_gap，不把格式偏好升级为阻塞问题
+验收：固定输出通过 CodeReviewReport 校验；证据不足时返回 missing_evidence
+
+Day 46：实现 CodeReviewService
+产出：src/devagent/review/service.py、tests/review/test_service.py
+执行链：git_compare -> Evidence -> read_file / search_code 补充代码上下文 -> LLMClient.chat() -> CodeReviewReport.model_validate_json()
+验收：模型非法 JSON、悬空 evidence_id、工具失败均转换为结构化错误或证据不足状态
+
+Day 47：实现代码审查 API 与平台协议
+产出：src/devagent/api/routes/reviews.py、src/devagent/review/ports.py、tests/api/test_reviews.py
+接口：POST /api/v1/reviews/code
+协议：PullRequestSource、ReviewPublisher、WebhookDeliveryStore
+验收：输入 base_ref、head_ref 和 workspace，返回结构化报告；核心 service 不导入 GitHub SDK；API 不自动修改、批准或合入代码
+
+Day 48：接入 GitHub Pull Request 建议模式
+产出：src/devagent/integrations/github/、src/devagent/api/routes/github_webhooks.py、tests/integrations/github/
+接口：POST /api/v1/integrations/github/webhooks
+触发事件：opened、reopened、synchronize、ready_for_review
+执行边界：签名、事件和幂等检查后返回 202，由 TaskManager 异步完成审查与发布
+验收：基于原始 body 和常量时间比较校验 X-Hub-Signature-256；有界内存 DeliveryStore 保证 delivery ID 幂等；使用 FakeGitHubClient 回写摘要和以 line / side 定位的 inline comments，无法映射时降级到摘要；不访问真实网络
+学习记录：对应 daily 文档解释 GitHub App installation token、webhook 签名、delivery redelivery、202 异步确认和 review comment line / side 定位
+
+Day 49：建立 Review Evaluation 并完成端到端验收
+产出：eval/cases/code_review/、src/devagent/eval/review_metrics.py、tests/eval/test_review_metrics.py、tests/integration/test_github_pr_review.py、eval/reports/code_review_baseline.md、docs/evaluation/github_pr_smoke.md
+样例：正确性、安全、兼容性、性能、测试缺口、无缺陷变更和固定 GitHub webhook payload
+真实验证：在专用 GitHub 测试仓库安装 GitHub App，创建包含已知缺陷的真实 PR；先用固定 LLM 响应验证平台链路，再显式使用真实 provider 完成一次分析
+验收：可重复计算高风险召回率、可行动 finding 准确率、误报率和证据引用完整率；真实 PR 完成 opened、synchronize、redelivery，报告、Trace 和评论可由 report_id 关联
+```
+
+### 第 7 周额外收尾
+
+```text
+运行代码审查 Evaluation 并记录基线
+检查 HIGH / CRITICAL finding 是否都有直接证据和验证方式
+对无缺陷变更检查误报
+录制一次 base/head 合入审查 Demo
+验证 GitHub App 最小权限、签名拒绝、delivery 去重和评论更新语义
+记录真实 PR URL、base/head SHA、delivery GUID、report_id、评论 URL、阶段耗时和结果；不记录 token、私钥或 webhook secret
+更新本周 daily 文档；README.md 和 plan.md 在周收尾统一同步
+```
+
+量化验收：
+
+```text
+HIGH / CRITICAL 风险召回率 >= 85%
+可行动 finding 准确率 >= 70%
+误报率 <= 20%
+Finding 证据引用完整率 = 100%
+文件与行号可定位率 = 100%
+相比整文件注入，平均审查上下文字符数降低 >= 40%
+小型本地样例仓库 diff 采集与证据预处理 p95 < 1 秒，不含 LLM 网络耗时
+固定审查任务的人工证据查找步骤减少 >= 30%
+无效 webhook 签名拒绝率 = 100%
+重复 delivery 去重率 = 100%
+固定 fixture 评论行号映射正确率 = 100%
+真实 PR opened、synchronize、redelivery smoke test 成功率 = 100%
+真实 PR 始终只保留 1 条 DevAgent 摘要评论
+真实 PR webhook 接收到摘要评论发布耗时目标 < 60 秒
+```
+
+---
+
+## 11. 第 8 周：RAG / Memory + Evaluation + 上下文压缩
+
+目标：把第 6 到第 7 周的 CI 诊断、日志根因分析、代码合入审查和代码问答从“能跑”提升到“证据可检索、质量可评测、上下文可控”。
 
 本周重点原理：
 
@@ -838,43 +910,43 @@ Evaluation 数据集
 每日任务与验收：
 
 ```text
-Day 43：定义 RAG / Memory 数据模型
+Day 50：定义 RAG / Memory 数据模型
 产出：src/devagent/memory/models.py
 类型：Document、Chunk、EvidenceSnippet、RetrievalResult
 验收：每条 evidence 都包含 source、path、line_range 或等价定位信息
 
-Day 44：实现本地切片器
+Day 51：实现本地切片器
 产出：src/devagent/memory/chunker.py、tests/memory/test_chunker.py
 范围：代码、Markdown、日志、CI JSON
 验收：chunk 保留来源、行号、类型和稳定 chunk_id
 
-Day 45：实现关键词检索器
+Day 52：实现关键词检索器
 产出：src/devagent/memory/retriever.py、tests/memory/test_retriever.py
 策略：先用关键词 / BM25 / ripgrep-backed 检索，不急着接向量库
 验收：Top-5 能找回预期文件或日志片段
 
-Day 46：实现 knowledge_retrieve 工具
+Day 53：实现 knowledge_retrieve 工具
 产出：src/devagent/tools/knowledge_tools.py
 工具接口：knowledge_retrieve(query, workspace, top_k) -> ToolResult
 验收：ToolResult 返回压缩后的 evidence snippets，而不是整文件内容
 
-Day 47：实现 Evaluation 基线
+Day 54：实现 Evaluation 基线
 产出：eval/cases/、src/devagent/eval/runner.py、tests/eval/
 指标：Tool Hit Rate、Evidence Hit Rate、Answer Keyword Hit Rate、Latency
 验收：固定 20 条本地 eval cases 可以重复运行
 
-Day 48：实现上下文压缩基础版
+Day 55：实现上下文压缩基础版
 产出：src/devagent/agent/context_manager.py
 策略：保留原始任务、关键观察、最近 N 轮消息和 evidence snippets
 验收：长任务上下文字符数相比直接注入完整文件 / 日志降低 40% 以上
 
-Day 49：RAG 对业务 Demo 的指标对比
+Day 56：RAG 对业务 Demo 的指标对比
 产出：docs/evaluation.md、eval/reports/rag_baseline.md
 指标：Top-5 Evidence Hit Rate、Context Reduction Rate、Retrieval p95 Latency
-验收：能说明 RAG 对 CI / 日志诊断质量和效率的提升
+验收：能说明 RAG 对 CI / 日志诊断和代码合入审查质量、上下文效率的提升
 ```
 
-### 第 7 周额外收尾
+### 第 8 周额外收尾
 
 ```text
 运行完整 Evaluation
@@ -896,9 +968,9 @@ Top-5 Evidence Hit Rate >= 80%
 
 ---
 
-## 11. 第 8 周：Multi-Agent / 持久化扩展打底
+## 12. 第 9 周：Multi-Agent / 持久化扩展打底
 
-目标：在已有单 Agent、权限、Trace、业务 Demo、RAG 和 Evaluation 基线稳定后，启动 Multi-Agent 与持久化扩展的最小闭环。第 8 周不作为项目交付周，只做扩展能力打底，为第 9 到第 12 周的完善期留出空间。
+目标：在已有单 Agent、权限、Trace、业务 Demo、代码合入审查、RAG 和 Evaluation 基线稳定后，启动 Multi-Agent 与持久化扩展的最小闭环。第 9 周不作为项目交付周，只做扩展能力打底，为第 10 到第 13 周的完善期留出空间。
 
 本周重点：
 
@@ -915,43 +987,43 @@ SQLite / PostgreSQL 取舍
 每日任务与验收：
 
 ```text
-Day 50：定义 Multi-Agent 最小协议
+Day 57：定义 Multi-Agent 最小协议
 产出：src/devagent/multi_agent/models.py
 类型：SubAgentTask、SubAgentResult、AgentBudget
 验收：子任务包含 parent_task_id、目标、允许工具、max_steps、timeout
 
-Day 51：实现 SpawnAgentTool 或 Coordinator 最小版
+Day 58：实现 SpawnAgentTool 或 Coordinator 最小版
 产出：src/devagent/multi_agent/spawn_tool.py 或 coordinator.py
 验收：父 Agent 只能创建受限子任务；禁止无限递归
 
-Day 52：父子 Trace 和结果汇总
+Day 59：父子 Trace 和结果汇总
 产出：src/devagent/multi_agent/event_bridge.py、summarizer.py
 验收：父任务能汇总日志、代码、CI 子任务证据；子任务失败可降级
 
-Day 53：持久化取舍与最小落库
+Day 60：持久化取舍与最小落库
 产出：docs/database-design.md 或 src/devagent/storage/
 范围：优先 events、tool_calls、permission_policies
 验收：只落最能支撑 Trace / Evaluation / 权限审计的数据
 
-Day 54：Evaluation 阶段报告
-产出：docs/evaluation.md、eval/reports/week8_baseline.md
+Day 61：Evaluation 阶段报告
+产出：docs/evaluation.md、eval/reports/week9_baseline.md
 指标：Tool Hit Rate、Evidence Hit Rate、Permission Trigger Rate、平均耗时、失败率
 验收：报告能支撑简历中的可量化成果
 
-Day 55：整理扩展能力 backlog 和风险清单
+Day 62：整理扩展能力 backlog 和风险清单
 产出：docs/backlog.md 或 docs/roadmap.md
-验收：明确 RAG、Multi-Agent、持久化、安全增强在第 9 到第 12 周的剩余任务和验收指标
+验收：明确 RAG、Multi-Agent、持久化、安全增强在第 10 到第 13 周的剩余任务和验收指标
 
-Day 56：扩展打底验收
-产出：第 8 周验收记录、阶段 Evaluation、扩展 backlog
+Day 63：扩展打底验收
+产出：第 9 周验收记录、阶段 Evaluation、扩展 backlog
 验收：可稳定演示单 Agent、权限审批、Trace、RAG 证据检索；Multi-Agent 和持久化至少完成最小设计或最小闭环；项目不标记为最终完成
 ```
 
-### 第 8 周额外收尾
+### 第 9 周额外收尾
 
 ```text
 运行完整测试和 Evaluation
-确认第 9 到第 12 周扩展 backlog 可执行
+确认第 10 到第 13 周扩展 backlog 可执行
 整理关键扩展的技术风险和验收指标
 保留 3 分钟与 10 分钟项目讲法草稿
 每周收尾同步 README.md 和 plan.md
@@ -959,11 +1031,11 @@ Day 56：扩展打底验收
 
 ---
 
-## 12. 第 9 到第 12 周：关键扩展完善与最终交付
+## 13. 第 10 到第 13 周：关键扩展完善与最终交付
 
-目标：不为了赶时间牺牲功能完整性。第 9 到第 12 周用于把 RAG、Multi-Agent、持久化、Trace / Evaluation 和安全增强补扎实，形成有指标、有文档、有 Demo、有工程说服力的最终版本。
+目标：不为了赶时间牺牲功能完整性。第 10 到第 13 周用于把 RAG、Multi-Agent、持久化、Trace / Evaluation 和安全增强补扎实，形成有指标、有文档、有 Demo、有工程说服力的最终版本。
 
-### 第 9 周：持久化深化 + Trace / Evaluation 数据闭环
+### 第 10 周：持久化深化 + Trace / Evaluation 数据闭环
 
 ```text
 重点：让任务、事件、工具调用和权限策略可以跨进程保存，支撑 Trace 回放和评测报告。
@@ -979,9 +1051,10 @@ Day 56：扩展打底验收
 3. EventBus / EventStore 写入持久化事件。
 4. ToolExecutor 记录工具调用耗时、状态、错误码。
 5. Evaluation 运行结果可保存、可对比。
+6. GitHub webhook delivery 和 PR review 发布状态可持久化，服务重启后仍能避免重复审查与重复评论。
 ```
 
-### 第 10 周：RAG 增强 + 质量优化
+### 第 11 周：RAG 增强 + 质量优化
 
 ```text
 重点：提升证据检索质量，而不是只做“能检索”。
@@ -999,7 +1072,7 @@ Day 56：扩展打底验收
 5. 输出 RAG 优化报告，避免只凭主观感觉说“效果更好”。
 ```
 
-### 第 11 周：Multi-Agent 完整化 + 安全增强
+### 第 12 周：Multi-Agent 完整化 + 安全增强
 
 ```text
 重点：让 Multi-Agent 服务 CI / 日志诊断，而不是为了堆概念。
@@ -1017,26 +1090,27 @@ Day 56：扩展打底验收
 5. 强化 CommandGuard、敏感字段脱敏和 Prompt Injection 防护文档。
 ```
 
-### 第 12 周：最终交付 + 面试材料 + Demo 稳定性
+### 第 13 周：最终交付 + 面试材料 + Demo 稳定性
 
 ```text
 重点：把项目从“自己能跑”整理成“别人能看懂、面试能讲清、Demo 能稳定复现”。
 产出：最终 README、架构图、安全设计、Evaluation 报告、Demo 脚本、项目问答、简历描述。
-验收：新用户 15 分钟内启动；能稳定演示 CI 诊断、日志诊断、权限审批、Trace / RAG / Evaluation。
+验收：新用户 15 分钟内启动；能稳定演示代码合入审查、CI 诊断、日志诊断、权限审批、Trace / RAG / Evaluation。
 ```
 
 最终交付检查：
 
 ```text
-1. RAG / Memory 完成最小可讲版本，并有 Evidence Hit Rate、上下文压缩率和检索延迟指标。
-2. Multi-Agent 完成受控编排，支持父子 Trace、预算控制、取消传播和部分失败降级。
-3. Trace / Evaluation 能支撑问题定位和前后指标对比。
-4. 持久化能保存关键任务、事件、工具调用、权限策略和 Evaluation 结果。
-5. README 只描述真实已实现能力，不夸大。
-6. 架构图与代码模块一致。
-7. Demo 脚本可以重复运行。
-8. 安全文档能解释权限审批、危险命令拦截和敏感信息脱敏。
-9. 简历项目描述有数字支撑，但不把 pytest passed 当主要成果。
+1. 代码合入审查完成本地 base/head 闭环，并有高风险召回率、可行动建议准确率、误报率和证据引用指标。
+2. RAG / Memory 完成最小可讲版本，并有 Evidence Hit Rate、上下文压缩率和检索延迟指标。
+3. Multi-Agent 完成受控编排，支持父子 Trace、预算控制、取消传播和部分失败降级。
+4. Trace / Evaluation 能支撑问题定位和前后指标对比。
+5. 持久化能保存关键任务、事件、工具调用、权限策略和 Evaluation 结果。
+6. README 只描述真实已实现能力，不夸大。
+7. 架构图与代码模块一致。
+8. Demo 脚本可以重复运行。
+9. 安全文档能解释权限审批、危险命令拦截和敏感信息脱敏。
+10. 简历项目描述有数字支撑，但不把 pytest passed 当主要成果。
 ```
 
 README 必须包含：
@@ -1056,7 +1130,7 @@ Demo 示例
 简历项目描述模板：
 
 ```text
-设计并实现面向研发效能场景的 AI Agent 后端平台，支持代码仓库分析、CI 失败诊断和日志根因分析。系统采用 Agent Runtime + ToolRegistry + PermissionManager + EventBus 架构，实现多轮工具调用、权限审批、流式事件推送、Trace 回放和 Agent Evaluation。
+设计并实现面向研发效能场景的 AI Agent 后端平台，支持代码仓库分析、代码合入审查、CI 失败诊断和日志根因分析。系统采用 Agent Runtime + ToolRegistry + PermissionManager + EventBus 架构，实现多轮工具调用、权限审批、流式事件推送、Trace 回放和 Agent Evaluation。
 ```
 
 项目 3 分钟讲法：
@@ -1065,14 +1139,14 @@ Demo 示例
 第一段：项目是做什么的，解决什么场景。
 第二段：核心架构，Agent Runtime、ToolRegistry、PermissionManager、EventBus。
 第三段：技术难点，长任务、工具安全、事件流、Trace、评测。
-第四段：Demo 和结果，CI 失败诊断、日志根因分析、代码问答。
+第四段：Demo 和结果，代码合入审查、CI 失败诊断、日志根因分析、代码问答。
 ```
 
 验收标准：
 
 ```text
 能本地启动项目
-能稳定演示 3 个 Demo
+能稳定演示代码合入审查、CI 诊断、日志诊断和权限审批等核心 Demo
 README 清楚
 简历描述清楚
 能回答 30 个项目相关面试问题
@@ -1080,11 +1154,11 @@ README 清楚
 
 ---
 
-## 13. 项目相关高频面试问题清单
+## 14. 项目相关高频面试问题清单
 
 这里只保留能够从 DevAgent 真实实现继续追问的问题，不承担通用八股复习职责。
 
-### 13.1 项目中的 Python 设计
+### 14.1 项目中的 Python 设计
 
 ```text
 1. 为什么 RunShellResult 使用 dataclass，而工具参数更适合使用 Pydantic？
@@ -1099,7 +1173,7 @@ README 清楚
 10. MockLLMClient 为什么比直接 Mock 某个函数更适合测试 Agent Loop？
 ```
 
-### 13.2 项目中的后端设计
+### 14.2 项目中的后端设计
 
 ```text
 1. 为什么创建 Agent 任务后先返回 task_id，而不是等待最终答案？
@@ -1114,7 +1188,7 @@ README 清楚
 10. EventBus 为什么能降低 AgentRuntime 与 UI 的耦合？
 ```
 
-### 13.3 项目中的持久化设计
+### 14.3 项目中的持久化设计
 
 ```text
 1. tasks、events、tool_calls 为什么需要分表？
@@ -1129,7 +1203,7 @@ README 清楚
 10. SQLite 切换到 PostgreSQL 时，本项目最可能遇到哪些差异？
 ```
 
-### 13.4 Agent 原理
+### 14.4 Agent 原理
 
 ```text
 1. Agent 和普通 ChatBot 的区别是什么？
@@ -1144,7 +1218,7 @@ README 清楚
 10. 如何测试一个输出不稳定的 Agent？
 ```
 
-### 13.5 工具系统与安全
+### 14.5 工具系统与安全
 
 ```text
 1. ToolRegistry 的作用是什么？
@@ -1159,7 +1233,7 @@ README 清楚
 10. Docker Sandbox 能解决什么问题？
 ```
 
-### 13.6 可观测性与评测
+### 14.6 可观测性与评测
 
 ```text
 1. 为什么 Agent 执行过程要事件化？
@@ -1176,9 +1250,9 @@ README 清楚
 
 ---
 
-## 14. 项目面试深挖回答模板
+## 15. 项目面试深挖回答模板
 
-### 14.1 你的项目不是普通 ChatBot 吗？
+### 15.1 你的项目不是普通 ChatBot 吗？
 
 回答：
 
@@ -1186,7 +1260,7 @@ README 清楚
 不是。普通 ChatBot 通常是用户输入后直接调用 LLM 返回文本，而我的项目实现了 Agent Runtime。它会根据任务多轮调用工具，例如代码搜索、文件读取、CI 查询、日志检索和 Git diff，然后把工具结果重新注入上下文继续推理。系统还有 ToolRegistry、PermissionManager 和 EventBus，分别解决工具扩展、安全审批和执行过程可观测问题。
 ```
 
-### 14.2 Agent Loop 怎么工作？
+### 15.2 Agent Loop 怎么工作？
 
 回答：
 
@@ -1194,7 +1268,7 @@ README 清楚
 用户创建任务后，Agent Runtime 构造 system prompt 和 user message 调用 LLM。如果 LLM 返回 tool call，系统会通过 ToolRegistry 校验参数并执行工具。工具结果会作为 tool message 放回上下文，然后 Agent 继续下一轮推理。直到模型返回 final answer，或者达到 max_steps、任务超时、用户取消、工具不可恢复错误等结束条件。
 ```
 
-### 14.3 如何保证工具调用安全？
+### 15.3 如何保证工具调用安全？
 
 回答：
 
@@ -1202,7 +1276,7 @@ README 清楚
 我把工具分成 LOW、MEDIUM、HIGH、CRITICAL 风险等级。read_file、search_code 这类只读工具可以直接执行，但 run_shell、文件写入、外部网络请求等高风险工具必须经过 PermissionManager。权限支持 allow_once、always_allow、deny_once、always_deny。同时 Shell 工具有命令黑名单、cwd 限制、timeout、输出截断，文件工具有 workspace 路径限制。
 ```
 
-### 14.4 为什么需要 EventBus？
+### 15.4 为什么需要 EventBus？
 
 回答：
 
@@ -1210,7 +1284,7 @@ README 清楚
 Agent 不是一次性返回结果，而是一个持续执行过程，中间会有 LLM 调用、工具调用、权限审批、错误处理和最终总结。EventBus 把这些过程抽象成事件，Agent Runtime 只负责发布事件，WebSocket、Trace、日志和前端都可以订阅事件。这样 UI 和 Agent 解耦，也方便任务回放和问题定位。
 ```
 
-### 14.5 如何分析 CI 失败？
+### 15.5 如何分析 CI 失败？
 
 回答：
 
@@ -1218,7 +1292,13 @@ Agent 不是一次性返回结果，而是一个持续执行过程，中间会�
 Agent 会先调用 get_ci_result 获取失败 job、测试用例和错误日志；然后提取关键错误，比如失败测试名和异常栈；接着用 search_code 搜索相关模块，用 git_diff 查看本次 commit 改动；最后综合 CI 日志、代码和 diff，输出结论、证据、涉及文件、可能原因、修复建议和验证方式。
 ```
 
-### 14.6 如何评估 Agent 效果？
+### 15.6 如何分析待合入代码？
+
+```text
+我先用 base_ref...head_ref 和 merge base 获取真实合入范围，再把 diff hunk、受影响实现、调用方、测试和仓库规范标准化为 Evidence。模型只生成能引用证据的结构化 finding，每条问题都包含严重级别、文件行号、修改建议和验证方式。固定缺陷集会统计高风险召回率、可行动建议准确率和误报率，避免把“看起来像代码审查”当成真实效果。
+```
+
+### 15.7 如何评估 Agent 效果？
 
 回答：
 
@@ -1228,7 +1308,7 @@ Agent 会先调用 get_ci_result 获取失败 job、测试用例和错误日志�
 
 ---
 
-## 15. 每周阶段产出清单
+## 16. 每周阶段产出清单
 
 ```text
 第 1 周交付：read_file、search_code、run_shell、ToolResult、pytest 测试
@@ -1236,18 +1316,19 @@ Agent 会先调用 get_ci_result 获取失败 job、测试用例和错误日志�
 第 3 周交付：FastAPI 服务、任务创建、任务状态机、任务事件查询
 第 4 周交付：PermissionManager、PolicyStore、CommandGuard、ToolExecutor、Permission API
 第 5 周交付：EventBus、SSE/WebSocket、Trace 查询与回放
-第 6 周交付：CI 诊断 Demo、Git diff、日志分析、Evaluation 基线
-第 7 周交付：RAG / Memory、Evaluation 基线、上下文压缩、RAG 指标报告
-第 8 周阶段产出：Multi-Agent / 持久化扩展打底、阶段 Evaluation、扩展 backlog 和风险清单
-第 9 周交付：持久化 Repository、事件 / 工具调用 / 权限策略落库、Trace 数据闭环
-第 10 周交付：RAG 增强、检索质量对比、上下文压缩优化、RAG Evaluation 报告
-第 11 周交付：Multi-Agent 完整化、父子 Trace、预算控制、取消传播、安全增强
-第 12 周交付：最终 README、架构图、安全设计、Evaluation 报告、Demo 脚本、简历与面试材料
+第 6 周交付：CI 诊断 Demo、Git diff、日志分析、诊断执行闭环
+第 7 周交付：代码合入审查、GitHub PR 建议模式、结构化修改建议、Review Evaluation 基线与指标报告
+第 8 周交付：RAG / Memory、Evaluation 基线、上下文压缩、RAG 指标报告
+第 9 周阶段产出：Multi-Agent / 持久化扩展打底、阶段 Evaluation、扩展 backlog 和风险清单
+第 10 周交付：持久化 Repository、事件 / 工具调用 / 权限策略落库、Trace 数据闭环
+第 11 周交付：RAG 增强、检索质量对比、上下文压缩优化、RAG Evaluation 报告
+第 12 周交付：Multi-Agent 完整化、父子 Trace、预算控制、取消传播、安全增强
+第 13 周交付：最终 README、架构图、安全设计、Evaluation 报告、Demo 脚本、简历与面试材料
 ```
 
 ---
 
-## 16. 学习优先级
+## 17. 学习优先级
 
 如果时间不够，按这个优先级砍功能：
 
@@ -1260,7 +1341,8 @@ Agent 会先调用 get_ci_result 获取失败 job、测试用例和错误日志�
 5. EventBus
 6. PermissionManager
 7. CI 诊断 Demo
-8. RAG / Evaluation 最小闭环
+8. 代码合入审查闭环
+9. RAG / Evaluation 最小闭环
 
 尽量完成：
 1. WebSocket
@@ -1282,7 +1364,7 @@ Agent 会先调用 get_ci_result 获取失败 job、测试用例和错误日志�
 
 ---
 
-## 17. 最终秋招准备标准
+## 18. 最终秋招准备标准
 
 投递前自查：
 
@@ -1290,6 +1372,7 @@ Agent 会先调用 get_ci_result 获取失败 job、测试用例和错误日志�
 我能 3 分钟讲清项目背景、架构和亮点
 我能 10 分钟讲清 Agent Loop、ToolRegistry、PermissionManager、EventBus
 我能现场跑一个 Demo
+我能展示一次有证据、可定位、可量化评测的代码合入审查
 我能解释每个核心模块为什么这样设计
 我能回答安全、评测、上下文、长任务、WebSocket、数据库相关问题
 README 能让别人本地跑起来
