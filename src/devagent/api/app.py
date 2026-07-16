@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from devagent.api.routes import (
     tasks_router,
     permissions_router,
@@ -12,6 +14,14 @@ from devagent.config import get_config
 config = get_config()
 
 app = FastAPI(title=config.app_name, version=config.version)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(tasks_router)
 app.include_router(permissions_router)

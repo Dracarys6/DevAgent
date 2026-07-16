@@ -77,6 +77,13 @@ credentials/
 docs/_build/
 docs/_site/
 
+# 前端依赖与构建缓存
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
 # 本地学习记录，不作为项目交付内容提交
 docs/learning/
 learning_plan.md
