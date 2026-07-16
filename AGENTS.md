@@ -45,6 +45,7 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 - Use typed Pydantic models for messages, tool calls, tool results, permissions, tasks, events, traces, and RAG records.
 - Use Better Comments-style markers for explanatory inline comments: `# *` for important context, `# !` for warnings or safety constraints, `# ?` for questions that require confirmation, and `# TODO:` for concrete pending work. Use the equivalent comment syntax in non-Python files.
 - Keep markers semantically meaningful; do not tag every comment. Continue to use docstrings for public APIs and longer contract documentation.
+- Preserve existing comments that remain accurate and useful, especially comments that explain design intent, non-obvious behavior, safety boundaries, or tradeoffs. Do not delete user-authored comments merely to simplify the file; update or remove them only when they are outdated, incorrect, misleading, or truly redundant.
 - Avoid putting provider-specific logic directly inside `AgentRuntime`.
 - Tool execution must return a unified `ToolResult`.
 - Never throw raw tool errors directly to the runtime loop.
