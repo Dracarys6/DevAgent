@@ -10,7 +10,16 @@ DevAgent Console 是后端 Agent Runtime 的 Web GUI，首版覆盖：
 
 ## 本地运行
 
-先在项目根目录启动 API：
+推荐在项目根目录一键启动前后端：
+
+```bash
+./scripts/start.sh
+```
+
+脚本会在服务就绪后默认打开浏览器。使用 `./scripts/start.sh --no-open`
+可以只启动服务；按 `Ctrl+C` 会同时停止前后端。
+
+需要分别调试进程时，可先在项目根目录启动 API：
 
 ```bash
 .venv/bin/uvicorn devagent.api.app:app --reload

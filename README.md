@@ -96,6 +96,29 @@ sequenceDiagram
 
 ## 快速开始
 
+### 一键启动前后端
+
+完成 Python 和前端依赖安装后，在项目根目录执行：
+
+```bash
+./scripts/start.sh
+```
+
+脚本会启动 FastAPI 后端与 Vite 前端，确认服务就绪后默认打开
+`http://127.0.0.1:5173`。按 `Ctrl+C` 会同时停止两个服务。
+
+如不希望自动打开浏览器：
+
+```bash
+./scripts/start.sh --no-open
+```
+
+查看完整参数：
+
+```bash
+./scripts/start.sh --help
+```
+
 ### 1. 创建并激活虚拟环境
 
 ```bash

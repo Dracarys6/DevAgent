@@ -39,6 +39,18 @@ FastAPI 进程的环境变量提供。
 
 ## 验证
 
+项目根目录提供前后端一键启动脚本：
+
+```bash
+./scripts/start.sh
+```
+
+脚本默认使用后端端口 `8000` 和前端端口 `5173`，启动前检查虚拟环境、
+Node.js、npm、前端依赖及端口占用。服务就绪后默认打开浏览器；使用
+`./scripts/start.sh --no-open` 可关闭该行为。按 `Ctrl+C` 或任一服务异常退出时，
+脚本会统一清理两个子进程。需要并行运行其他开发实例时，可通过
+`DEVAGENT_BACKEND_PORT` 和 `DEVAGENT_FRONTEND_PORT` 覆盖默认端口。
+
 ```bash
 cd frontend
 npm run lint
