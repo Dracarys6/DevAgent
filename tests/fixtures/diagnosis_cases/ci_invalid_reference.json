@@ -1,0 +1,29 @@
+{
+  "report_id": "report-ci-001",
+  "scenario": "ci_failure",
+  "target": "abc123",
+  "status": "diagnosed",
+  "summary": "报告包含不存在的证据引用。",
+  "findings": [
+    {
+      "kind": "root_cause",
+      "statement": "无法验证的根因。",
+      "confidence": "confirmed",
+      "evidence_ids": [
+        "E9"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "E1",
+      "kind": "ci_result",
+      "tool_name": "get_ci_result",
+      "source": "pipeline-1001",
+      "locator": "commit_id=abc123",
+      "excerpt": "{\"status\":\"failed\"}"
+    }
+  ],
+  "recommendations": [],
+  "missing_evidence": []
+}

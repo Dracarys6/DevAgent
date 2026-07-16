@@ -34,11 +34,10 @@ def make_diagnosis_input() -> DiagnosisInput:
 
 
 def extract_prompt_payload(prompt: str) -> str:
-    prefix = "CI diagnosis input:\n"
-    suffix = "\nReturn only a DiagnosisReport JSON object."
+    prefix = "CI 诊断输入：\n"
+    suffix = "\nDiagnosisReport JSON Schema：\n"
     assert prompt.startswith(prefix)
-    assert prompt.endswith(suffix)
-    return prompt.removeprefix(prefix).removesuffix(suffix)
+    return prompt.removeprefix(prefix).split(suffix, maxsplit=1)[0]
 
 
 def test_ci_diagnosis_system_prompt_requires_evidence_contract():
@@ -47,6 +46,10 @@ def test_ci_diagnosis_system_prompt_requires_evidence_contract():
     assert "insufficient_evidence" in CI_DIAGNOSIS_SYSTEM_PROMPT
     assert "首个异常" in CI_DIAGNOSIS_SYSTEM_PROMPT
     assert "不要 Markdown 围栏" in CI_DIAGNOSIS_SYSTEM_PROMPT
+    assert "evidence 必须原样复制" in CI_DIAGNOSIS_SYSTEM_PROMPT
+    assert "必须使用简体中文" in CI_DIAGNOSIS_SYSTEM_PROMPT
+    assert "代码标识" in CI_DIAGNOSIS_SYSTEM_PROMPT
+    assert "保持原文" in CI_DIAGNOSIS_SYSTEM_PROMPT
 
 
 def test_build_ci_diagnosis_prompt_embeds_compact_input_json():
@@ -68,6 +71,21 @@ def test_build_ci_diagnosis_prompt_includes_missing_evidence():
 
     assert "commit abc123 的真实 Git diff" in prompt
     assert '"suggested_tool":"git_diff"' in prompt
+
+
+def test_build_ci_diagnosis_prompt_includes_report_json_schema():
+    prompt = build_ci_diagnosis_prompt(make_diagnosis_input())
+
+    assert "DiagnosisReport JSON Schema：" in prompt
+    assert '"report_id"' in prompt
+    assert '"findings"' in prompt
+    assert '"recommendations"' in prompt
+
+
+def test_build_ci_diagnosis_prompt_requires_chinese_explanations():
+    prompt = build_ci_diagnosis_prompt(make_diagnosis_input())
+
+    assert "解释性文本使用简体中文" in prompt
 
 
 def test_prompt_payload_can_be_parsed_as_json():

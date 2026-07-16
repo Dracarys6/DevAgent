@@ -81,7 +81,7 @@ def test_get_ci_result_returns_only_failed_evidence():
         "tests/test_uploader.py::test_large_upload_uses_dynamic_timeout"
     ]
     assert failed_tests[0]["error_message"] == "assert 3 >= 12"
-    assert failed_tests[0]["location"] == "tests/test_uploader.py:30"
+    assert failed_tests[0]["location"] == "tests/test_uploader.py:17"
     assert "All checks passed" not in result["core_log"]
 
 

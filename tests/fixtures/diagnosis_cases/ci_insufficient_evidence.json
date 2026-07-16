@@ -1,0 +1,47 @@
+{
+  "report_id": "report-ci-001",
+  "scenario": "ci_failure",
+  "target": "abc123",
+  "status": "insufficient_evidence",
+  "summary": "已确认大文件上传测试失败，但缺少该提交的代码改动，无法判断根因。",
+  "findings": [
+    {
+      "kind": "symptom",
+      "statement": "大文件上传测试期望 timeout 至少为 12 秒，但实际为 3 秒。",
+      "confidence": "confirmed",
+      "evidence_ids": [
+        "E1"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "E1",
+      "kind": "ci_result",
+      "tool_name": "get_ci_result",
+      "source": "pipeline-1001",
+      "locator": "commit_id=abc123",
+      "excerpt": "{\"status\":\"failed\",\"failed_jobs\":[{\"name\":\"unit-tests\",\"status\":\"failed\"}],\"core_log\":\"AssertionError: assert 3 >= 12\"}"
+    }
+  ],
+  "recommendations": [
+    {
+      "action": "获取该提交的 Git diff 后重新诊断。",
+      "rationale": "当前 CI 证据只能确认失败症状，不能证明具体代码根因。",
+      "evidence_ids": [
+        "E1"
+      ],
+      "verification_steps": [
+        "确认 commit_id 对应真实 Git 提交",
+        "运行 git_diff 获取代码改动"
+      ]
+    }
+  ],
+  "missing_evidence": [
+    {
+      "needed": "该 commit 对应的代码改动",
+      "reason": "无法读取 Git commit: abc123",
+      "suggested_tool": "git_diff"
+    }
+  ]
+}

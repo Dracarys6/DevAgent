@@ -145,6 +145,7 @@ class OpenAICompatibleLLMClient:
         tools: list[dict[str, Any]] | None = None,
         base_url: str | None = None,
         temperature: float = 0.0,
+        response_format: dict[str, Any] | None = None,
     ) -> None:
         if not api_key:
             raise ValueError("缺少 LLM API Key")
@@ -159,6 +160,7 @@ class OpenAICompatibleLLMClient:
         self.model = model
         self.tools = tools or []
         self.temperature = temperature
+        self.response_format = deepcopy(response_format)
         self.client = (
             OpenAI(api_key=api_key, base_url=base_url)
             if base_url
@@ -174,6 +176,8 @@ class OpenAICompatibleLLMClient:
         if self.tools:
             request["tools"] = self.tools
             request["tool_choice"] = "auto"
+        if self.response_format is not None:
+            request["response_format"] = deepcopy(self.response_format)
 
         response = self.client.chat.completions.create(**request)
         return parse_openai_response(response)

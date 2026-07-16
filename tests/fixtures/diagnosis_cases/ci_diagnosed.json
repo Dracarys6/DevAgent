@@ -1,0 +1,59 @@
+{
+  "report_id": "report-ci-001",
+  "scenario": "ci_failure",
+  "target": "abc123",
+  "status": "diagnosed",
+  "summary": "CI 测试失败，相关代码改动固定返回最小超时时间。",
+  "findings": [
+    {
+      "kind": "symptom",
+      "statement": "大文件上传测试期望 timeout 至少为 12 秒，但实际为 3 秒。",
+      "confidence": "confirmed",
+      "evidence_ids": [
+        "E1"
+      ]
+    },
+    {
+      "kind": "root_cause",
+      "statement": "build_upload_timeout 固定返回 min_timeout_seconds，未使用动态估算结果。",
+      "confidence": "confirmed",
+      "evidence_ids": [
+        "E1",
+        "E2"
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "E1",
+      "kind": "ci_result",
+      "tool_name": "get_ci_result",
+      "source": "pipeline-1001",
+      "locator": "commit_id=abc123",
+      "excerpt": "{\"status\":\"failed\",\"failed_jobs\":[{\"name\":\"unit-tests\",\"status\":\"failed\"}],\"core_log\":\"AssertionError: assert 3 >= 12\"}"
+    },
+    {
+      "evidence_id": "E2",
+      "kind": "git_diff",
+      "tool_name": "git_diff",
+      "source": "abc123",
+      "locator": "commit patch",
+      "excerpt": "diff --git a/uploader.py b/uploader.py\n+return self.config.min_timeout_seconds"
+    }
+  ],
+  "recommendations": [
+    {
+      "action": "让 build_upload_timeout 使用上传耗时估算和 safety_factor。",
+      "rationale": "CI 失败和代码改动共同证明当前实现固定返回最小超时时间。",
+      "evidence_ids": [
+        "E1",
+        "E2"
+      ],
+      "verification_steps": [
+        "修复 build_upload_timeout",
+        "重新运行大文件上传测试"
+      ]
+    }
+  ],
+  "missing_evidence": []
+}

@@ -31,9 +31,9 @@
           "duration_seconds": 0.02,
           "error_type": "AssertionError",
           "error_message": "assert 3 >= 12",
-          "location": "tests/test_uploader.py:30",
+          "location": "tests/test_uploader.py:17",
           "log_excerpt": [
-            "timeout = manager.build_upload_timeout(size_mb=100, bandwidth_mb_s=10)",
+            "timeout = manager.build_upload_timeout(size_mb=80, bandwidth_mb_s=10)",
             "> assert timeout >= 12",
             "E assert 3 >= 12"
           ]

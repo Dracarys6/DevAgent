@@ -12,6 +12,14 @@ from .models import (
     DiagnosisInput,
     LogDiagnosisInput,
 )
+from .service import (
+    DiagnosisService,
+    DiagnosisServiceError,
+    DiagnosisServiceErrorCode,
+    CIEvidenceCollector,
+    LocalCIEvidenceCollector,
+    ReportIdFactory,
+)
 
 __all__ = [
     "EvidenceKind",
@@ -26,4 +34,10 @@ __all__ = [
     "DiagnosisReport",
     "DiagnosisInput",
     "LogDiagnosisInput",
+    "DiagnosisService",
+    "DiagnosisServiceError",
+    "DiagnosisServiceErrorCode",
+    "CIEvidenceCollector",
+    "LocalCIEvidenceCollector",
+    "ReportIdFactory",
 ]

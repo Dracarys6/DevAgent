@@ -4,6 +4,7 @@ import pytest
 
 from devagent.llm.models import LLMResponseType
 from devagent.llm.openai_client import (
+    OpenAICompatibleLLMClient,
     parse_openai_message,
     parse_openai_response,
     to_openai_messages,
@@ -147,3 +148,68 @@ def test_parse_openai_response_reads_first_choice_message():
 def test_parse_openai_response_requires_choice_message():
     with pytest.raises(ValueError, match="缺少 choices"):
         parse_openai_response(SimpleNamespace(choices=[]))
+
+
+def test_openai_client_forwards_configured_response_format():
+    recorded: dict[str, object] = {}
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            recorded.update(kwargs)
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        index=0,
+                        message=SimpleNamespace(
+                            content='{"status":"ok"}',
+                            tool_calls=None,
+                        ),
+                    )
+                ]
+            )
+
+    client = object.__new__(OpenAICompatibleLLMClient)
+    client.model = "test-model"
+    client.tools = []
+    client.temperature = 0.0
+    client.response_format = {"type": "json_object"}
+    client.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=FakeCompletions())
+    )
+
+    response = client.chat([{"role": "user", "content": "Return JSON"}])
+
+    assert recorded["response_format"] == {"type": "json_object"}
+    assert response.content == '{"status":"ok"}'
+
+
+def test_openai_client_omits_response_format_by_default():
+    recorded: dict[str, object] = {}
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            recorded.update(kwargs)
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        index=0,
+                        message=SimpleNamespace(
+                            content="done",
+                            tool_calls=None,
+                        ),
+                    )
+                ]
+            )
+
+    client = object.__new__(OpenAICompatibleLLMClient)
+    client.model = "test-model"
+    client.tools = []
+    client.temperature = 0.0
+    client.response_format = None
+    client.client = SimpleNamespace(
+        chat=SimpleNamespace(completions=FakeCompletions())
+    )
+
+    client.chat([{"role": "user", "content": "hello"}])
+
+    assert "response_format" not in recorded

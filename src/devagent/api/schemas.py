@@ -107,3 +107,23 @@ class PermissionResolveRequest(BaseModel):
 
 class PermissionResolveResponse(BaseModel):
     request: PermissionRequestResponse
+
+
+class CIDiagnosisRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "commit_id": "abc123",
+                    "workspace": "examples/sample_repo",
+                }
+            ]
+        }
+    )
+
+    commit_id: str = Field(
+        min_length=6,
+        max_length=64,
+        pattern=r"^[0-9a-fA-F]+$",
+    )
+    workspace: str = Field(default=".", min_length=1)
