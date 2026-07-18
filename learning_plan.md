@@ -717,12 +717,12 @@ Day 40：设计证据驱动的 CI 诊断流程 [x]
 边界：只完成输出契约、Prompt 和固定 JSON 校验，不调用 LLM API 或 HTTP API
 验收：每个结论引用具体工具证据；缺少证据时明确说明；非法 evidence 引用无法通过 Pydantic 校验
 
-Day 41：设计日志根因分析流程 [~]
+Day 41：设计日志根因分析流程 [x]
 产出：src/devagent/prompts/log_diagnosis.py、tests/prompts/test_log_diagnosis.py
 边界：复用 DiagnosisReport 契约，先完成日志诊断 Prompt 和固定报告测试
 验收：区分根因、后续连锁错误和推测；首个异常只能作为根因候选
 
-Day 42：接通诊断执行服务与 API 闭环
+Day 42：接通诊断执行服务与 API 闭环 [x]
 产出：src/devagent/diagnosis/service.py、src/devagent/api/routes/diagnoses.py、tests/integration/test_ci_diagnosis.py、tests/api/test_diagnoses.py、tests/fixtures/diagnosis_cases/
 执行链：工具输出标准化为 Evidence -> 构造 DiagnosisInput -> 调用注入的 LLMClient.chat() -> DiagnosisReport.model_validate_json() -> API 返回结构化报告
 接口：POST /api/v1/diagnoses/ci；日志诊断先复用同一 service，并为后续 POST /api/v1/diagnoses/log 保留清晰边界

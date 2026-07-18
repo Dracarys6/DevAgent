@@ -1467,7 +1467,7 @@ pytest tests/
 
 周期：约 1 到 2 周。
 
-当前状态：Day 36 到 Day 40 已完成并验收；Day 41 日志根因分析契约正在开发；诊断 service/API 与代码合入审查尚未开始。
+当前状态：第 6 周 Day 36 到 Day 42 已完成并验收，CI / 日志工具、诊断契约、DiagnosisService 和 CI Diagnosis API 已形成可重复闭环；第 7 周从代码合入审查领域模型开始。
 
 ### 任务清单
 
@@ -1478,11 +1478,11 @@ pytest tests/
 * [x] 准备 mock 日志数据。
 * [x] 准备一个示例代码仓库。
 * [x] 设计 CI 失败诊断 Prompt。
-* [ ] 设计日志根因分析 Prompt。
+* [x] 设计日志根因分析 Prompt。
 * [x] 定义 DiagnosisReport、Evidence、Finding、Recommendation 等结构化诊断契约。
-* [ ] 实现 provider 无关的 DiagnosisService，负责证据标准化、Prompt 构造、LLMClient 调用和报告校验。
-* [ ] 实现 `POST /api/v1/diagnoses/ci`，返回通过 Pydantic 校验的 DiagnosisReport 或结构化错误。
-* [ ] 使用 MockLLMClient / 固定 LLMClient 完成可重复集成测试；真实 provider 只用于显式 smoke test。
+* [x] 实现 provider 无关的 DiagnosisService，负责证据标准化、Prompt 构造、LLMClient 调用和报告校验。
+* [x] 实现 `POST /api/v1/diagnoses/ci`，返回通过 Pydantic 校验的 DiagnosisReport 或结构化错误。
+* [x] 使用 MockLLMClient / 固定 LLMClient 完成可重复集成测试；真实 provider 只用于显式 smoke test。
 * [ ] 实现 `git_compare(base_ref, head_ref, workspace)`，安全读取合入范围和 diff hunk。
 * [ ] 定义 `CodeReviewReport`、`ReviewFinding`、`ReviewSeverity`、`ReviewCategory` 等结构化审查契约。
 * [ ] 实现 provider 无关的 `CodeReviewService`，负责变更证据采集、Prompt 构造、LLMClient 调用和报告校验。

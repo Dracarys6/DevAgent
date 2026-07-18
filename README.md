@@ -4,11 +4,12 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具系统、工具 Schema 单一来源、ToolExecutor 权限执行网关、权限领域模型、内存 PermissionManager、内存权限策略匹配、Permission API、CommandGuard 危险命令拦截、统一事件协议、内存 EventBus、Mock LLM、真实 LLM 适配层、Agent Loop、基础防失控能力、Agent 事件轨迹、命令行 Demo、FastAPI 服务骨架、任务创建/查询/取消 API、任务状态机、内存任务仓库、后台任务执行、任务事件查询与多任务集成测试。
+当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具，以及证据驱动的 CI 诊断执行服务和 API。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求和诊断报告。
 
 ```text
-当前进度：ToolResult + ToolRegistry + Tool Schema + ToolExecutor + Permission Models + InMemoryPermissionManager + InMemoryPermissionPolicyStore + Permission API + CommandGuard + Event Models + InMemoryEventBus + 内置工具 + MockLLMClient + OpenAICompatibleLLMClient + AgentRuntime + AgentRunResult + AgentEvent + CLI + FastAPI + Task API + AgentTask + InMemoryTaskRepository + Task Query/Cancel API + TaskManager + BackgroundTasks + InMemoryEventStore + Task Events API + Integration Tests
-测试状态：274 passed
+当前进度：Agent Runtime + ToolRegistry + ToolExecutor + PermissionManager + EventBus + SSE/WebSocket + Trace + Task API + Git/CI/Log Tools + DiagnosisService + CI Diagnosis API + React Console
+当前阶段：第 6 周诊断闭环已完成，第 7 周进入代码合入审查与 Review Evaluation
+测试状态：使用 `.venv/bin/pytest -q` 执行全量回归
 Python 要求：3.11+
 ```
 
@@ -46,10 +47,17 @@ Python 要求：3.11+
 | 后台任务执行 | `TaskManager` 编排 AgentRuntime，创建任务后后台推进到 DONE / FAILED | 已完成基础版 |
 | 任务事件查询 | `InMemoryEventStore` 保存 Agent events，支持按 task_id 查询执行轨迹 | 已完成基础版 |
 | 多任务集成测试 | 验证任务状态隔离、事件隔离、取消语义和第三周 API 闭环 | 已完成基础版 |
+| Git / CI / 日志工具 | 支持受限 Git diff、压缩 CI 失败证据和结构化日志检索 | 已完成基础版 |
+| SSE / WebSocket | 支持任务事件实时推送、断开清理和历史事件衔接 | 已完成基础版 |
+| Trace 查询 | 将事件流聚合为任务摘要和可回放步骤 | 已完成基础版 |
+| 诊断执行服务 | 证据标准化、LLM 调用、Pydantic 报告校验和失败降级 | 已完成基础版 |
+| CI 诊断 API | `POST /api/v1/diagnoses/ci` 返回结构化报告或结构化错误 | 已完成基础版 |
+| 可视化控制台 | React 页面展示任务、事件、Trace、权限和诊断结果 | 已完成初版 |
 | Agent Skills | 面向业务组合 ToolRegistry 工具能力，预留 MCP 扩展 | 规划中 |
 | 权限审批 | 高风险工具审批、策略管理、危险命令防护和审批 API | 已完成基础版 |
-| Trace 与事件流 | 统一事件协议、EventBus、SSE/WebSocket、执行回放 | 进行中 |
-| 研发诊断 | CI 失败诊断、日志根因分析、Git diff 分析 | 规划中 |
+| Trace 与事件流 | 统一事件协议、EventBus、SSE/WebSocket、执行回放 | 已完成基础版 |
+| 研发诊断 | CI 失败诊断契约与 API、日志根因分析契约、Git diff 分析 | 已完成基础版 |
+| 代码合入审查 | base/head 变更审查、结构化建议和 Review Evaluation | 进行中 |
 | RAG / Memory | 代码、日志、CI、文档和历史案例检索，上下文压缩 | 规划中 |
 | Evaluation | 工具命中率、证据命中率、延迟、失败率等指标评测 | 规划中 |
 | 多 Agent 编排 | 子任务拆分、并发、预算限制、取消传播 | 规划中 |
@@ -141,11 +149,7 @@ source .venv/bin/activate
 .venv/bin/pytest -q
 ```
 
-预期结果：
-
-```text
-274 passed
-```
+预期结果：全部测试通过；具体数量以当前分支输出为准。
 
 代码搜索工具依赖 [ripgrep](https://github.com/BurntSushi/ripgrep)。请确保本机可以运行：
 
@@ -184,6 +188,16 @@ devagent "请分析项目中的 ToolRegistry" --workspace . --provider real
 ---
 
 ## 使用示例
+
+调用 CI 诊断 API：
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/diagnoses/ci \
+  -H 'Content-Type: application/json' \
+  -d '{"commit_id":"abc123","workspace":"examples/sample_repo"}'
+```
+
+报告使用 `Evidence`、`Finding` 和 `MissingEvidence` 区分已确认症状、推断和缺失证据。自动化测试使用固定 LLM 响应，不访问真实模型网络。
 
 通过默认 Registry 调用工具：
 
@@ -292,6 +306,10 @@ execute：按名称统一执行工具
 
 ```text
 DevAgent/
+├── frontend/                   # React 可视化控制台
+├── src/devagent/diagnosis/     # 诊断模型与执行服务
+├── src/devagent/event/         # EventBus、事件模型和存储
+├── src/devagent/trace/         # Trace 聚合与回放
 ├── src/devagent/tools/
 │   ├── models.py              # ToolResult、ErrorCode、RiskLevel
 │   ├── base.py                # BaseTool
@@ -318,10 +336,10 @@ flowchart TD
     A --> B[ToolRegistry / Agent Skills]
     B --> C[FastAPI / ToolExecutor]
     C --> D[PermissionManager / EventBus / Trace]
-    D --> E[Evaluation + CI 诊断闭环]
-    E --> F[RAG / Memory + 日志根因分析]
-    F --> G[Multi-Agent + 父子 Trace]
-    G --> H[持久化 + 安全增强]
+    D --> E[CI / 日志诊断闭环]
+    E --> F[代码合入审查 + Review Evaluation]
+    F --> G[RAG / Memory + 上下文压缩]
+    G --> H[Multi-Agent + 持久化扩展]
     H --> I[最终交付 + Demo 稳定性]
 
     style A fill:#2d7d46,color:#fff
