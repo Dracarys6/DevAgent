@@ -817,8 +817,8 @@ GitHub App、webhook 签名与 delivery 幂等
 每日任务与验收：
 
 ```text
-Day 43：定义代码审查领域模型与风险分类
-产出：src/devagent/review/models.py、tests/review/test_models.py
+Day 43：定义代码审查领域模型与风险分类 [x]
+产出：src/devagent/review/models.py、tests/review/test_review_models.py
 类型：CodeReviewInput、CodeReviewReport、ReviewFinding、ReviewSeverity、ReviewCategory
 验收：每条 finding 必须包含文件、行号、evidence_ids、修改建议和验证方式；悬空证据引用被拒绝
 
