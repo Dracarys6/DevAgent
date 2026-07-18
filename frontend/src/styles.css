@@ -209,6 +209,10 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; color: #b5c2bd; background
   --danger: #f87171;
   --warning: #d6a84b;
   --blue: #7aa2f7;
+  --cyan: #5bd6d0;
+  --violet: #b38cff;
+  --coral: #ff8f85;
+  --success: #70d6a2;
 }
 
 body { background: var(--bg); }
@@ -226,6 +230,8 @@ nav { gap: 2px; }
 nav button { color: #8d98ad; border-radius: 6px; padding: 9px 10px; font-size: 12px; }
 nav button:hover { color: #e4e9f5; background: #151b28; }
 nav button.active { color: #b8c8ff; background: rgba(103, 137, 255, .12); box-shadow: inset 0 0 0 1px rgba(126, 155, 255, .14); }
+nav button:nth-child(2).active { color: #75ddd7; background: rgba(91, 214, 208, .1); box-shadow: inset 0 0 0 1px rgba(91, 214, 208, .14); }
+nav button:nth-child(3).active { color: #e5bd6d; background: rgba(214, 168, 75, .1); box-shadow: inset 0 0 0 1px rgba(214, 168, 75, .14); }
 .nav-count { background: #7898ff; color: #fff; }
 .sidebar-footer { border-color: #222a3b; }
 .service-dot, .service-dot.online { box-shadow: none; }
@@ -247,7 +253,7 @@ nav button.active { color: #b8c8ff; background: rgba(103, 137, 255, .12); box-sh
 .task-list { gap: 3px; margin-top: 12px; }
 .task-item { border-radius: 6px; padding: 12px 11px; }
 .task-item:hover { background: #151c29; }
-.task-item.selected { background: #192235; border-color: #344360; }
+.task-item.selected { background: linear-gradient(90deg, rgba(91, 214, 208, .08), #192235 34%); border-color: #344d65; box-shadow: inset 2px 0 #5bd6d0; }
 .task-item > strong { font-size: 11px; font-weight: 500; color: #e1e6f0; }
 .status { border-radius: 10px; padding: 2px 7px; background: transparent; border: 1px solid #354057; }
 .status-done, .status-diagnosed { color: #74c99a; background: transparent; border-color: #284537; }
@@ -283,6 +289,36 @@ nav button.active { color: #b8c8ff; background: rgba(103, 137, 255, .12); box-sh
 .event-body > p { color: #d1d7e3; font-size: 11px; }
 pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius: 6px; }
 
+/* * Trace 点缀色对应事件语义，不改变信息密度。 */
+.event-tool_call_started .event-dot,
+.event-tool_call_finished .event-dot {
+  color: var(--cyan); background: rgba(91, 214, 208, .09); border-color: rgba(91, 214, 208, .3);
+}
+.event-tool_call_started .event-type,
+.event-tool_call_finished .event-type { color: #75ddd7; }
+.event-llm_call_started .event-dot,
+.event-llm_call_finished .event-dot {
+  color: var(--violet); background: rgba(179, 140, 255, .09); border-color: rgba(179, 140, 255, .3);
+}
+.event-llm_call_started .event-type,
+.event-llm_call_finished .event-type { color: #c2a3ff; }
+.event-permission_requested .event-dot,
+.event-permission_resolved .event-dot {
+  color: var(--warning); background: rgba(214, 168, 75, .09); border-color: rgba(214, 168, 75, .3);
+}
+.event-permission_requested .event-type,
+.event-permission_resolved .event-type { color: #dfbd78; }
+.event-agent_finished .event-dot {
+  color: var(--success); background: rgba(112, 214, 162, .09); border-color: rgba(112, 214, 162, .3);
+}
+.event-agent_finished .event-type { color: #83dcb0; }
+.event-agent_error .event-dot,
+.event-tool_call_failed .event-dot {
+  color: var(--coral); background: rgba(255, 143, 133, .09); border-color: rgba(255, 143, 133, .3);
+}
+.event-agent_error .event-type,
+.event-tool_call_failed .event-type { color: #ff9e96; }
+
 .empty-icon { background: #151c29; border-color: #2b354a; color: #8195d8; border-radius: 8px; }
 .empty-state h3 { color: #d4dae6; }
 .modal-backdrop { background: rgba(0, 0, 0, .76); }
@@ -296,6 +332,14 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 .evidence-card { background: #0d121d; border-color: #293248; border-radius: 6px; }
 .evidence-card header { color: #aebeff; }
 .finding b, .recommendation strong { color: #8fc7aa; }
+.report-section h3 svg { color: var(--violet); }
+.report-grid .report-section:first-child h3 svg { color: var(--coral); }
+.report-grid .report-section:last-child h3 svg { color: var(--success); }
+.evidence-section h3 svg { color: var(--cyan); }
+.pipeline span:nth-of-type(1) { color: #75ddd7; border-color: rgba(91, 214, 208, .3); }
+.pipeline span:nth-of-type(2) { color: #9bb2ff; border-color: rgba(117, 150, 255, .3); }
+.pipeline span:nth-of-type(3) { color: #c2a3ff; border-color: rgba(179, 140, 255, .3); }
+.pipeline span:nth-of-type(4) { color: #83dcb0; border-color: rgba(112, 214, 162, .3); }
 .permission-card { border-color: #2b2924; }
 .risk-icon { border-radius: 7px; }
 .error-banner { border-radius: 6px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
