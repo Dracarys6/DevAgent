@@ -71,6 +71,26 @@ function EmptyState({
   );
 }
 
+function TraceDisclosure({
+  initiallyOpen,
+  children,
+}: {
+  initiallyOpen: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(initiallyOpen);
+
+  return (
+    <details
+      className="trace-disclosure"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      {children}
+    </details>
+  );
+}
+
 function eventIcon(type: string) {
   if (type.includes("tool")) return <Wrench size={15} />;
   if (type.includes("llm")) return <Sparkles size={15} />;
@@ -434,28 +454,45 @@ function TasksView({
                 </button>
               )}
             </header>
-            <div className="metric-strip">
-              <Metric label="事件" value={trace?.summary.event_count ?? 0} />
-              <Metric label="LLM 调用" value={trace?.summary.llm_call_count ?? 0} />
-              <Metric label="工具调用" value={trace?.summary.tool_call_count ?? 0} />
-              <Metric label="错误" value={trace?.summary.error_count ?? 0} alert />
-            </div>
-            <div className="timeline">
-              {trace?.steps.length ? (
-                trace.steps.map((step) => <EventCard key={step.event_id} step={step} />)
-              ) : (
-                <EmptyState
-                  icon={<Clock3 />}
-                  title="等待事件"
-                  description="任务开始执行后，事件会通过 SSE 实时显示。"
-                />
-              )}
+            <div className="task-content">
               {trace?.summary.final_answer && (
                 <article className="final-answer">
-                  <div><Sparkles size={16} /> FINAL ANSWER</div>
+                  <div><Sparkles size={15} /> Agent 结果</div>
                   <p>{trace.summary.final_answer}</p>
                 </article>
               )}
+              <TraceDisclosure
+                key={`${selectedTask.task_id}-${Boolean(trace?.summary.final_answer)}`}
+                initiallyOpen={!trace?.summary.final_answer}
+              >
+                <summary>
+                  <span>
+                    <Activity size={15} />
+                    执行轨迹
+                    <small>{trace?.summary.event_count ?? 0} 个事件</small>
+                  </span>
+                  <span className="trace-summary-metrics">
+                    {trace?.summary.tool_call_count ?? 0} tools · {trace?.summary.error_count ?? 0} errors
+                  </span>
+                </summary>
+                <div className="metric-strip">
+                  <Metric label="事件" value={trace?.summary.event_count ?? 0} />
+                  <Metric label="LLM 调用" value={trace?.summary.llm_call_count ?? 0} />
+                  <Metric label="工具调用" value={trace?.summary.tool_call_count ?? 0} />
+                  <Metric label="错误" value={trace?.summary.error_count ?? 0} alert />
+                </div>
+                <div className="timeline">
+                  {trace?.steps.length ? (
+                    trace.steps.map((step) => <EventCard key={step.event_id} step={step} />)
+                  ) : (
+                    <EmptyState
+                      icon={<Clock3 />}
+                      title="等待事件"
+                      description="任务开始执行后，事件会通过 SSE 实时显示。"
+                    />
+                  )}
+                </div>
+              </TraceDisclosure>
             </div>
           </>
         )}

@@ -194,6 +194,112 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; color: #b5c2bd; background
 .permission-meta { display: flex; gap: 16px; color: var(--muted); font: 9px "IBM Plex Mono"; }
 .permission-card footer { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
 
+/* * 冷色开发者控制台：蓝紫色建立识别度，灰阶继续负责信息层级。 */
+:root {
+  color: #f1f4fb;
+  background: #0c0f18;
+  --bg: #0c0f18;
+  --panel: #121722;
+  --panel-2: #171d2b;
+  --line: #283044;
+  --muted: #929db2;
+  --text: #f1f4fb;
+  --accent: #8aa8ff;
+  --accent-dim: rgba(112, 144, 255, 0.13);
+  --danger: #f87171;
+  --warning: #d6a84b;
+  --blue: #7aa2f7;
+}
+
+body { background: var(--bg); }
+.app-shell { grid-template-columns: 232px 1fr; }
+.sidebar { width: 232px; padding: 20px 12px 16px; background: #0d111b; }
+.brand { padding: 0 9px 30px; }
+.brand-mark {
+  width: 32px; height: 32px; color: #fff; border-radius: 7px;
+  background: linear-gradient(135deg, #668cff, #9478ed); box-shadow: none;
+}
+.brand-mark svg { width: 18px; }
+.brand strong { font-size: 14px; letter-spacing: -.1px; }
+.brand small { color: #6f7b92; font-size: 8px; letter-spacing: 1.2px; }
+nav { gap: 2px; }
+nav button { color: #8d98ad; border-radius: 6px; padding: 9px 10px; font-size: 12px; }
+nav button:hover { color: #e4e9f5; background: #151b28; }
+nav button.active { color: #b8c8ff; background: rgba(103, 137, 255, .12); box-shadow: inset 0 0 0 1px rgba(126, 155, 255, .14); }
+.nav-count { background: #7898ff; color: #fff; }
+.sidebar-footer { border-color: #222a3b; }
+.service-dot, .service-dot.online { box-shadow: none; }
+.service-dot.online { background: #62c98f; }
+.memory-note { color: #6f7a90; }
+
+.tasks-layout { grid-template-columns: 320px minmax(0, 1fr); }
+.task-list-pane { background: #101520; padding: 26px 18px; }
+.pane-header h1, .page-header h1 { font-size: 21px; letter-spacing: -.55px; }
+.eyebrow { color: #7898ff; font-size: 8px; letter-spacing: 1.2px; }
+.icon-button { border-color: #2c3549; border-radius: 6px; }
+.icon-button:hover { background: #192131; border-color: #485776; }
+.primary-button, .secondary-button, .danger-button, .deny-button, .approve-button { border-radius: 6px; min-height: 36px; font-size: 11px; }
+.primary-button, .approve-button { background: #7596ff; color: #fff; }
+.primary-button:hover, .approve-button:hover { background: #89a6ff; }
+.secondary-button { color: #c1cada; background: #181f2d; border-color: #303a4f; }
+.create-button { margin: 25px 0 12px; }
+.search-box { height: 36px; background: #0c111b; border-color: #293247; border-radius: 6px; }
+.task-list { gap: 3px; margin-top: 12px; }
+.task-item { border-radius: 6px; padding: 12px 11px; }
+.task-item:hover { background: #151c29; }
+.task-item.selected { background: #192235; border-color: #344360; }
+.task-item > strong { font-size: 11px; font-weight: 500; color: #e1e6f0; }
+.status { border-radius: 10px; padding: 2px 7px; background: transparent; border: 1px solid #354057; }
+.status-done, .status-diagnosed { color: #74c99a; background: transparent; border-color: #284537; }
+.status-failed, .status-cancelled { color: #ed8080; background: transparent; border-color: #4a2929; }
+.status-running { color: #d9b66f; background: transparent; border-color: #4b402b; }
+.status-waiting_permission { color: #c4a1df; background: transparent; border-color: #44344f; }
+
+.trace-pane, .content-page { background: #0c0f18; }
+.trace-header { padding: 34px 46px 28px; border-color: #242c3e; background: linear-gradient(180deg, rgba(83, 105, 177, .08), transparent); }
+.trace-header h2 { font-size: 22px; font-weight: 600; letter-spacing: -.45px; margin: 15px 0 8px; max-width: 800px; }
+.trace-header p, .page-header p { color: #8692a8; }
+.task-content { width: min(900px, calc(100% - 72px)); margin: 0 auto; padding: 38px 0 80px; }
+.final-answer { margin: 0 0 26px; padding: 26px 28px; background: linear-gradient(135deg, rgba(94, 125, 225, .12), rgba(142, 103, 211, .06)); border: 1px solid #334366; border-radius: 8px; }
+.final-answer div { color: #9bb2ff; font: 500 10px "IBM Plex Mono"; text-transform: uppercase; letter-spacing: .7px; }
+.final-answer p { margin-top: 16px; color: #edf1fa; font-size: 13px; line-height: 1.85; }
+.trace-disclosure { border: 1px solid #293248; border-radius: 8px; background: #101520; overflow: hidden; }
+.trace-disclosure > summary { list-style: none; min-height: 54px; padding: 0 17px; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #c4ccdc; cursor: pointer; font-size: 11px; }
+.trace-disclosure > summary::-webkit-details-marker { display: none; }
+.trace-disclosure > summary:hover { background: #151c29; }
+.trace-disclosure > summary > span:first-child { display: flex; align-items: center; gap: 8px; }
+.trace-disclosure > summary small { color: #748097; font-size: 9px; font-weight: 400; }
+.trace-summary-metrics { color: #748097; font: 9px "IBM Plex Mono"; }
+.trace-disclosure[open] > summary { border-bottom: 1px solid #293248; }
+.metric-strip { padding: 0 20px; background: #0e131d; border-color: #252e41; }
+.metric { min-width: 100px; padding: 14px 20px 14px 0; }
+.metric strong { font-size: 15px; font-weight: 500; }
+.timeline { max-width: none; padding: 26px 28px 36px; }
+.event-dot { width: 23px; height: 23px; color: #91a9fa; background: #172038; border-color: #34466f; }
+.event-dot svg { width: 13px; }
+.event-line { background: #293247; }
+.event-body { padding-bottom: 20px; }
+.event-type { color: #a7b2c6; font-size: 9px; }
+.event-body > p { color: #d1d7e3; font-size: 11px; }
+pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius: 6px; }
+
+.empty-icon { background: #151c29; border-color: #2b354a; color: #8195d8; border-radius: 8px; }
+.empty-state h3 { color: #d4dae6; }
+.modal-backdrop { background: rgba(0, 0, 0, .76); }
+.modal { background: #121722; border-color: #303b51; border-radius: 9px; box-shadow: 0 24px 80px rgba(0,0,0,.72); }
+.modal textarea, .modal input, .modal select, .diagnosis-form input { background: #0c111b; border-color: #2c364b; border-radius: 6px; }
+.modal textarea:focus, .modal input:focus, .modal select:focus, .diagnosis-form input:focus { border-color: #708fe8; }
+.content-page { padding-top: 42px; }
+.diagnosis-form, .report-summary, .report-section, .permission-card { background: #121722; border-color: #293248; border-radius: 8px; }
+.feature-placeholder { background: #101520; border-color: #2b354a; border-radius: 8px; }
+.pipeline { color: #626262; }
+.evidence-card { background: #0d121d; border-color: #293248; border-radius: 6px; }
+.evidence-card header { color: #aebeff; }
+.finding b, .recommendation strong { color: #8fc7aa; }
+.permission-card { border-color: #2b2924; }
+.risk-icon { border-radius: 7px; }
+.error-banner { border-radius: 6px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 68px 1fr; }
   .sidebar { width: 68px; padding: 18px 9px; }
@@ -220,6 +326,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; color: #b5c2bd; background
   .task-list-pane { border-right: 0; border-bottom: 1px solid var(--line); }
   .task-list { max-height: 260px; }
   .trace-header, .timeline, .content-page { padding-left: 18px; padding-right: 18px; }
+  .task-content { width: auto; padding: 24px 18px 60px; }
   .metric-strip { padding-left: 18px; overflow-x: auto; }
   .form-grid, .report-grid, .evidence-grid, .diagnosis-form { grid-template-columns: 1fr; }
   .diagnosis-form .primary-button { width: 100%; }
