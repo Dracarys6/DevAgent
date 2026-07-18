@@ -11,6 +11,7 @@ import {
   FileSearch,
   GitCommitHorizontal,
   LoaderCircle,
+  Moon,
   Play,
   RefreshCw,
   Search,
@@ -18,6 +19,7 @@ import {
   ShieldCheck,
   Sparkles,
   Square,
+  Sun,
   Terminal,
   Wrench,
   X,
@@ -34,8 +36,17 @@ import type {
 } from "./types";
 
 type View = "tasks" | "diagnosis" | "permissions";
+type Theme = "dark" | "light";
 
 const terminalStatuses: TaskStatus[] = ["DONE", "FAILED", "CANCELLED"];
+
+function getInitialTheme(): Theme {
+  const savedTheme = window.localStorage.getItem("devagent-theme");
+  if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
+  return window.matchMedia("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
+}
 
 function formatTime(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -141,6 +152,7 @@ function EventCard({ step }: { step: TraceStep }) {
 
 function App() {
   const [view, setView] = useState<View>("tasks");
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [trace, setTrace] = useState<TaskTrace | null>(null);
@@ -150,6 +162,12 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   const selectedTask = tasks.find((task) => task.task_id === selectedTaskId);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    window.localStorage.setItem("devagent-theme", theme);
+  }, [theme]);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -257,6 +275,15 @@ function App() {
             {permissions.length > 0 && (
               <span className="nav-count">{permissions.length}</span>
             )}
+          </button>
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+            aria-label={`切换到${theme === "dark" ? "亮色" : "暗色"}模式`}
+            title={`切换到${theme === "dark" ? "亮色" : "暗色"}模式`}
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === "dark" ? "亮色模式" : "暗色模式"}
           </button>
         </nav>
 

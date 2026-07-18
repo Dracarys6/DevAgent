@@ -9,6 +9,18 @@
       content="DevAgent 可控、可观测的研发效能 Agent 控制台"
     />
     <title>DevAgent Console</title>
+    <script>
+      (() => {
+        const savedTheme = localStorage.getItem("devagent-theme");
+        const theme = savedTheme === "light" || savedTheme === "dark"
+          ? savedTheme
+          : matchMedia("(prefers-color-scheme: light)").matches
+            ? "light"
+            : "dark";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
