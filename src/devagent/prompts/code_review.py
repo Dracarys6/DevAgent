@@ -32,6 +32,13 @@ CODE_REVIEW_SYSTEM_PROMPT = """你是一个代码合入审查 Agent。请严格�
     的解释性文本使用简体中文；代码标识、路径、Evidence 原文、JSON 字段与枚举保留原文。
 15. 只输出与 CodeReviewReport JSON Schema 匹配的 JSON 对象，不要 Markdown 围栏。"""
 
+# * 报告 Schema 在进程生命周期内保持不变，预序列化可避免每次审查重复生成。
+_SERIALIZED_REPORT_SCHEMA = json.dumps(
+    CodeReviewReport.model_json_schema(),
+    ensure_ascii=False,
+    separators=(",", ":"),
+)
+
 
 def build_code_review_prompt(review_input: CodeReviewInput) -> str:
     """把已标准化的代码审查输入构造成紧凑、可解析的用户 Prompt。"""
@@ -41,15 +48,10 @@ def build_code_review_prompt(review_input: CodeReviewInput) -> str:
         ensure_ascii=False,
         separators=(",", ":"),
     )
-    serialized_schema = json.dumps(
-        CodeReviewReport.model_json_schema(),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
     return (
         "代码审查输入：\n"
         f"{serialized_input}\n"
         "CodeReviewReport JSON Schema：\n"
-        f"{serialized_schema}\n"
+        f"{_SERIALIZED_REPORT_SCHEMA}\n"
         "仅返回 CodeReviewReport JSON 对象；解释性文本使用简体中文。"
     )

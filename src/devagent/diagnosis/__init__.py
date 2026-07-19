@@ -12,15 +12,6 @@ from .models import (
     DiagnosisInput,
     LogDiagnosisInput,
 )
-from .service import (
-    DiagnosisService,
-    DiagnosisServiceError,
-    DiagnosisServiceErrorCode,
-    CIEvidenceCollector,
-    LocalCIEvidenceCollector,
-    ReportIdFactory,
-)
-
 __all__ = [
     "EvidenceKind",
     "Evidence",
@@ -41,3 +32,21 @@ __all__ = [
     "LocalCIEvidenceCollector",
     "ReportIdFactory",
 ]
+
+
+def __getattr__(name: str):
+    """按需加载服务类型，避免模型与 Prompt 包之间形成循环导入。"""
+    service_exports = {
+        "DiagnosisService",
+        "DiagnosisServiceError",
+        "DiagnosisServiceErrorCode",
+        "CIEvidenceCollector",
+        "LocalCIEvidenceCollector",
+        "ReportIdFactory",
+    }
+    if name not in service_exports:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    from . import service
+
+    return getattr(service, name)
