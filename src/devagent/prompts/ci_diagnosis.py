@@ -2,7 +2,6 @@ import json
 
 from devagent.diagnosis.models import DiagnosisInput, DiagnosisReport
 
-
 CI_DIAGNOSIS_SYSTEM_PROMPT = """你是一个 CI 诊断 Agent。请严格遵循以下规则：
 1. 只依据 INPUT Evidence 中的证据作出事实性陈述。
 2. 每个 finding 和 recommendation 必须填写 evidence_ids。

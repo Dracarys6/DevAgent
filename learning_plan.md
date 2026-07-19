@@ -827,7 +827,7 @@ Day 44：实现 git_compare 与变更证据采集 [x]
 接口：git_compare(...) -> GitCompareResult；GitCompareTool -> ToolResult
 验收：使用 merge base 读取变更范围；保留文件状态、hunk 定位和截断元数据；不执行 checkout、merge、commit 或 push
 
-Day 45：设计证据驱动的 Merge Review Prompt
+Day 45：设计证据驱动的 Merge Review Prompt [x]
 产出：src/devagent/prompts/code_review.py、tests/prompts/test_code_review.py
 边界：只报告证据支持的可行动问题，区分 correctness、security、compatibility、performance、maintainability、test_gap，不把格式偏好升级为阻塞问题
 验收：固定输出通过 CodeReviewReport 校验；证据不足时返回 missing_evidence

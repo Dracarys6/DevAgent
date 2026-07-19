@@ -4,8 +4,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from devagent.diagnosis import Evidence, MissingEvidence
-from devagent.diagnosis.models import EvidenceId
+from devagent.diagnosis.models import Evidence, EvidenceId, MissingEvidence
 
 # * Annotated 为基础类型附加可复用的 Pydantic 校验规则。
 NonEmptyText = Annotated[str, Field(min_length=1)]
