@@ -5,6 +5,7 @@ from pathlib import Path
 from devagent.tools.builtin import (
     GetCIResultTool,
     GitDiffTool,
+    GitCompareTool,
     ReadFileTool,
     RunShellTool,
     SearchCodeTool,
@@ -77,6 +78,35 @@ def test_git_diff_tool_validates_arguments_before_execution(tmp_path: Path):
     assert result.error_code == ErrorCode.ARGUMENT_VALIDATION_ERROR
 
 
+def test_git_compare_tool_returns_structured_change_evidence(
+    git_repo_for_compare: tuple[Path, dict[str, str]],
+):
+    repo, refs = git_repo_for_compare
+
+    result = GitCompareTool().invoke(
+        {"base_ref": "main", "head_ref": "feature", "workspace": str(repo)}
+    )
+    content = json.loads(result.content)
+
+    assert result.success is True
+    assert content["merge_base"] == refs["common"]
+    assert content["changed_files"]
+
+
+def test_git_compare_tool_validates_arguments_before_execution(tmp_path: Path):
+    result = GitCompareTool().invoke(
+        {
+            "base_ref": "main",
+            "head_ref": "feature",
+            "workspace": str(tmp_path),
+            "max_chars": 0,
+        }
+    )
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.ARGUMENT_VALIDATION_ERROR
+
+
 def test_get_ci_result_tool_returns_failed_evidence():
     result = GetCIResultTool().invoke({"commit_id": "abc123"})
 
@@ -115,6 +145,7 @@ def test_builtin_tool_risk_levels():
     assert SearchCodeTool.risk_level == RiskLevel.LOW
     assert SearchLogTool.risk_level == RiskLevel.LOW
     assert RunShellTool.risk_level == RiskLevel.HIGH
+    assert GitCompareTool.risk_level == RiskLevel.LOW
 
 
 def test_builtin_tool_arguments_are_validated_before_execution(tmp_path: Path):
@@ -136,6 +167,7 @@ def test_create_builtin_registry_registers_all_tools():
 
     assert [tool.name for tool in registry.list()] == [
         "get_ci_result",
+        "git_compare",
         "git_diff",
         "read_file",
         "run_shell",

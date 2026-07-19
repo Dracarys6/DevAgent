@@ -822,9 +822,9 @@ Day 43：定义代码审查领域模型与风险分类 [x]
 类型：CodeReviewInput、CodeReviewReport、ReviewFinding、ReviewSeverity、ReviewCategory
 验收：每条 finding 必须包含文件、行号、evidence_ids、修改建议和验证方式；悬空证据引用被拒绝
 
-Day 44：实现 git_compare 与变更证据采集
+Day 44：实现 git_compare 与变更证据采集 [x]
 产出：扩展 src/devagent/tools/git_tools.py、tests/tools/test_git_tools.py
-接口：git_compare(base_ref, head_ref, workspace) -> ToolResult
+接口：git_compare(...) -> GitCompareResult；GitCompareTool -> ToolResult
 验收：使用 merge base 读取变更范围；保留文件状态、hunk 定位和截断元数据；不执行 checkout、merge、commit 或 push
 
 Day 45：设计证据驱动的 Merge Review Prompt

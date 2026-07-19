@@ -56,6 +56,7 @@ def test_builtin_tools_export_expected_risk_levels():
 
     assert risk_levels_by_name == {
         "get_ci_result": RiskLevel.LOW.value,
+        "git_compare": RiskLevel.LOW.value,
         "git_diff": RiskLevel.LOW.value,
         "read_file": RiskLevel.LOW.value,
         "run_shell": RiskLevel.HIGH.value,
@@ -71,3 +72,21 @@ def test_builtin_tool_schemas_include_parameters_and_description():
         assert schema["description"]
         assert schema["parameters"]["type"] == "object"
         assert "properties" in schema["parameters"]
+
+
+def test_git_compare_schema_exposes_review_range_parameters():
+    schemas = create_builtin_registry().schemas()
+    schema = next(item for item in schemas if item["name"] == "git_compare")
+
+    assert set(schema["parameters"]["properties"]) == {
+        "base_ref",
+        "head_ref",
+        "workspace",
+        "max_chars",
+        "timeout",
+    }
+    assert set(schema["parameters"]["required"]) == {
+        "base_ref",
+        "head_ref",
+        "workspace",
+    }

@@ -6,7 +6,13 @@ from .models import ErrorCode, ToolResult
 from .read_file_tools import read_file, MAX_READ_LINES
 from .search_code_tools import search_code, MAX_SEARCH_CHARS, DEFAULT_SEARCH_TIMEOUT
 from .run_shell_tools import run_shell, MAX_OUTPUT_CHARS, DEFAULT_SHELL_TIMEOUT
-from .git_tools import DEFAULT_GIT_TIMEOUT, MAX_GIT_DIFF_CHARS, git_diff
+from .git_tools import (
+    DEFAULT_GIT_TIMEOUT,
+    MAX_GIT_DIFF_CHARS,
+    MAX_GIT_COMPARE_CHARS,
+    git_diff,
+    git_compare,
+)
 from .ci_tools import (
     DEFAULT_CI_LOG_CHARS,
     get_ci_result,
@@ -143,6 +149,31 @@ def _search_log_error_code(error: Exception) -> ErrorCode:
             ("日志数据路径不是文件", ErrorCode.NOT_A_FILE),
             ("日志数据文件位于 data_dir 之外", ErrorCode.PATH_OUTSIDE_WORKSPACE),
             ("没有权限读取日志数据文件", ErrorCode.PERMISSION_DENIED),
+        ),
+    )
+
+
+def _git_compare_error_code(error: Exception) -> ErrorCode:
+    return _error_code_from_exception(
+        error,
+        default=ErrorCode.GIT_COMPARE_ERROR,
+        message_rules=(
+            ("base_ref 不能为空", ErrorCode.INVALID_PARAMETER),
+            ("head_ref 不能为空", ErrorCode.INVALID_PARAMETER),
+            ("不能相同", ErrorCode.INVALID_PARAMETER),
+            ("解析到同一 commit", ErrorCode.INVALID_PARAMETER),
+            ("首尾空白", ErrorCode.INVALID_PARAMETER),
+            ("max_chars", ErrorCode.INVALID_PARAMETER),
+            ("timeout", ErrorCode.INVALID_PARAMETER),
+            ("工作区不存在", ErrorCode.WORKSPACE_NOT_FOUND),
+            ("工作区不是目录", ErrorCode.WORKSPACE_NOT_DIR),
+            ("未找到 git 命令", ErrorCode.COMMAND_NOT_FOUND),
+            ("没有权限执行 git 命令", ErrorCode.PERMISSION_DENIED),
+            ("执行超时", ErrorCode.COMMAND_TIMEOUT),
+            ("工作区不是 Git 仓库", ErrorCode.COMMAND_EXECUTION_FAILED),
+            ("无法解析 base_ref", ErrorCode.COMMAND_EXECUTION_FAILED),
+            ("无法解析 head_ref", ErrorCode.COMMAND_EXECUTION_FAILED),
+            ("没有共同祖先", ErrorCode.COMMAND_EXECUTION_FAILED),
         ),
     )
 
@@ -324,4 +355,44 @@ def search_log_as_tool_result(
         default_error_code=ErrorCode.LOG_SEARCH_ERROR,
         error_message_prefix="搜索日志失败",
         error_code_mapper=_search_log_error_code,
+    )
+
+
+def git_compare_as_tool_result(
+    base_ref: str,
+    head_ref: str,
+    workspace: str | Path,
+    max_chars: int = MAX_GIT_COMPARE_CHARS,
+    timeout: float = DEFAULT_GIT_TIMEOUT,
+) -> ToolResult:
+    metadata = {
+        "base_ref": base_ref,
+        "head_ref": head_ref,
+        "workspace": str(workspace),
+        "max_chars": max_chars,
+        "timeout": timeout,
+    }
+
+    def action() -> str:
+        result = git_compare(base_ref, head_ref, workspace, max_chars, timeout)
+        metadata.update(
+            {
+                "base_sha": result.base_sha,
+                "head_sha": result.head_sha,
+                "merge_base": result.merge_base,
+                "changed_file_count": len(result.changed_files),
+                "hunk_count": result.hunk_count,
+                "truncated": result.truncated,
+                "original_patch_chars": result.original_patch_chars,
+                "returned_patch_chars": result.returned_patch_chars,
+            }
+        )
+        return result.model_dump_json()
+
+    return _to_tool_result(
+        action=action,
+        metadata=metadata,
+        default_error_code=ErrorCode.GIT_COMPARE_ERROR,
+        error_message_prefix="比较 Git 变更失败",
+        error_code_mapper=_git_compare_error_code,
     )

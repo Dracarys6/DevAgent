@@ -10,11 +10,13 @@ from devagent.tools.adapters import (
     read_file_as_tool_result,
     run_shell_as_tool_result,
     search_code_as_tool_result,
+    git_compare_as_tool_result,
     git_diff_as_tool_result,
     search_log_as_tool_result,
 )
 
 from devagent.tools.models import ErrorCode
+from devagent.tools.git_tools import GitCompareResult
 
 
 def test_read_file_as_tool_result_success(tmp_path: Path):
@@ -222,6 +224,79 @@ def test_git_diff_as_tool_result_maps_permission_error(tmp_path: Path, monkeypat
 
     assert result.success is False
     assert result.error_code == ErrorCode.PERMISSION_DENIED
+
+
+def test_git_compare_as_tool_result_returns_structured_evidence(
+    git_repo_for_compare: tuple[Path, dict[str, str]],
+):
+    repo, refs = git_repo_for_compare
+
+    result = git_compare_as_tool_result("main", "feature", repo)
+    content = GitCompareResult.model_validate_json(result.content)
+
+    assert result.success is True
+    assert content.merge_base == refs["common"]
+    assert result.metadata["changed_file_count"] == 4
+    assert result.metadata["hunk_count"] == content.hunk_count
+    assert result.metadata["truncated"] is False
+
+
+@pytest.mark.parametrize(
+    ("base_ref", "head_ref", "error_code"),
+    [
+        ("main", "main", ErrorCode.INVALID_PARAMETER),
+        ("missing", "feature", ErrorCode.COMMAND_EXECUTION_FAILED),
+    ],
+)
+def test_git_compare_as_tool_result_maps_ref_errors(
+    git_repo_for_compare: tuple[Path, dict[str, str]],
+    base_ref: str,
+    head_ref: str,
+    error_code: ErrorCode,
+):
+    repo, _ = git_repo_for_compare
+
+    result = git_compare_as_tool_result(base_ref, head_ref, repo)
+
+    assert result.success is False
+    assert result.error_code == error_code
+    assert result.content == ""
+    assert result.error_message is not None
+
+
+def test_git_compare_as_tool_result_maps_missing_workspace(tmp_path: Path):
+    result = git_compare_as_tool_result("main", "feature", tmp_path / "missing")
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.WORKSPACE_NOT_FOUND
+
+
+@pytest.mark.parametrize(
+    ("error", "error_code"),
+    [
+        (FileNotFoundError("git"), ErrorCode.COMMAND_NOT_FOUND),
+        (PermissionError("git"), ErrorCode.PERMISSION_DENIED),
+        (
+            subprocess.TimeoutExpired(["git", "rev-parse"], timeout=0.01),
+            ErrorCode.COMMAND_TIMEOUT,
+        ),
+    ],
+)
+def test_git_compare_as_tool_result_maps_execution_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+    error_code: ErrorCode,
+):
+    def raise_error(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr("devagent.tools.git_tools.subprocess.run", raise_error)
+
+    result = git_compare_as_tool_result("main", "feature", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == error_code
 
 
 def test_get_ci_result_as_tool_result_success():

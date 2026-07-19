@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from .base import BaseTool
 from .models import RiskLevel, ToolResult
-from .git_tools import GitDiffArgs
+from .git_tools import GitDiffArgs, GitCompareArgs
 from .ci_tools import GetCIResultArgs
 from .log_tools import SearchLogArgs
 from .adapters import (
@@ -11,6 +11,7 @@ from .adapters import (
     git_diff_as_tool_result,
     get_ci_result_as_tool_result,
     search_log_as_tool_result,
+    git_compare_as_tool_result,
 )
 from .registry import ToolRegistry
 
@@ -100,6 +101,16 @@ class SearchLogTool(BaseTool[SearchLogArgs]):
         return search_log_as_tool_result(**args.model_dump())
 
 
+class GitCompareTool(BaseTool[GitCompareArgs]):
+    name = "git_compare"
+    description = "比较 base/head 的待合入范围，返回文件状态和 diff hunk 证据。"
+    args_model = GitCompareArgs
+    risk_level = RiskLevel.LOW
+
+    def execute(self, args: GitCompareArgs) -> ToolResult:
+        return git_compare_as_tool_result(**args.model_dump())
+
+
 def create_builtin_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(ReadFileTool())
@@ -108,4 +119,5 @@ def create_builtin_registry() -> ToolRegistry:
     registry.register(GitDiffTool())
     registry.register(GetCIResultTool())
     registry.register(SearchLogTool())
+    registry.register(GitCompareTool())
     return registry

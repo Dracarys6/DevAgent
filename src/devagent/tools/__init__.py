@@ -8,6 +8,7 @@ from .builtin import (
     GitDiffTool,
     GetCIResultTool,
     SearchLogTool,
+    GitCompareTool,
     create_builtin_registry,
 )
 from .models import ErrorCode, RiskLevel, ToolResult
@@ -36,4 +37,5 @@ __all__ = [
     "ToolExecutionContext",
     "ToolExecutionResult",
     "ToolExecutionStatus",
+    "GitCompareTool",
 ]

@@ -37,6 +37,7 @@ def test_tool_registry_to_openai_tools_can_filter_by_risk_level():
 
     assert {tool["function"]["name"] for tool in tools} == {
         "get_ci_result",
+        "git_compare",
         "git_diff",
         "read_file",
         "search_code",
