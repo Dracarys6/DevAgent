@@ -13,6 +13,7 @@ import {
   ExternalLink,
   GitCommitHorizontal,
   GitPullRequest,
+  History,
   LoaderCircle,
   Moon,
   Play,
@@ -25,11 +26,14 @@ import {
   Square,
   Sun,
   Terminal,
+  Trash2,
   Wrench,
   X,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { api, getApiUrl, openTaskStream } from "./api";
+import { useLocalHistory } from "./history";
+import type { LocalHistoryEntry } from "./history";
 import type {
   AgentTask,
   CodeReviewReport,
@@ -42,6 +46,17 @@ import type {
 
 type View = "tasks" | "diagnosis" | "review" | "permissions" | "api";
 type Theme = "dark" | "light";
+
+interface DiagnosisHistoryInput {
+  commit_id: string;
+  workspace: string;
+}
+
+interface ReviewHistoryInput {
+  base_ref: string;
+  head_ref: string;
+  workspace: string;
+}
 
 const terminalStatuses: TaskStatus[] = ["DONE", "FAILED", "CANCELLED"];
 
@@ -84,6 +99,52 @@ function EmptyState({
       <h3>{title}</h3>
       <p>{description}</p>
     </div>
+  );
+}
+
+function LocalHistoryPanel<TInput, TReport>({
+  entries,
+  activeId,
+  onSelect,
+  onClear,
+  renderTitle,
+  renderMeta,
+}: {
+  entries: LocalHistoryEntry<TInput, TReport>[];
+  activeId: string | null;
+  onSelect: (entry: LocalHistoryEntry<TInput, TReport>) => void;
+  onClear: () => void;
+  renderTitle: (entry: LocalHistoryEntry<TInput, TReport>) => string;
+  renderMeta: (entry: LocalHistoryEntry<TInput, TReport>) => string;
+}) {
+  if (entries.length === 0) return null;
+
+  return (
+    <section className="local-history">
+      <header>
+        <div><History size={14} /><strong>本地历史</strong><span>最近 {entries.length}/10 条</span></div>
+        <button type="button" onClick={onClear}><Trash2 size={13} />清空</button>
+      </header>
+      <div className="local-history-list">
+        {entries.map((entry) => (
+          <button
+            type="button"
+            className={activeId === entry.id ? "active" : ""}
+            key={entry.id}
+            onClick={() => onSelect(entry)}
+          >
+            <strong>{renderTitle(entry)}</strong>
+            <span>{renderMeta(entry)}</span>
+            <time>{new Intl.DateTimeFormat("zh-CN", {
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            }).format(new Date(entry.created_at))}</time>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -659,10 +720,14 @@ function Metric({
 }
 
 function CodeReviewView({ onError }: { onError: (message: string) => void }) {
-  const [baseRef, setBaseRef] = useState("main");
-  const [headRef, setHeadRef] = useState("HEAD");
-  const [workspace, setWorkspace] = useState(".");
-  const [report, setReport] = useState<CodeReviewReport | null>(null);
+  const history = useLocalHistory<ReviewHistoryInput, CodeReviewReport>(
+    "devagent-review-history-v1",
+  );
+  const latest = history.entries[0];
+  const [baseRef, setBaseRef] = useState(() => latest?.input.base_ref ?? "main");
+  const [headRef, setHeadRef] = useState(() => latest?.input.head_ref ?? "HEAD");
+  const [workspace, setWorkspace] = useState(() => latest?.input.workspace ?? ".");
+  const [report, setReport] = useState<CodeReviewReport | null>(() => latest?.report ?? null);
   const [loading, setLoading] = useState(false);
 
   async function review(event: FormEvent) {
@@ -675,7 +740,23 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
     }
     setLoading(true);
     try {
-      setReport(await api.reviewCode(normalizedBaseRef, normalizedHeadRef, workspace.trim()));
+      const normalizedWorkspace = workspace.trim();
+      const nextReport = await api.reviewCode(
+        normalizedBaseRef,
+        normalizedHeadRef,
+        normalizedWorkspace,
+      );
+      setReport(nextReport);
+      history.add({
+        id: nextReport.review_id,
+        created_at: new Date().toISOString(),
+        input: {
+          base_ref: normalizedBaseRef,
+          head_ref: normalizedHeadRef,
+          workspace: normalizedWorkspace,
+        },
+        report: nextReport,
+      });
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : "代码审查失败");
     } finally {
@@ -711,6 +792,22 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
           开始审查
         </button>
       </form>
+      <LocalHistoryPanel
+        entries={history.entries}
+        activeId={report?.review_id ?? null}
+        onSelect={(entry) => {
+          setBaseRef(entry.input.base_ref);
+          setHeadRef(entry.input.head_ref);
+          setWorkspace(entry.input.workspace);
+          setReport(entry.report);
+        }}
+        onClear={() => {
+          history.clear();
+          setReport(null);
+        }}
+        renderTitle={(entry) => `${entry.input.base_ref} → ${entry.input.head_ref}`}
+        renderMeta={(entry) => `${entry.report.findings.length} findings · ${entry.report.status}`}
+      />
       {!report ? (
         <div className="feature-placeholder review-placeholder">
           <EmptyState
@@ -829,16 +926,31 @@ function CodeReviewReportView({ report }: { report: CodeReviewReport }) {
 }
 
 function DiagnosisView({ onError }: { onError: (message: string) => void }) {
-  const [commitId, setCommitId] = useState("abc123");
-  const [workspace, setWorkspace] = useState("examples/sample_repo");
-  const [report, setReport] = useState<DiagnosisReport | null>(null);
+  const history = useLocalHistory<DiagnosisHistoryInput, DiagnosisReport>(
+    "devagent-diagnosis-history-v1",
+  );
+  const latest = history.entries[0];
+  const [commitId, setCommitId] = useState(() => latest?.input.commit_id ?? "abc123");
+  const [workspace, setWorkspace] = useState(
+    () => latest?.input.workspace ?? "examples/sample_repo",
+  );
+  const [report, setReport] = useState<DiagnosisReport | null>(() => latest?.report ?? null);
   const [loading, setLoading] = useState(false);
 
   async function diagnose(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     try {
-      setReport(await api.diagnoseCI(commitId, workspace));
+      const normalizedCommitId = commitId.trim();
+      const normalizedWorkspace = workspace.trim();
+      const nextReport = await api.diagnoseCI(normalizedCommitId, normalizedWorkspace);
+      setReport(nextReport);
+      history.add({
+        id: nextReport.report_id,
+        created_at: new Date().toISOString(),
+        input: { commit_id: normalizedCommitId, workspace: normalizedWorkspace },
+        report: nextReport,
+      });
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : "CI 诊断失败");
     } finally {
@@ -869,6 +981,21 @@ function DiagnosisView({ onError }: { onError: (message: string) => void }) {
           开始诊断
         </button>
       </form>
+      <LocalHistoryPanel
+        entries={history.entries}
+        activeId={report?.report_id ?? null}
+        onSelect={(entry) => {
+          setCommitId(entry.input.commit_id);
+          setWorkspace(entry.input.workspace);
+          setReport(entry.report);
+        }}
+        onClear={() => {
+          history.clear();
+          setReport(null);
+        }}
+        renderTitle={(entry) => `Commit ${entry.input.commit_id}`}
+        renderMeta={(entry) => entry.report.status}
+      />
       {!report ? (
         <div className="feature-placeholder">
           <EmptyState
