@@ -16,6 +16,7 @@ Permission API 和 Diagnosis API，不把 UI 逻辑耦合进 `AgentRuntime`。
 - SSE 事件触发后的任务与 Trace 增量刷新；
 - 待审批请求查询，以及单次允许或拒绝；
 - CI 诊断表单和结构化证据报告；
+- 内嵌 FastAPI Swagger UI 的 API 调试页，并提供 OpenAPI JSON 入口；
 - FastAPI 本地开发 CORS 配置；
 - 桌面端优先，并提供窄屏响应式布局。
 
@@ -44,6 +45,12 @@ Permission API 和 Diagnosis API，不把 UI 逻辑耦合进 `AgentRuntime`。
 Agent 执行是服务端单向事件流，首版使用 `EventSource` 订阅现有 SSE 接口。
 收到事件后重新获取任务与 Trace，使页面复用后端的排序、脱敏和 Trace 汇总契约。
 普通 HTTP 继续承担任务创建、取消和权限审批。
+
+### API 调试复用 OpenAPI 契约
+
+控制台通过 `/docs` 内嵌 FastAPI 自动生成的 Swagger UI，并提供 `/openapi.json` 原始
+Schema 链接。后端新增普通 HTTP 路由后无需重复维护前端表单即可参与调试。WebSocket
+不属于 OpenAPI；SSE 虽可发起 HTTP 请求，但长连接调试仍应使用浏览器开发工具或专用客户端。
 
 ### 敏感配置留在服务端
 

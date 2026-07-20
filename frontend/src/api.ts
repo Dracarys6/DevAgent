@@ -7,8 +7,12 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
+export function getApiUrl(path: string): string {
+  return `${API_BASE.replace(/\/$/, "")}${path}`;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(getApiUrl(path), {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -78,7 +82,7 @@ export function openTaskStream(
   onError: () => void,
 ): EventSource {
   const stream = new EventSource(
-    `${API_BASE}/api/v1/agent/tasks/${taskId}/stream`,
+    getApiUrl(`/api/v1/agent/tasks/${taskId}/stream`),
   );
   const eventTypes = [
     "agent_started",

@@ -3,12 +3,14 @@ import {
   AlertTriangle,
   Ban,
   Bot,
+  Braces,
   Check,
   ChevronRight,
   CircleDot,
   Clock3,
   Code2,
   FileSearch,
+  ExternalLink,
   GitCommitHorizontal,
   LoaderCircle,
   Moon,
@@ -25,7 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { api, openTaskStream } from "./api";
+import { api, getApiUrl, openTaskStream } from "./api";
 import type {
   AgentTask,
   DiagnosisReport,
@@ -35,7 +37,7 @@ import type {
   TraceStep,
 } from "./types";
 
-type View = "tasks" | "diagnosis" | "permissions";
+type View = "tasks" | "diagnosis" | "permissions" | "api";
 type Theme = "dark" | "light";
 
 const terminalStatuses: TaskStatus[] = ["DONE", "FAILED", "CANCELLED"];
@@ -277,6 +279,12 @@ function App() {
             )}
           </button>
           <button
+            className={view === "api" ? "active" : ""}
+            onClick={() => setView("api")}
+          >
+            <Braces size={18} /> API 调试
+          </button>
+          <button
             className="theme-toggle"
             onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
             aria-label={`切换到${theme === "dark" ? "亮色" : "暗色"}模式`}
@@ -343,7 +351,39 @@ function App() {
             onRefresh={loadPermissions}
           />
         )}
+        {view === "api" && <ApiExplorerView />}
       </main>
+    </div>
+  );
+}
+
+function ApiExplorerView() {
+  const docsUrl = getApiUrl("/docs");
+  const schemaUrl = getApiUrl("/openapi.json");
+
+  return (
+    <div className="api-explorer-page">
+      <header className="api-explorer-header">
+        <div>
+          <span className="eyebrow">DEVELOPER TOOLS</span>
+          <h1>API 调试</h1>
+          <p>基于 FastAPI OpenAPI 契约浏览并调用所有 HTTP 接口。</p>
+        </div>
+        <div className="api-explorer-actions">
+          <a className="secondary-button" href={schemaUrl} target="_blank" rel="noreferrer">
+            <Braces size={15} /> OpenAPI JSON
+          </a>
+          <a className="primary-button" href={docsUrl} target="_blank" rel="noreferrer">
+            <ExternalLink size={15} /> 新标签页打开
+          </a>
+        </div>
+      </header>
+      <div className="api-explorer-note">
+        Swagger UI 覆盖普通 HTTP API；WebSocket 不属于 OpenAPI，SSE 流式接口建议使用专用客户端调试。
+      </div>
+      <div className="api-explorer-frame">
+        <iframe title="DevAgent Swagger API 调试" src={docsUrl} />
+      </div>
     </div>
   );
 }

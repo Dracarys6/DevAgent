@@ -232,6 +232,7 @@ nav button:hover { color: #e4e9f5; background: #151b28; }
 nav button.active { color: #b8c8ff; background: rgba(103, 137, 255, .12); box-shadow: inset 0 0 0 1px rgba(126, 155, 255, .14); }
 nav button:nth-child(2).active { color: #75ddd7; background: rgba(91, 214, 208, .1); box-shadow: inset 0 0 0 1px rgba(91, 214, 208, .14); }
 nav button:nth-child(3).active { color: #e5bd6d; background: rgba(214, 168, 75, .1); box-shadow: inset 0 0 0 1px rgba(214, 168, 75, .14); }
+nav button:nth-child(4).active { color: #c2a3ff; background: rgba(179, 140, 255, .1); box-shadow: inset 0 0 0 1px rgba(179, 140, 255, .14); }
 .theme-toggle { margin-top: 12px; border-top: 1px solid #222a3b; border-radius: 0; padding-top: 15px; }
 .theme-toggle:hover { border-radius: 6px; }
 .nav-count { background: #7898ff; color: #fff; }
@@ -346,6 +347,16 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 .risk-icon { border-radius: 7px; }
 .error-banner { border-radius: 6px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
 
+.api-explorer-page { min-height: 100vh; padding: 34px 38px 38px; background: var(--bg); }
+.api-explorer-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+.api-explorer-header h1 { margin: 5px 0 7px; font-size: 22px; letter-spacing: -.5px; }
+.api-explorer-header p { margin: 0; color: var(--muted); font-size: 11px; }
+.api-explorer-actions { display: flex; gap: 8px; }
+.api-explorer-actions a { text-decoration: none; white-space: nowrap; }
+.api-explorer-note { margin-bottom: 12px; padding: 10px 12px; color: #bca9f1; background: rgba(179, 140, 255, .07); border: 1px solid rgba(179, 140, 255, .2); border-radius: 6px; font-size: 10px; line-height: 1.6; }
+.api-explorer-frame { height: calc(100vh - 155px); min-height: 620px; overflow: hidden; background: #fff; border: 1px solid #303a50; border-radius: 8px; }
+.api-explorer-frame iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+
 /* * 亮色主题沿用蓝紫语义色，使用冷灰白降低长时间阅读的刺眼感。 */
 :root[data-theme="light"] {
   color: #172033;
@@ -376,6 +387,7 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 :root[data-theme="light"] nav button.active { color: #3f5fcf; background: #e9edfc; box-shadow: inset 0 0 0 1px #d7def8; }
 :root[data-theme="light"] nav button:nth-child(2).active { color: #137e82; background: #e2f4f2; box-shadow: inset 0 0 0 1px #c9e9e6; }
 :root[data-theme="light"] nav button:nth-child(3).active { color: #986612; background: #f8f0dc; box-shadow: inset 0 0 0 1px #ebdfbd; }
+:root[data-theme="light"] nav button:nth-child(4).active { color: #6943aa; background: #f0eafb; box-shadow: inset 0 0 0 1px #dfd2f2; }
 :root[data-theme="light"] .theme-toggle { border-color: #dce1eb; }
 :root[data-theme="light"] .sidebar-footer { border-color: #dce1eb; }
 :root[data-theme="light"] .service-row strong { color: #354158; }
@@ -440,6 +452,10 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 :root[data-theme="light"] .permission-card > p { color: #455168; }
 :root[data-theme="light"] .permission-card footer { border-color: #dde3ed; }
 :root[data-theme="light"] .error-banner { color: #8f3036; background: #fff0f1; border-color: #e7b9bc; }
+:root[data-theme="light"] .api-explorer-page { background: var(--bg); }
+:root[data-theme="light"] .api-explorer-header h1 { color: #172033; }
+:root[data-theme="light"] .api-explorer-note { color: #6943aa; background: #f1ecfa; border-color: #ddd1f0; }
+:root[data-theme="light"] .api-explorer-frame { border-color: #ccd4e2; }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 68px 1fr; }
@@ -460,7 +476,7 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
   .app-shell { display: block; padding-bottom: 62px; }
   .sidebar { inset: auto 0 0; width: 100%; height: 62px; flex-direction: row; padding: 8px 12px; border: 0; border-top: 1px solid var(--line); }
   .brand, .sidebar-footer { display: none; }
-  nav { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); }
+  nav { width: 100%; display: grid; grid-template-columns: repeat(5, 1fr); }
   nav button, nav button.active { font-size: 10px; flex-direction: column; gap: 2px; padding: 5px; }
   .theme-toggle { margin: 0; border: 0; border-radius: 6px; padding-top: 5px; }
   main { min-height: calc(100vh - 62px); }
@@ -472,4 +488,8 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
   .metric-strip { padding-left: 18px; overflow-x: auto; }
   .form-grid, .report-grid, .evidence-grid, .diagnosis-form { grid-template-columns: 1fr; }
   .diagnosis-form .primary-button { width: 100%; }
+  .api-explorer-page { padding: 22px 14px 18px; }
+  .api-explorer-header { display: grid; gap: 14px; }
+  .api-explorer-actions { flex-wrap: wrap; }
+  .api-explorer-frame { height: 720px; min-height: 0; }
 }
