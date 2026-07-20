@@ -56,6 +56,21 @@ export interface PermissionRequest {
   created_at: string;
 }
 
+export interface Evidence {
+  evidence_id: string;
+  kind: string;
+  tool_name: string;
+  source: string;
+  locator: string;
+  excerpt: string;
+}
+
+export interface MissingEvidence {
+  needed: string;
+  reason: string;
+  suggested_tool: string | null;
+}
+
 export interface DiagnosisReport {
   report_id: string;
   scenario: string;
@@ -68,23 +83,46 @@ export interface DiagnosisReport {
     confidence: string;
     evidence_ids: string[];
   }>;
-  evidence: Array<{
-    evidence_id: string;
-    kind: string;
-    tool_name: string;
-    source: string;
-    locator: string;
-    excerpt: string;
-  }>;
+  evidence: Evidence[];
   recommendations: Array<{
     action: string;
     rationale: string;
     evidence_ids: string[];
     verification_steps: string[];
   }>;
-  missing_evidence: Array<{
-    needed: string;
-    reason: string;
-    suggested_tool: string | null;
-  }>;
+  missing_evidence: MissingEvidence[];
+}
+
+export type ReviewSeverity = "critical" | "high" | "medium" | "low";
+
+export interface ReviewFinding {
+  finding_id: string;
+  severity: ReviewSeverity;
+  category:
+    | "correctness"
+    | "security"
+    | "compatibility"
+    | "performance"
+    | "maintainability"
+    | "test_gap";
+  title: string;
+  description: string;
+  file_path: string;
+  line_start: number;
+  line_end: number | null;
+  side: "base" | "head";
+  evidence_ids: string[];
+  suggestion: string;
+  verification_steps: string[];
+}
+
+export interface CodeReviewReport {
+  review_id: string;
+  base_ref: string;
+  head_ref: string;
+  status: "reviewed" | "insufficient_evidence";
+  summary: string;
+  findings: ReviewFinding[];
+  evidence: Evidence[];
+  missing_evidence: MissingEvidence[];
 }

@@ -1,5 +1,6 @@
 import type {
   AgentTask,
+  CodeReviewReport,
   DiagnosisReport,
   PermissionRequest,
   TaskTrace,
@@ -73,6 +74,15 @@ export const api = {
     request<DiagnosisReport>("/api/v1/diagnoses/ci", {
       method: "POST",
       body: JSON.stringify({ commit_id: commitId, workspace }),
+    }),
+  reviewCode: (baseRef: string, headRef: string, workspace: string) =>
+    request<CodeReviewReport>("/api/v1/reviews/code", {
+      method: "POST",
+      body: JSON.stringify({
+        base_ref: baseRef,
+        head_ref: headRef,
+        workspace,
+      }),
     }),
 };
 

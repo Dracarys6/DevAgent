@@ -12,12 +12,14 @@ import {
   FileSearch,
   ExternalLink,
   GitCommitHorizontal,
+  GitPullRequest,
   LoaderCircle,
   Moon,
   Play,
   RefreshCw,
   Search,
   Server,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Square,
@@ -30,6 +32,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { api, getApiUrl, openTaskStream } from "./api";
 import type {
   AgentTask,
+  CodeReviewReport,
   DiagnosisReport,
   PermissionRequest,
   TaskStatus,
@@ -37,7 +40,7 @@ import type {
   TraceStep,
 } from "./types";
 
-type View = "tasks" | "diagnosis" | "permissions" | "api";
+type View = "tasks" | "diagnosis" | "review" | "permissions" | "api";
 type Theme = "dark" | "light";
 
 const terminalStatuses: TaskStatus[] = ["DONE", "FAILED", "CANCELLED"];
@@ -270,6 +273,12 @@ function App() {
             <FileSearch size={18} /> CI 诊断
           </button>
           <button
+            className={view === "review" ? "active" : ""}
+            onClick={() => setView("review")}
+          >
+            <GitPullRequest size={18} /> 代码审查
+          </button>
+          <button
             className={view === "permissions" ? "active" : ""}
             onClick={() => setView("permissions")}
           >
@@ -344,6 +353,7 @@ function App() {
           />
         )}
         {view === "diagnosis" && <DiagnosisView onError={setError} />}
+        {view === "review" && <CodeReviewView onError={setError} />}
         {view === "permissions" && (
           <PermissionsView
             requests={permissions}
@@ -644,6 +654,176 @@ function Metric({
     <div className={alert && value > 0 ? "metric alert" : "metric"}>
       <strong>{value}</strong>
       <span>{label}</span>
+    </div>
+  );
+}
+
+function CodeReviewView({ onError }: { onError: (message: string) => void }) {
+  const [baseRef, setBaseRef] = useState("main");
+  const [headRef, setHeadRef] = useState("HEAD");
+  const [workspace, setWorkspace] = useState(".");
+  const [report, setReport] = useState<CodeReviewReport | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function review(event: FormEvent) {
+    event.preventDefault();
+    const normalizedBaseRef = baseRef.trim();
+    const normalizedHeadRef = headRef.trim();
+    if (normalizedBaseRef === normalizedHeadRef) {
+      onError("Base Ref 和 Head Ref 不能相同");
+      return;
+    }
+    setLoading(true);
+    try {
+      setReport(await api.reviewCode(normalizedBaseRef, normalizedHeadRef, workspace.trim()));
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "代码审查失败");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="content-page review-page">
+      <header className="page-header">
+        <div>
+          <span className="eyebrow">EVIDENCE-DRIVEN REVIEW</span>
+          <h1>代码审查</h1>
+          <p>比较真实合入范围，定位有证据支持的代码风险和测试缺口。</p>
+        </div>
+      </header>
+      <form className="review-form" onSubmit={(event) => void review(event)}>
+        <label>
+          Base Ref
+          <input required value={baseRef} onChange={(event) => setBaseRef(event.target.value)} />
+        </label>
+        <span className="ref-arrow">→</span>
+        <label>
+          Head Ref
+          <input required value={headRef} onChange={(event) => setHeadRef(event.target.value)} />
+        </label>
+        <label>
+          Workspace
+          <input required value={workspace} onChange={(event) => setWorkspace(event.target.value)} />
+        </label>
+        <button className="primary-button" disabled={loading}>
+          {loading ? <LoaderCircle className="spin" size={16} /> : <GitPullRequest size={16} />}
+          开始审查
+        </button>
+      </form>
+      {!report ? (
+        <div className="feature-placeholder review-placeholder">
+          <EmptyState
+            icon={<GitPullRequest />}
+            title="准备审查合入范围"
+            description="输入 Base 与 Head Ref。审查只给出建议，不会修改、批准或合入代码。"
+          />
+          <div className="pipeline">
+            <span>Git Compare</span><ChevronRight size={16} />
+            <span>Evidence</span><ChevronRight size={16} />
+            <span>Risk Analysis</span><ChevronRight size={16} />
+            <span>Review Report</span>
+          </div>
+        </div>
+      ) : (
+        <CodeReviewReportView report={report} />
+      )}
+    </div>
+  );
+}
+
+function CodeReviewReportView({ report }: { report: CodeReviewReport }) {
+  const severityCounts = (["critical", "high", "medium", "low"] as const).map(
+    (severity) => ({
+      severity,
+      count: report.findings.filter((finding) => finding.severity === severity).length,
+    }),
+  );
+  const isClean = report.status === "reviewed" && report.findings.length === 0;
+
+  return (
+    <div className="review-report">
+      <section className="review-overview">
+        <div className="review-overview-top">
+          <StatusBadge status={report.status.toUpperCase()} />
+          <span className="mono">{report.review_id}</span>
+        </div>
+        <div className="review-range">
+          <code>{report.base_ref}</code><span>→</span><code>{report.head_ref}</code>
+        </div>
+        <h2>{report.summary}</h2>
+        <div className="severity-metrics">
+          {severityCounts.map(({ severity, count }) => (
+            <div className={`severity-metric severity-${severity}`} key={severity}>
+              <strong>{count}</strong><span>{severity}</span>
+            </div>
+          ))}
+          <div className="severity-metric"><strong>{report.evidence.length}</strong><span>evidence</span></div>
+        </div>
+      </section>
+
+      {isClean && (
+        <section className="review-state review-clean">
+          <Check size={20} />
+          <div><strong>未发现需要报告的问题</strong><p>审查已完成且证据充分，这不同于证据不足。</p></div>
+        </section>
+      )}
+
+      {report.status === "insufficient_evidence" && (
+        <section className="review-state review-insufficient">
+          <ShieldAlert size={20} />
+          <div>
+            <strong>证据不足，无法形成可信结论</strong>
+            {report.missing_evidence.map((item) => (
+              <article key={`${item.needed}-${item.reason}`}>
+                <b>{item.needed}</b><p>{item.reason}</p>
+                {item.suggested_tool && <code>{item.suggested_tool}</code>}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {report.findings.length > 0 && (
+        <section className="review-findings">
+          <div className="section-title"><ShieldAlert size={17} /><h3>Findings</h3></div>
+          {report.findings.map((finding) => (
+            <article className={`review-finding finding-${finding.severity}`} key={finding.finding_id}>
+              <header>
+                <div>
+                  <span className={`severity-badge severity-${finding.severity}`}>{finding.severity}</span>
+                  <span className="category-badge">{finding.category.replace("_", " ")}</span>
+                  <span className="mono">{finding.finding_id}</span>
+                </div>
+                <code>{finding.file_path}:{finding.line_start}{finding.line_end ? `-${finding.line_end}` : ""} · {finding.side}</code>
+              </header>
+              <h3>{finding.title}</h3>
+              <p>{finding.description}</p>
+              <div className="finding-suggestion">
+                <strong>修改建议</strong><p>{finding.suggestion}</p>
+              </div>
+              <div className="finding-footer">
+                <div><strong>验证方式</strong><ol>{finding.verification_steps.map((step) => <li key={step}>{step}</li>)}</ol></div>
+                <div className="evidence-links"><strong>证据</strong>{finding.evidence_ids.map((id) => <span key={id}>{id}</span>)}</div>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {report.evidence.length > 0 && (
+        <section className="review-evidence">
+          <div className="section-title"><FileSearch size={17} /><h3>Evidence</h3></div>
+          <div className="evidence-grid">
+            {report.evidence.map((item) => (
+              <article className="evidence-card" key={item.evidence_id}>
+                <header><b>{item.evidence_id}</b><span>{item.kind}</span></header>
+                <strong>{item.source}</strong><small>{item.locator}</small><pre>{item.excerpt}</pre>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

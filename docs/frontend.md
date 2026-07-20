@@ -16,6 +16,7 @@ Permission API 和 Diagnosis API，不把 UI 逻辑耦合进 `AgentRuntime`。
 - SSE 事件触发后的任务与 Trace 增量刷新；
 - 待审批请求查询，以及单次允许或拒绝；
 - CI 诊断表单和结构化证据报告；
+- 代码合入审查表单、严重级别统计、可定位 Finding 与 Evidence 展示；
 - 内嵌 FastAPI Swagger UI 的 API 调试页，并提供 OpenAPI JSON 入口；
 - FastAPI 本地开发 CORS 配置；
 - 桌面端优先，并提供窄屏响应式布局。
@@ -52,6 +53,14 @@ Agent 执行是服务端单向事件流，首版使用 `EventSource` 订阅现�
 Schema 链接。后端新增普通 HTTP 路由后无需重复维护前端表单即可参与调试。WebSocket
 不属于 OpenAPI；SSE 虽可发起 HTTP 请求，但长连接调试仍应使用浏览器开发工具或专用客户端。
 
+### 代码审查保持结论语义
+
+代码审查页面调用 `POST /api/v1/reviews/code`，输入 `base_ref`、`head_ref` 和
+`workspace`。页面直接消费 `CodeReviewReport`，按严重级别、风险分类、文件行号、修改
+建议、验证步骤和 Evidence 引用展示 Finding。`reviewed + findings=[]` 明确显示为已完成的
+clean review；`insufficient_evidence` 单独展示缺失证据，不把两者混为同一空状态。该入口
+只提供审查建议，不触发代码修改、批准或合入。
+
 ### 敏感配置留在服务端
 
 真实 LLM API Key 不进入浏览器。前端只能选择 provider 和可选 model，密钥仍由
@@ -86,4 +95,5 @@ npm run build
 - 将任务创建、执行观察、取消和结果查看集中到一个页面，用户无需手动调用四类 API；
 - 将 Trace 中的 LLM、工具、权限和错误事件按序列号统一展示；
 - CI 报告中的 finding、recommendation 和 evidence 保持引用关系可见；
+- 代码审查 Finding 可在一个页面内关联文件行号、严重级别、修改建议和 Evidence；
 - 前端生产构建可由 TypeScript 和 ESLint 静态检查重复验证。
