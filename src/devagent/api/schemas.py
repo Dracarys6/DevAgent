@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from devagent.agent import AgentEventType
 from devagent.task.models import TaskStatus
@@ -127,3 +127,32 @@ class CIDiagnosisRequest(BaseModel):
         pattern=r"^[0-9a-fA-F]+$",
     )
     workspace: str = Field(default=".", min_length=1)
+
+
+class CodeReviewRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "base_ref": "main",
+                    "head_ref": "feature/payment",
+                    "workspace": "examples/sample_repo",
+                }
+            ]
+        },
+    )
+    base_ref: str = Field(min_length=1, max_length=255)
+    head_ref: str = Field(min_length=1, max_length=255)
+    workspace: str = Field(default=".", min_length=1, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_refs(self) -> "CodeReviewRequest":
+        if (
+            self.base_ref != self.base_ref.strip()
+            or self.head_ref != self.head_ref.strip()
+        ):
+            raise ValueError("base_ref 和 head_ref 不能包含首尾空白")
+        if self.base_ref == self.head_ref:
+            raise ValueError("base_ref 和 head_ref 不能相同")
+        return self

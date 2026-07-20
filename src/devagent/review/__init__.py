@@ -7,6 +7,15 @@ from .models import (
     ReviewSeverity,
     ReviewStatus,
 )
+from .ports import (
+    PullRequestLocator,
+    PullRequestSnapshot,
+    PullRequestSource,
+    ReviewPublisher,
+    ReviewPublishResult,
+    WebhookDeliveryStore,
+)
+
 __all__ = [
     "CodeReviewInput",
     "CodeReviewReport",
@@ -15,6 +24,12 @@ __all__ = [
     "ReviewLineSide",
     "ReviewSeverity",
     "ReviewStatus",
+    "PullRequestLocator",
+    "PullRequestSnapshot",
+    "PullRequestSource",
+    "ReviewPublisher",
+    "ReviewPublishResult",
+    "WebhookDeliveryStore",
     "CodeReviewEvidenceCollector",
     "CodeReviewService",
     "CodeReviewServiceError",

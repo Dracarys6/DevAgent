@@ -5,13 +5,14 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from devagent.api.schemas import CIDiagnosisRequest
-from devagent.diagnosis import (
-    DiagnosisReport,
+from devagent.diagnosis.models import DiagnosisReport
+from devagent.diagnosis.service import (
     DiagnosisService,
     DiagnosisServiceError,
     DiagnosisServiceErrorCode,
     LocalCIEvidenceCollector,
 )
+
 from devagent.llm import LLMClient, OpenAICompatibleLLMClient
 
 router = APIRouter(prefix="/api/v1/diagnoses", tags=["diagnoses"])

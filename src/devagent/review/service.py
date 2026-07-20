@@ -49,6 +49,7 @@ class CodeReviewServiceErrorCode(str, Enum):
     EMPTY_LLM_RESPONSE = "empty_llm_response"
     INVALID_REPORT = "invalid_report"
     REPORT_MISMATCH = "report_mismatch"
+    CONFIGURATION_ERROR = "configuration_error"
 
 
 class CodeReviewServiceError(Exception):
@@ -170,7 +171,12 @@ class LocalCodeReviewEvidenceCollector:
                 )
                 if not isinstance(excerpt, str):
                     raise TypeError("read_file 必须返回字符串")
-            except (FileNotFoundError, PermissionError, UnicodeDecodeError, ReadFileError) as exc:
+            except (
+                FileNotFoundError,
+                PermissionError,
+                UnicodeDecodeError,
+                ReadFileError,
+            ) as exc:
                 missing_evidence.append(
                     MissingEvidence(
                         needed=f"变更文件 {relative_path} 的代码上下文",
@@ -222,7 +228,9 @@ class CodeReviewService:
         head_ref: str,
         workspace: str | Path,
     ) -> CodeReviewReport:
-        root = _validate_request(base_ref=base_ref, head_ref=head_ref, workspace=workspace)
+        root = _validate_request(
+            base_ref=base_ref, head_ref=head_ref, workspace=workspace
+        )
         try:
             review_id = self._review_id_factory()
         except Exception as exc:

@@ -6,6 +6,7 @@ from .stream import router as stream_router
 from .websocket import router as websocket_router
 from .traces import router as traces_router
 from .diagnoses import router as diagnoses_router
+from .reviews import router as reviews_router
 
 __all__ = [
     "tasks_router",
@@ -14,4 +15,5 @@ __all__ = [
     "websocket_router",
     "traces_router",
     "diagnoses_router",
+    "reviews_router",
 ]

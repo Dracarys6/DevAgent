@@ -5,6 +5,7 @@ from .schemas import (
     AgentTaskCreateResponse,
     TaskStatus,
     CIDiagnosisRequest,
+    CodeReviewRequest,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "AgentTaskCreateResponse",
     "TaskStatus",
     "CIDiagnosisRequest",
+    "CodeReviewRequest",
 ]

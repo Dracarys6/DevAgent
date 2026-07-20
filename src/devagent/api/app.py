@@ -8,6 +8,7 @@ from devagent.api.routes import (
     websocket_router,
     traces_router,
     diagnoses_router,
+    reviews_router,
 )
 from devagent.config import get_config
 
@@ -29,6 +30,7 @@ app.include_router(stream_router)
 app.include_router(websocket_router)
 app.include_router(traces_router)
 app.include_router(diagnoses_router)
+app.include_router(reviews_router)
 
 
 @app.get("/health")
