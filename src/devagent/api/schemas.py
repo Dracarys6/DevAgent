@@ -20,9 +20,9 @@ class AgentTaskCreateRequest(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "question": "请分析项目结构",
+                    "question": "你好",
                     "workspace": ".",
-                    "provider": "mock",
+                    "provider": "real",
                     "model": None,
                     "base_url": None,
                     "max_steps": 10,
@@ -34,7 +34,7 @@ class AgentTaskCreateRequest(BaseModel):
 
     question: str = Field(min_length=1, description="用户问题")
     workspace: str = Field(default=".", description="工作区路径")
-    provider: LLMProvider = Field(default=LLMProvider.MOCK)
+    provider: LLMProvider = Field(default=LLMProvider.REAL)
     model: str | None = None
     base_url: str | None = None
     max_steps: int = Field(default=10, ge=1, le=50)
