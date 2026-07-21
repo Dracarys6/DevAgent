@@ -706,6 +706,24 @@ JSON 文本解析
 错误。两类错误都应被 Service 统一映射为 `INVALID_REPORT`，原始 `ValidationError` 通过异常链
 保留给内部调试。
 
+#### 结构化输出为什么在 Service 层重试
+
+`response_format={"type":"json_object"}` 只保证模型尽量返回合法 JSON，不能保证内容一定满足
+`CodeReviewReport` 的字段、枚举和跨对象约束。代码审查服务因此采用有界的校验反馈重试：
+
+```text
+模型返回 JSON
+    -> Pydantic 校验
+    -> 身份字段与 Evidence 精确校验
+    -> 失败时附加脱敏的字段级错误
+    -> 重新生成完整报告，最多 3 次
+```
+
+仅 `EMPTY_LLM_RESPONSE`、`INVALID_REPORT` 和 `REPORT_MISMATCH` 可以重试。Tool Calls 说明调用
+契约错误，provider 异常则应由客户端或 SDK 的网络重试负责，Service 不重复调用。修复 Prompt
+不携带模型原始输出，只包含最多 8 条、每条最多 300 字符的校验反馈，避免上下文膨胀和敏感信息
+回流。若 Chat Completions 返回 `finish_reason=length`，反馈会明确指出输出被 token 上限截断。
+
 ### 5. 为什么 Pydantic 之后还要校验身份
 
 Pydantic 能证明报告“形状合法”，却不知道当前请求的真实 `review_id` 和 refs。例如模型返回另一个
@@ -814,27 +832,22 @@ Runtime 的权限、上限、错误转换和事件逻辑。
 - [x] 更新 review 公共导出
 - [x] 完成 collector 成功、截断和失败测试
 - [x] 完成 Service 成功、短路、非法输出和篡改测试
+- [x] 为非法 JSON、空响应和报告身份不匹配增加最多 3 次校验反馈重试
+- [x] 为代码审查模型配置 8,192 token 输出上限并保留 `finish_reason`
 - [x] 运行关联回归与全量测试
 ```
 
 ### 实际验证命令与结果
 
 ```text
-.venv/bin/pytest tests/review/test_review_service.py -q
-结果：35 passed
-
-.venv/bin/pytest tests/review tests/prompts/test_code_review.py tests/tools/test_git_tools.py tests/diagnosis tests/llm -q
-结果：178 passed
+.venv/bin/pytest tests/review/test_review_service.py tests/prompts/test_code_review.py tests/llm/test_openai_client.py tests/api/test_reviews.py -q
+结果：113 passed，1 条来自 Starlette TestClient/httpx 兼容层的既有弃用警告
 
 .venv/bin/pytest -q
-结果：607 passed，1 条来自 Starlette TestClient/httpx 兼容层的既有弃用警告
+结果：691 passed，1 条来自 Starlette TestClient/httpx 兼容层的既有弃用警告
 
-.venv/bin/ruff check src/devagent/review src/devagent/diagnosis/__init__.py src/devagent/prompts/code_review.py tests/review
+.venv/bin/ruff check src/devagent/review/service.py src/devagent/prompts/code_review.py src/devagent/prompts/__init__.py src/devagent/llm/openai_client.py src/devagent/api/routes/reviews.py tests/review/test_review_service.py tests/prompts/test_code_review.py tests/llm/test_openai_client.py tests/api/test_reviews.py
 结果：All checks passed
-
-.venv/bin/ruff check src tests
-结果：发现 11 个既有问题，位于本日未修改的 WebSocket、read_file 和旧测试文件；
-本次没有扩大范围修改这些文件。
 ```
 
 ### 实际可量化结果
@@ -845,6 +858,9 @@ Evidence 原样保留率：100%
 工具失败结构化率：100%（固定 Git、文件、Collector、LLM 失败用例）
 无证据 LLM 节省率：100%
 非法模型输出拦截率：100%（固定空响应、工具调用、非法 JSON、悬空引用用例）
+可恢复结构化输出成功率：100%（固定非法 JSON、空响应、身份不匹配、token 截断后返回合法报告用例）
+结构化报告最大生成次数：3
+代码审查模型最大输出 token：8,192
 最大 Evidence excerpt 字符数：24,000
 Service 本地编排 p95：0.30 ms（固定 Collector/LLMClient，1,000 次）
 固定大型样例上下文缩减率：73.33%（90,000 -> 24,000 字符）

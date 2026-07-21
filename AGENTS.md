@@ -69,6 +69,9 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 
 ## Daily Documentation Rules
 
+- Keep files matched by the `docs/learning/` ignore rule as local learning records.
+  Update them when required, but never use `git add -f` or otherwise include them in
+  a commit unless the user explicitly asks to version ignored learning documents.
 - Daily docs should include: goal, context, implementation scope, key design choices, verification, and measurable result.
 - When daily development introduces or relies on unfamiliar APIs, framework primitives, or protocol concepts, add a short learning note explaining what it does, why it is used here, and the key behavior to remember. For example, document FastAPI `StreamingResponse` when building stream/SSE endpoints.
 - After each development session, update the relevant daily doc or module docs with what changed and how it was verified.
