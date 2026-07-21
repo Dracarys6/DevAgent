@@ -88,6 +88,7 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 
 ## Git Commit Rules
 
+- After each functional unit is implemented, verified, and synchronized with its corresponding documentation, create a local Git commit before starting the next feature. Stage only files related to that completed unit; do not include incomplete or unrelated working-tree changes.
 - Use the format `<type>(<scope>): <Chinese summary>` for new commits.
 - Use one of these types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, or `chore`.
 - Use `dayXX` as the scope for a day's main learning/development delivery. For focused fixes or maintenance, use the module scope, such as `runtime`, `tools`, `rag`, `api`, or `agents`.
