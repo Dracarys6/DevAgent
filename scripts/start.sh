@@ -72,16 +72,16 @@ wait_for_url() {
 
 open_browser() {
     if command_exists open; then
-        open "$FRONTEND_URL" >/dev/null 2>&1
+        open "about:blank" >/dev/null 2>&1
         return
     fi
 
     if command_exists xdg-open; then
-        xdg-open "$FRONTEND_URL" >/dev/null 2>&1
+        xdg-open "about:blank" >/dev/null 2>&1
         return
     fi
 
-    echo "未找到 open 或 xdg-open，请手动访问：${FRONTEND_URL}"
+    echo "未找到 open 或 xdg-open，无法自动打开浏览器。"
 }
 
 cleanup() {

@@ -16,8 +16,8 @@ DevAgent Console 是后端 Agent Runtime 的 Web GUI，首版覆盖：
 ./scripts/start.sh
 ```
 
-脚本会在服务就绪后默认打开浏览器。使用 `./scripts/start.sh --no-open`
-可以只启动服务；按 `Ctrl+C` 会同时停止前后端。
+脚本会在服务就绪后默认打开浏览器空白页，不会自动访问前端 URL。使用
+`./scripts/start.sh --no-open` 可以只启动服务；按 `Ctrl+C` 会同时停止前后端。
 
 需要分别调试进程时，可先在项目根目录启动 API：
 
