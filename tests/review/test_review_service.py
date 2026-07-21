@@ -111,6 +111,19 @@ class FixedLLMClient:
         return self.response
 
 
+class SequenceLLMClient:
+    def __init__(self, responses: list[LLMResponse | Exception]) -> None:
+        self.responses = responses
+        self.messages: list[list[dict[str, Any]]] = []
+
+    def chat(self, messages: list[dict[str, Any]]) -> LLMResponse:
+        self.messages.append(messages)
+        response = self.responses[len(self.messages) - 1]
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+
 class RaisingLLMClient:
     def chat(self, messages: list[dict[str, Any]]) -> LLMResponse:
         raise RuntimeError("secret-provider-detail")
@@ -492,12 +505,13 @@ def test_code_review_service_rejects_tool_call_response(tmp_path: Path) -> None:
     response = LLMResponse.tool_calls_response(
         [ToolCall(id="call-1", name="read_file", arguments={})]
     )
-    service, _, _ = make_service(review_input=review_input, response=response)
+    service, _, client = make_service(review_input=review_input, response=response)
 
     with pytest.raises(CodeReviewServiceError) as exc_info:
         service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
 
     assert exc_info.value.code == CodeReviewServiceErrorCode.UNEXPECTED_LLM_RESPONSE
+    assert len(client.messages) == 1
 
 
 @pytest.mark.parametrize("content", ["", "   "])
@@ -591,3 +605,140 @@ def test_code_review_service_wraps_llm_error_without_leaking_details(
 
     assert exc_info.value.code == CodeReviewServiceErrorCode.LLM_CALL_FAILED
     assert "secret-provider-detail" not in str(exc_info.value)
+
+
+def test_code_review_service_retries_invalid_report_with_validation_feedback(
+    tmp_path: Path,
+) -> None:
+    review_input = make_review_input(tmp_path)
+    client = SequenceLLMClient(
+        [
+            LLMResponse.final_answer('{"review_id":"review-1"}'),
+            LLMResponse.final_answer(make_report(review_input).model_dump_json()),
+        ]
+    )
+    service = CodeReviewService(
+        llm_client=client,
+        evidence_collector=FixedCollector(review_input),
+        review_id_factory=lambda: "review-1",
+    )
+
+    report = service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
+
+    assert report == make_report(review_input)
+    assert len(client.messages) == 2
+    assert len(client.messages[0]) == 2
+    repair_prompt = client.messages[1][-1]["content"]
+    assert "invalid_report" in repair_prompt
+    assert "base_ref" in repair_prompt
+    assert "第 2 次生成尝试" in repair_prompt
+
+
+def test_code_review_service_reports_token_truncation_during_retry(
+    tmp_path: Path,
+) -> None:
+    review_input = make_review_input(tmp_path)
+    client = SequenceLLMClient(
+        [
+            LLMResponse.final_answer(
+                '{"review_id":"review-1"',
+                metadata={"finish_reason": "length"},
+            ),
+            LLMResponse.final_answer(make_report(review_input).model_dump_json()),
+        ]
+    )
+    service = CodeReviewService(
+        llm_client=client,
+        evidence_collector=FixedCollector(review_input),
+        review_id_factory=lambda: "review-1",
+    )
+
+    service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
+
+    assert "token 上限被截断" in client.messages[1][-1]["content"]
+
+
+def test_code_review_service_retries_empty_and_mismatched_reports(
+    tmp_path: Path,
+) -> None:
+    review_input = make_review_input(tmp_path)
+    mismatched_report = make_report(review_input, review_id="wrong-review")
+    client = SequenceLLMClient(
+        [
+            LLMResponse.final_answer(""),
+            LLMResponse.final_answer(mismatched_report.model_dump_json()),
+            LLMResponse.final_answer(make_report(review_input).model_dump_json()),
+        ]
+    )
+    service = CodeReviewService(
+        llm_client=client,
+        evidence_collector=FixedCollector(review_input),
+        review_id_factory=lambda: "review-1",
+    )
+
+    report = service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
+
+    assert report.review_id == "review-1"
+    assert len(client.messages) == 3
+    assert "empty_llm_response" in client.messages[1][-1]["content"]
+    assert "report_mismatch" in client.messages[2][-1]["content"]
+    assert "review_id 必须与 INPUT.review_id 完全一致" in (
+        client.messages[2][-1]["content"]
+    )
+
+
+def test_code_review_service_stops_after_configured_report_attempts(
+    tmp_path: Path,
+) -> None:
+    review_input = make_review_input(tmp_path)
+    client = SequenceLLMClient(
+        [LLMResponse.final_answer("not-json") for _ in range(3)]
+    )
+    service = CodeReviewService(
+        llm_client=client,
+        evidence_collector=FixedCollector(review_input),
+        review_id_factory=lambda: "review-1",
+        max_report_attempts=3,
+    )
+
+    with pytest.raises(CodeReviewServiceError) as exc_info:
+        service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
+
+    assert exc_info.value.code == CodeReviewServiceErrorCode.INVALID_REPORT
+    assert len(client.messages) == 3
+
+
+def test_code_review_service_repair_prompt_does_not_repeat_raw_output(
+    tmp_path: Path,
+) -> None:
+    review_input = make_review_input(tmp_path)
+    client = SequenceLLMClient(
+        [
+            LLMResponse.final_answer("secret-invalid-output"),
+            LLMResponse.final_answer(make_report(review_input).model_dump_json()),
+        ]
+    )
+    service = CodeReviewService(
+        llm_client=client,
+        evidence_collector=FixedCollector(review_input),
+        review_id_factory=lambda: "review-1",
+    )
+
+    service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
+
+    assert "secret-invalid-output" not in client.messages[1][-1]["content"]
+
+
+@pytest.mark.parametrize("max_report_attempts", [0, 6, True])
+def test_code_review_service_rejects_invalid_report_attempt_limit(
+    tmp_path: Path,
+    max_report_attempts: int,
+) -> None:
+    review_input = make_review_input(tmp_path)
+
+    with pytest.raises(ValueError, match="max_report_attempts"):
+        CodeReviewService(
+            llm_client=FixedLLMClient(LLMResponse.final_answer("{}")),
+            evidence_collector=FixedCollector(review_input),
+            max_report_attempts=max_report_attempts,
+        )

@@ -39,6 +39,24 @@ _SERIALIZED_REPORT_SCHEMA = json.dumps(
     separators=(",", ":"),
 )
 
+_REPORT_SHAPE_EXAMPLE = json.dumps(
+    {
+        "review_id": "从 INPUT.review_id 原样复制",
+        "base_ref": "从 INPUT.base_ref 原样复制",
+        "head_ref": "从 INPUT.head_ref 原样复制",
+        "status": "reviewed",
+        "summary": "使用简体中文填写审查结论",
+        "findings": [],
+        "evidence": [],
+        "missing_evidence": [],
+    },
+    ensure_ascii=False,
+    separators=(",", ":"),
+)
+
+MAX_REPAIR_FEEDBACK_ITEMS = 8
+MAX_REPAIR_FEEDBACK_CHARS = 300
+
 
 def build_code_review_prompt(review_input: CodeReviewInput) -> str:
     """把已标准化的代码审查输入构造成紧凑、可解析的用户 Prompt。"""
@@ -53,5 +71,34 @@ def build_code_review_prompt(review_input: CodeReviewInput) -> str:
         f"{serialized_input}\n"
         "CodeReviewReport JSON Schema：\n"
         f"{_SERIALIZED_REPORT_SCHEMA}\n"
-        "仅返回 CodeReviewReport JSON 对象；解释性文本使用简体中文。"
+        "仅返回 CodeReviewReport JSON 对象；解释性文本使用简体中文。\n"
+        "字段结构示例（只参考字段和类型，不得复制占位值；实际 evidence 必须原样复制 "
+        "INPUT.evidence）：\n"
+        f"{_REPORT_SHAPE_EXAMPLE}"
+    )
+
+
+def build_code_review_repair_prompt(
+    *,
+    error_code: str,
+    validation_errors: list[str] | tuple[str, ...],
+    next_attempt: int,
+) -> str:
+    """构造不携带模型原始输出的结构化报告修复提示。"""
+    feedback = [
+        item[:MAX_REPAIR_FEEDBACK_CHARS]
+        for item in validation_errors[:MAX_REPAIR_FEEDBACK_ITEMS]
+    ]
+    if not feedback:
+        feedback = ["上一次输出未通过 CodeReviewReport 契约校验"]
+    serialized_feedback = json.dumps(
+        {"error_code": error_code, "validation_errors": feedback},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return (
+        "上一次输出未通过校验，请重新生成完整的 CodeReviewReport JSON 对象。\n"
+        f"校验反馈：{serialized_feedback}\n"
+        f"当前是第 {next_attempt} 次生成尝试。不要解释错误，不要输出 Markdown；"
+        "重新检查所有必填字段、枚举、引用关系，并原样复制 INPUT 中的身份字段与 evidence。"
     )

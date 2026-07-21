@@ -11,6 +11,7 @@ from devagent.llm import LLMClient, LLMResponse, LLMResponseType
 from devagent.prompts.code_review import (
     CODE_REVIEW_SYSTEM_PROMPT,
     build_code_review_prompt,
+    build_code_review_repair_prompt,
 )
 from devagent.tools.git_tools import (
     GitCompareError,
@@ -24,6 +25,8 @@ from .models import CodeReviewInput, CodeReviewReport, ReviewStatus
 MAX_REVIEW_EVIDENCE_CHARS = 4_000
 MAX_CONTEXT_FILES = 5
 MAX_CONTEXT_LINES_PER_FILE = 200
+DEFAULT_REPORT_ATTEMPTS = 3
+MAX_REPORT_ATTEMPTS = 5
 
 ReviewIdFactory = Callable[[], str]
 GitCompareReader = Callable[[str, str, str | Path], GitCompareResult]
@@ -55,10 +58,17 @@ class CodeReviewServiceErrorCode(str, Enum):
 class CodeReviewServiceError(Exception):
     """代码审查服务无法形成可信报告时抛出的结构化异常。"""
 
-    def __init__(self, *, code: CodeReviewServiceErrorCode, message: str) -> None:
+    def __init__(
+        self,
+        *,
+        code: CodeReviewServiceErrorCode,
+        message: str,
+        details: list[str] | tuple[str, ...] | None = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+        self.details = tuple(details or ())
 
 
 class CodeReviewEvidenceCollector(Protocol):
@@ -216,10 +226,20 @@ class CodeReviewService:
         llm_client: LLMClient,
         evidence_collector: CodeReviewEvidenceCollector,
         review_id_factory: ReviewIdFactory | None = None,
+        max_report_attempts: int = DEFAULT_REPORT_ATTEMPTS,
     ) -> None:
+        if (
+            isinstance(max_report_attempts, bool)
+            or max_report_attempts < 1
+            or max_report_attempts > MAX_REPORT_ATTEMPTS
+        ):
+            raise ValueError(
+                f"max_report_attempts 必须在 1 到 {MAX_REPORT_ATTEMPTS} 之间"
+            )
         self._llm_client = llm_client
         self._evidence_collector = evidence_collector
         self._review_id_factory = review_id_factory or (lambda: str(uuid4()))
+        self._max_report_attempts = max_report_attempts
 
     def review(
         self,
@@ -290,17 +310,40 @@ class CodeReviewService:
             {"role": "system", "content": CODE_REVIEW_SYSTEM_PROMPT},
             {"role": "user", "content": build_code_review_prompt(review_input)},
         ]
-        try:
-            response = self._llm_client.chat(messages)
-        except Exception as exc:
-            raise CodeReviewServiceError(
-                code=CodeReviewServiceErrorCode.LLM_CALL_FAILED,
-                message="调用代码审查模型失败",
-            ) from exc
+        retryable_errors = {
+            CodeReviewServiceErrorCode.EMPTY_LLM_RESPONSE,
+            CodeReviewServiceErrorCode.INVALID_REPORT,
+            CodeReviewServiceErrorCode.REPORT_MISMATCH,
+        }
+        for attempt in range(1, self._max_report_attempts + 1):
+            try:
+                response = self._llm_client.chat(list(messages))
+            except Exception as exc:
+                raise CodeReviewServiceError(
+                    code=CodeReviewServiceErrorCode.LLM_CALL_FAILED,
+                    message="调用代码审查模型失败",
+                ) from exc
 
-        report = self._parse_report(response)
-        self._validate_report(report=report, review_input=review_input)
-        return report
+            try:
+                report = self._parse_report(response)
+                self._validate_report(report=report, review_input=review_input)
+                return report
+            except CodeReviewServiceError as exc:
+                if exc.code not in retryable_errors or attempt >= self._max_report_attempts:
+                    raise
+                # * 只反馈脱敏后的校验位置，不回传可能很长或包含敏感内容的原始输出。
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": build_code_review_repair_prompt(
+                            error_code=exc.code.value,
+                            validation_errors=exc.details,
+                            next_attempt=attempt + 1,
+                        ),
+                    }
+                )
+
+        raise AssertionError("代码审查报告重试循环不应执行到这里")
 
     @staticmethod
     def _parse_report(response: LLMResponse) -> CodeReviewReport:
@@ -310,16 +353,24 @@ class CodeReviewService:
                 message="代码审查模型必须返回 final_answer",
             )
         if not response.content or not response.content.strip():
+            details = []
+            if response.metadata.get("finish_reason") == "length":
+                details.append("模型输出因 token 上限被截断")
             raise CodeReviewServiceError(
                 code=CodeReviewServiceErrorCode.EMPTY_LLM_RESPONSE,
                 message="代码审查模型返回的内容为空",
+                details=details,
             )
         try:
             return CodeReviewReport.model_validate_json(response.content)
         except ValidationError as exc:
+            details = _summarize_report_validation_errors(exc)
+            if response.metadata.get("finish_reason") == "length":
+                details.insert(0, "模型输出因 token 上限被截断")
             raise CodeReviewServiceError(
                 code=CodeReviewServiceErrorCode.INVALID_REPORT,
                 message="模型返回的代码审查报告不符合契约",
+                details=details,
             ) from exc
 
     @staticmethod
@@ -366,7 +417,19 @@ class CodeReviewService:
                 raise CodeReviewServiceError(
                     code=CodeReviewServiceErrorCode.REPORT_MISMATCH,
                     message=f"代码审查报告的 {field} 字段与输入不匹配",
+                    details=[f"{field} 必须与 INPUT.{field} 完全一致"],
                 )
+
+
+def _summarize_report_validation_errors(exc: ValidationError) -> list[str]:
+    """提取可供模型修复的字段级错误，不包含原始输入值。"""
+    details: list[str] = []
+    for error in exc.errors(include_url=False):
+        location = ".".join(str(part) for part in error.get("loc", ())) or "$"
+        error_type = error.get("type", "validation_error")
+        message = error.get("msg", "校验失败")
+        details.append(f"{location}: {message} ({error_type})")
+    return details
 
 
 def _validate_request(

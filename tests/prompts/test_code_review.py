@@ -4,7 +4,11 @@ import pytest
 from pydantic import ValidationError
 
 from devagent.diagnosis import Evidence, EvidenceKind, MissingEvidence
-from devagent.prompts import CODE_REVIEW_SYSTEM_PROMPT, build_code_review_prompt
+from devagent.prompts import (
+    CODE_REVIEW_SYSTEM_PROMPT,
+    build_code_review_prompt,
+    build_code_review_repair_prompt,
+)
 from devagent.review import CodeReviewInput, CodeReviewReport, ReviewStatus
 
 
@@ -186,6 +190,29 @@ def test_build_code_review_prompt_includes_report_schema() -> None:
         "evidence_ids",
     ]:
         assert field_name in schema_text
+
+
+def test_build_code_review_prompt_includes_compact_json_shape_example() -> None:
+    prompt = build_code_review_prompt(make_review_input())
+
+    assert "字段结构示例" in prompt
+    assert '"review_id":"从 INPUT.review_id 原样复制"' in prompt
+    assert '"status":"reviewed"' in prompt
+
+
+def test_build_code_review_repair_prompt_contains_only_bounded_feedback() -> None:
+    prompt = build_code_review_repair_prompt(
+        error_code="invalid_report",
+        validation_errors=[f"field_{index}: missing" for index in range(12)],
+        next_attempt=2,
+    )
+
+    assert "invalid_report" in prompt
+    assert "field_0" in prompt
+    assert "field_7" in prompt
+    assert "field_8" not in prompt
+    assert "第 2 次生成尝试" in prompt
+    assert "重新生成完整的 CodeReviewReport JSON 对象" in prompt
 
 
 def test_build_code_review_prompt_does_not_mutate_input() -> None:
