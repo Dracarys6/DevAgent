@@ -24,6 +24,16 @@ class GitCompareError(Exception):
     """Git compare 无法安全读取时抛出执行失败的异常。"""
 
 
+class GitCommitSummaryError(Exception):
+    """Git 提交摘要无法安全读取时抛出执行失败的异常。"""
+
+
+class GitCommitSummary(BaseModel):
+    ref: str
+    sha: str
+    subject: str
+
+
 class GitDiffArgs(BaseModel):
     commit_id: str = Field(min_length=1)
     workspace: str
@@ -87,6 +97,43 @@ def git_diff(
         raise GitDiffError(f"无法读取 Git commit: {commit_id}")
 
     return _truncate_output(result.stdout, max_chars)
+
+
+def get_git_commit_summary(
+    ref: str,
+    workspace: str | Path,
+    timeout: float = DEFAULT_GIT_TIMEOUT,
+) -> GitCommitSummary:
+    """读取指定 Git ref 的 SHA 和单行提交主题。"""
+    if not ref.strip():
+        raise GitCommitSummaryError("ref 不能为空")
+    if ref != ref.strip():
+        raise GitCommitSummaryError("ref 不能包含首尾空白")
+    if timeout <= 0:
+        raise GitCommitSummaryError("timeout 必须大于 0")
+
+    try:
+        root = _resolve_workspace(workspace)
+    except GitDiffError as exc:
+        raise GitCommitSummaryError(str(exc)) from exc
+
+    deadline = time.monotonic() + timeout
+    sha = _run_git_commit_summary(
+        ["git", "rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}"],
+        root,
+        timeout=_remaining_commit_summary_timeout(deadline, timeout),
+        failure_message=f"无法解析 Git ref: {ref}",
+    ).strip()
+    if re.fullmatch(r"[0-9a-f]{40,64}", sha) is None:
+        raise GitCommitSummaryError("Git ref 未解析为有效 commit SHA")
+
+    subject = _run_git_commit_summary(
+        ["git", "show", "-s", "--format=%s", "--end-of-options", sha],
+        root,
+        timeout=_remaining_commit_summary_timeout(deadline, timeout),
+        failure_message=f"无法读取 Git commit 信息: {ref}",
+    ).rstrip("\r\n")
+    return GitCommitSummary(ref=ref, sha=sha, subject=subject)
 
 
 def _truncate_output(output: str, max_chars: int) -> str:
@@ -318,6 +365,39 @@ def _run_git_compare(
     return result.stdout
 
 
+def _run_git_commit_summary(
+    command: list[str],
+    workspace: Path,
+    timeout: float,
+    failure_message: str,
+) -> str:
+    try:
+        result = subprocess.run(
+            command,
+            cwd=workspace,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GitCommitSummaryError("Git commit 摘要命令执行超时") from exc
+    except FileNotFoundError as exc:
+        raise GitCommitSummaryError("未找到 git 命令，请确保已安装 Git") from exc
+    except PermissionError as exc:
+        raise GitCommitSummaryError("没有权限执行 git 命令，请检查权限设置") from exc
+    except OSError as exc:
+        raise GitCommitSummaryError(f"git 命令启动失败: {exc}") from exc
+
+    if result.returncode != 0:
+        if "not a git repository" in result.stderr.lower():
+            raise GitCommitSummaryError(f"工作区不是 Git 仓库: {workspace}")
+        raise GitCommitSummaryError(failure_message)
+    return result.stdout
+
+
 def _parse_changed_files(output: str) -> list[GitChangedFile]:
     """解析 ``git diff --name-status -z`` 的 NUL 分隔输出。"""
     fields = output.split("\0")
@@ -371,4 +451,11 @@ def _remaining_timeout(deadline: float, total_timeout: float) -> float:
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         raise GitCompareError(f"Git compare 命令执行超时: {total_timeout} 秒")
+    return remaining
+
+
+def _remaining_commit_summary_timeout(deadline: float, total_timeout: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise GitCommitSummaryError(f"Git commit 摘要命令执行超时: {total_timeout} 秒")
     return remaining

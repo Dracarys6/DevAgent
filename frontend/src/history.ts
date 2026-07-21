@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 
 export interface LocalHistoryEntry<TInput, TReport> {
   id: string;
+  title?: string;
   created_at: string;
   input: TInput;
   report: TReport;

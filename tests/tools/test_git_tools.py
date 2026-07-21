@@ -6,11 +6,36 @@ import pytest
 from devagent.tools.git_tools import (
     GitCompareError,
     GitCompareResult,
+    GitCommitSummaryError,
     GitDiffError,
     TRUNCATION_MARKER,
     git_compare,
     git_diff,
+    get_git_commit_summary,
 )
+
+
+def test_get_git_commit_summary_returns_sha_and_subject(
+    git_repo_with_commit: tuple[Path, str],
+):
+    repo, commit_id = git_repo_with_commit
+
+    result = get_git_commit_summary("HEAD", repo)
+
+    assert result.ref == "HEAD"
+    assert result.sha == commit_id
+    assert result.subject == "change value"
+
+
+@pytest.mark.parametrize("ref", ["", " ", " HEAD", "HEAD ", "--help"])
+def test_get_git_commit_summary_rejects_invalid_ref(
+    git_repo_with_commit: tuple[Path, str],
+    ref: str,
+):
+    repo, _ = git_repo_with_commit
+
+    with pytest.raises(GitCommitSummaryError):
+        get_git_commit_summary(ref, repo)
 
 
 def test_git_diff_returns_commit_patch(

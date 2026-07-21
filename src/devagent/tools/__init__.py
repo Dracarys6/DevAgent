@@ -12,6 +12,7 @@ from .builtin import (
     create_builtin_registry,
 )
 from .models import ErrorCode, RiskLevel, ToolResult
+from .git_tools import GitCommitSummary, GitCommitSummaryError, get_git_commit_summary
 from .registry import ToolRegistry
 from .executor import (
     ToolExecutor,
@@ -38,4 +39,7 @@ __all__ = [
     "ToolExecutionResult",
     "ToolExecutionStatus",
     "GitCompareTool",
+    "GitCommitSummary",
+    "GitCommitSummaryError",
+    "get_git_commit_summary",
 ]

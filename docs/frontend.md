@@ -68,6 +68,11 @@ CI 诊断和代码审查页面分别缓存最近 10 条真实 API 响应。历�
 单浏览器本地缓存，不代表服务端持久化或跨设备同步。报告可能包含 Evidence 代码片段，
 在共享浏览器或处理敏感仓库时应在使用后清空历史。
 
+历史标题通过只读 `POST /api/v1/git/commit-summary` 获取真实 Git commit subject：CI
+诊断解析目标 commit，代码审查解析 Head Ref。接口同时返回完整 SHA，使用受限 workspace、
+参数列表和超时执行 Git；标题查询失败不会阻断主业务，前端回退显示 Commit ID 或 Ref 范围。
+旧版本缓存缺少标题时，页面会尝试自动补全。
+
 ### 敏感配置留在服务端
 
 真实 LLM API Key 不进入浏览器。前端只能选择 provider 和可选 model，密钥仍由

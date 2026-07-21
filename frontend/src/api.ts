@@ -2,6 +2,7 @@ import type {
   AgentTask,
   CodeReviewReport,
   DiagnosisReport,
+  GitCommitSummary,
   PermissionRequest,
   TaskTrace,
 } from "./types";
@@ -83,6 +84,11 @@ export const api = {
         head_ref: headRef,
         workspace,
       }),
+    }),
+  getGitCommitSummary: (ref: string, workspace: string) =>
+    request<GitCommitSummary>("/api/v1/git/commit-summary", {
+      method: "POST",
+      body: JSON.stringify({ ref, workspace }),
     }),
 };
 

@@ -723,12 +723,25 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
   const history = useLocalHistory<ReviewHistoryInput, CodeReviewReport>(
     "devagent-review-history-v1",
   );
-  const latest = history.entries[0];
+  const historyEntries = history.entries;
+  const addHistory = history.add;
+  const latest = historyEntries[0];
   const [baseRef, setBaseRef] = useState(() => latest?.input.base_ref ?? "main");
   const [headRef, setHeadRef] = useState(() => latest?.input.head_ref ?? "HEAD");
   const [workspace, setWorkspace] = useState(() => latest?.input.workspace ?? ".");
   const [report, setReport] = useState<CodeReviewReport | null>(() => latest?.report ?? null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    historyEntries.filter((entry) => !entry.title).forEach((entry) => {
+      void api
+        .getGitCommitSummary(entry.input.head_ref, entry.input.workspace)
+        .then((summary) => {
+          if (summary.subject) addHistory({ ...entry, title: summary.subject });
+        })
+        .catch(() => undefined);
+    });
+  }, [addHistory, historyEntries]);
 
   async function review(event: FormEvent) {
     event.preventDefault();
@@ -741,13 +754,17 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
     setLoading(true);
     try {
       const normalizedWorkspace = workspace.trim();
+      const titlePromise = api
+        .getGitCommitSummary(normalizedHeadRef, normalizedWorkspace)
+        .then((summary) => summary.subject)
+        .catch(() => null);
       const nextReport = await api.reviewCode(
         normalizedBaseRef,
         normalizedHeadRef,
         normalizedWorkspace,
       );
       setReport(nextReport);
-      history.add({
+      const historyEntry: LocalHistoryEntry<ReviewHistoryInput, CodeReviewReport> = {
         id: nextReport.review_id,
         created_at: new Date().toISOString(),
         input: {
@@ -756,6 +773,10 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
           workspace: normalizedWorkspace,
         },
         report: nextReport,
+      };
+      addHistory(historyEntry);
+      void titlePromise.then((title) => {
+        if (title) addHistory({ ...historyEntry, title });
       });
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : "代码审查失败");
@@ -793,7 +814,7 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
         </button>
       </form>
       <LocalHistoryPanel
-        entries={history.entries}
+        entries={historyEntries}
         activeId={report?.review_id ?? null}
         onSelect={(entry) => {
           setBaseRef(entry.input.base_ref);
@@ -805,8 +826,8 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
           history.clear();
           setReport(null);
         }}
-        renderTitle={(entry) => `${entry.input.base_ref} → ${entry.input.head_ref}`}
-        renderMeta={(entry) => `${entry.report.findings.length} findings · ${entry.report.status}`}
+        renderTitle={(entry) => entry.title ?? `${entry.input.base_ref} → ${entry.input.head_ref}`}
+        renderMeta={(entry) => `${entry.input.base_ref} → ${entry.input.head_ref} · ${entry.report.findings.length} findings`}
       />
       {!report ? (
         <div className="feature-placeholder review-placeholder">
@@ -929,7 +950,9 @@ function DiagnosisView({ onError }: { onError: (message: string) => void }) {
   const history = useLocalHistory<DiagnosisHistoryInput, DiagnosisReport>(
     "devagent-diagnosis-history-v1",
   );
-  const latest = history.entries[0];
+  const historyEntries = history.entries;
+  const addHistory = history.add;
+  const latest = historyEntries[0];
   const [commitId, setCommitId] = useState(() => latest?.input.commit_id ?? "abc123");
   const [workspace, setWorkspace] = useState(
     () => latest?.input.workspace ?? "examples/sample_repo",
@@ -937,19 +960,38 @@ function DiagnosisView({ onError }: { onError: (message: string) => void }) {
   const [report, setReport] = useState<DiagnosisReport | null>(() => latest?.report ?? null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    historyEntries.filter((entry) => !entry.title).forEach((entry) => {
+      void api
+        .getGitCommitSummary(entry.input.commit_id, entry.input.workspace)
+        .then((summary) => {
+          if (summary.subject) addHistory({ ...entry, title: summary.subject });
+        })
+        .catch(() => undefined);
+    });
+  }, [addHistory, historyEntries]);
+
   async function diagnose(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     try {
       const normalizedCommitId = commitId.trim();
       const normalizedWorkspace = workspace.trim();
+      const titlePromise = api
+        .getGitCommitSummary(normalizedCommitId, normalizedWorkspace)
+        .then((summary) => summary.subject)
+        .catch(() => null);
       const nextReport = await api.diagnoseCI(normalizedCommitId, normalizedWorkspace);
       setReport(nextReport);
-      history.add({
+      const historyEntry: LocalHistoryEntry<DiagnosisHistoryInput, DiagnosisReport> = {
         id: nextReport.report_id,
         created_at: new Date().toISOString(),
         input: { commit_id: normalizedCommitId, workspace: normalizedWorkspace },
         report: nextReport,
+      };
+      addHistory(historyEntry);
+      void titlePromise.then((title) => {
+        if (title) addHistory({ ...historyEntry, title });
       });
     } catch (cause) {
       onError(cause instanceof Error ? cause.message : "CI 诊断失败");
@@ -982,7 +1024,7 @@ function DiagnosisView({ onError }: { onError: (message: string) => void }) {
         </button>
       </form>
       <LocalHistoryPanel
-        entries={history.entries}
+        entries={historyEntries}
         activeId={report?.report_id ?? null}
         onSelect={(entry) => {
           setCommitId(entry.input.commit_id);
@@ -993,8 +1035,8 @@ function DiagnosisView({ onError }: { onError: (message: string) => void }) {
           history.clear();
           setReport(null);
         }}
-        renderTitle={(entry) => `Commit ${entry.input.commit_id}`}
-        renderMeta={(entry) => entry.report.status}
+        renderTitle={(entry) => entry.title ?? `Commit ${entry.input.commit_id}`}
+        renderMeta={(entry) => `${entry.input.commit_id} · ${entry.report.status}`}
       />
       {!report ? (
         <div className="feature-placeholder">

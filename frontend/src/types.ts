@@ -71,6 +71,12 @@ export interface MissingEvidence {
   suggested_tool: string | null;
 }
 
+export interface GitCommitSummary {
+  ref: string;
+  sha: string;
+  subject: string;
+}
+
 export interface DiagnosisReport {
   report_id: string;
   scenario: string;

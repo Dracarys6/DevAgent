@@ -156,3 +156,16 @@ class CodeReviewRequest(BaseModel):
         if self.base_ref == self.head_ref:
             raise ValueError("base_ref 和 head_ref 不能相同")
         return self
+
+
+class GitCommitSummaryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str = Field(min_length=1, max_length=255)
+    workspace: str = Field(default=".", min_length=1, max_length=2000)
+
+    @model_validator(mode="after")
+    def validate_ref(self) -> "GitCommitSummaryRequest":
+        if self.ref != self.ref.strip():
+            raise ValueError("ref 不能包含首尾空白")
+        return self
