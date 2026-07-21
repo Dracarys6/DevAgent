@@ -217,13 +217,15 @@ def test_create_review_llm_client_enables_json_output(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr("devagent.api.routes.reviews.load_dotenv", lambda **kwargs: None)
     monkeypatch.setattr(
-        "devagent.api.routes.reviews.OpenAICompatibleLLMClient",
-        FakeOpenAICompatibleLLMClient,
+        "devagent.api.routes.reviews.create_openai_llm_client",
+        lambda **kwargs: FakeOpenAICompatibleLLMClient(**kwargs),
     )
     monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "review-key")
     monkeypatch.setenv("OPENAI_API_KEY", "fallback-key")
     monkeypatch.setenv("DEVAGENT_LLM_MODEL", "review-model")
     monkeypatch.setenv("DEVAGENT_LLM_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("DEVAGENT_LLM_API_MODE", "chat_completions")
+    monkeypatch.delenv("DEVAGENT_LLM_REASONING_EFFORT", raising=False)
 
     create_review_llm_client()
 
@@ -231,7 +233,10 @@ def test_create_review_llm_client_enables_json_output(monkeypatch: pytest.Monkey
         "api_key": "review-key",
         "model": "review-model",
         "base_url": "https://example.test/v1",
+        "api_mode": "chat_completions",
+        "reasoning_effort": None,
         "response_format": {"type": "json_object"},
+        "max_tokens": 8192,
     }
 
 
@@ -246,8 +251,8 @@ def test_create_review_llm_client_falls_back_to_openai_key(
 
     monkeypatch.setattr("devagent.api.routes.reviews.load_dotenv", lambda **kwargs: None)
     monkeypatch.setattr(
-        "devagent.api.routes.reviews.OpenAICompatibleLLMClient",
-        FakeOpenAICompatibleLLMClient,
+        "devagent.api.routes.reviews.create_openai_llm_client",
+        lambda **kwargs: FakeOpenAICompatibleLLMClient(**kwargs),
     )
     monkeypatch.delenv("DEVAGENT_LLM_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "fallback-key")
@@ -258,6 +263,21 @@ def test_create_review_llm_client_falls_back_to_openai_key(
 
     assert created["api_key"] == "fallback-key"
     assert created["base_url"] is None
+
+
+def test_create_review_llm_client_rejects_invalid_reasoning_effort(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("devagent.api.routes.reviews.load_dotenv", lambda **kwargs: None)
+    monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "review-key")
+    monkeypatch.setenv("DEVAGENT_LLM_MODEL", "gpt-5.6-luna")
+    monkeypatch.setenv("DEVAGENT_LLM_REASONING_EFFORT", "extreme")
+
+    with pytest.raises(CodeReviewServiceError) as exc_info:
+        create_review_llm_client()
+
+    assert exc_info.value.code == CodeReviewServiceErrorCode.CONFIGURATION_ERROR
+    assert "reasoning effort" in exc_info.value.message
 
 
 @pytest.mark.parametrize("missing", ["api_key", "model"])

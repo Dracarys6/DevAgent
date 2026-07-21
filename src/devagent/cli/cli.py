@@ -7,7 +7,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from devagent.llm import (
-    OpenAICompatibleLLMClient,
+    OPENAI_REASONING_EFFORTS,
+    OpenAIAPIMode,
+    create_openai_llm_client,
     tool_registry_to_openai_tools,
     LLMClient,
     MockLLMClient,
@@ -39,6 +41,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--provider", choices=["mock", "real"], default="mock")
     parser.add_argument("--model")
     parser.add_argument("--base-url")
+    parser.add_argument(
+        "--api-mode",
+        choices=[mode.value for mode in OpenAIAPIMode],
+    )
+    parser.add_argument(
+        "--reasoning-effort",
+        choices=sorted(OPENAI_REASONING_EFFORTS),
+    )
     return parser
 
 
@@ -182,16 +192,26 @@ def create_llm_client(args, registry: ToolRegistry) -> LLMClient:
     api_key = os.getenv("DEVAGENT_LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
     model = args.model or os.getenv("DEVAGENT_LLM_MODEL")
     base_url = args.base_url or os.getenv("DEVAGENT_LLM_BASE_URL")
+    api_mode = (
+        args.api_mode
+        or os.getenv("DEVAGENT_LLM_API_MODE")
+        or OpenAIAPIMode.CHAT_COMPLETIONS.value
+    )
+    reasoning_effort = (
+        args.reasoning_effort or os.getenv("DEVAGENT_LLM_REASONING_EFFORT") or None
+    )
 
     if not api_key:
         raise ValueError("缺少 LLM API Key，请设置 DEVAGENT_LLM_API_KEY")
     if not model:
         raise ValueError("缺少 LLM 模型名称，请使用 --model 或设置 DEVAGENT_LLM_MODEL")
 
-    return OpenAICompatibleLLMClient(
+    return create_openai_llm_client(
         api_key=api_key,
         model=model,
         base_url=base_url,
+        api_mode=api_mode,
+        reasoning_effort=reasoning_effort,
         tools=tool_registry_to_openai_tools(
             registry=registry,
             allowed_risk_levels={RiskLevel.LOW},

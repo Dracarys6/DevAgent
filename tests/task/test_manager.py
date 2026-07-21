@@ -94,9 +94,11 @@ def test_llm_client_factory_creates_real_client_from_request_and_env(
 
     monkeypatch.setattr("devagent.task.manager.load_dotenv", lambda **kwargs: None)
     monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
+    monkeypatch.setenv("DEVAGENT_LLM_API_MODE", "chat_completions")
+    monkeypatch.delenv("DEVAGENT_LLM_REASONING_EFFORT", raising=False)
     monkeypatch.setattr(
-        "devagent.task.manager.OpenAICompatibleLLMClient",
-        FakeOpenAICompatibleLLMClient,
+        "devagent.task.manager.create_openai_llm_client",
+        lambda **kwargs: FakeOpenAICompatibleLLMClient(**kwargs),
     )
     factory = LLMClientFactory()
     task = AgentTask(
@@ -112,6 +114,8 @@ def test_llm_client_factory_creates_real_client_from_request_and_env(
     assert created["api_key"] == "test-key"
     assert created["model"] == "test-model"
     assert created["base_url"] == "https://example.test/v1"
+    assert created["api_mode"] == "chat_completions"
+    assert created["reasoning_effort"] is None
     tool_names = [tool["function"]["name"] for tool in created["tools"]]
     assert tool_names == ["read_file", "search_code"]
 
@@ -127,9 +131,11 @@ def test_llm_client_factory_creates_real_client_from_env_defaults(monkeypatch):
     monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
     monkeypatch.setenv("DEVAGENT_LLM_MODEL", "env-model")
     monkeypatch.setenv("DEVAGENT_LLM_BASE_URL", "https://env.example.test/v1")
+    monkeypatch.setenv("DEVAGENT_LLM_API_MODE", "chat_completions")
+    monkeypatch.delenv("DEVAGENT_LLM_REASONING_EFFORT", raising=False)
     monkeypatch.setattr(
-        "devagent.task.manager.OpenAICompatibleLLMClient",
-        FakeOpenAICompatibleLLMClient,
+        "devagent.task.manager.create_openai_llm_client",
+        lambda **kwargs: FakeOpenAICompatibleLLMClient(**kwargs),
     )
     factory = LLMClientFactory()
     task = AgentTask(question="请分析项目", provider="real")
@@ -139,6 +145,29 @@ def test_llm_client_factory_creates_real_client_from_env_defaults(monkeypatch):
     assert created["api_key"] == "test-key"
     assert created["model"] == "env-model"
     assert created["base_url"] == "https://env.example.test/v1"
+    assert created["api_mode"] == "chat_completions"
+
+
+def test_llm_client_factory_forwards_responses_and_reasoning_env(monkeypatch):
+    created: dict[str, object] = {}
+
+    monkeypatch.setattr("devagent.task.manager.load_dotenv", lambda **kwargs: None)
+    monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
+    monkeypatch.setenv("DEVAGENT_LLM_MODEL", "gpt-5.6-luna")
+    monkeypatch.setenv("DEVAGENT_LLM_API_MODE", "responses")
+    monkeypatch.setenv("DEVAGENT_LLM_REASONING_EFFORT", "medium")
+    monkeypatch.setattr(
+        "devagent.task.manager.create_openai_llm_client",
+        lambda **kwargs: created.update(kwargs) or MockLLMClient(),
+    )
+
+    LLMClientFactory().create_client(
+        AgentTask(question="请分析项目", provider="real"),
+        create_low_risk_registry(),
+    )
+
+    assert created["api_mode"] == "responses"
+    assert created["reasoning_effort"] == "medium"
 
 
 def test_llm_client_factory_rejects_real_client_without_api_key(monkeypatch):

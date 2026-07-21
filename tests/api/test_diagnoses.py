@@ -128,16 +128,20 @@ def test_create_diagnosis_llm_client_enables_json_output(
         lambda **kwargs: None,
     )
     monkeypatch.setattr(
-        "devagent.api.routes.diagnoses.OpenAICompatibleLLMClient",
-        FakeOpenAICompatibleLLMClient,
+        "devagent.api.routes.diagnoses.create_openai_llm_client",
+        lambda **kwargs: FakeOpenAICompatibleLLMClient(**kwargs),
     )
     monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
     monkeypatch.setenv("DEVAGENT_LLM_MODEL", "deepseek-v4-pro")
     monkeypatch.setenv("DEVAGENT_LLM_BASE_URL", "https://api.deepseek.com")
+    monkeypatch.setenv("DEVAGENT_LLM_API_MODE", "chat_completions")
+    monkeypatch.delenv("DEVAGENT_LLM_REASONING_EFFORT", raising=False)
 
     create_diagnosis_llm_client()
 
     assert created["response_format"] == {"type": "json_object"}
+    assert created["api_mode"] == "chat_completions"
+    assert created["reasoning_effort"] is None
 
 
 def test_create_diagnosis_llm_client_rejects_missing_api_key(monkeypatch):
@@ -156,6 +160,22 @@ def test_create_diagnosis_llm_client_rejects_missing_api_key(monkeypatch):
         exc_info.value.code
         == DiagnosisServiceErrorCode.CONFIGURATION_ERROR
     )
+
+
+def test_create_diagnosis_llm_client_rejects_invalid_api_mode(monkeypatch):
+    monkeypatch.setattr(
+        "devagent.api.routes.diagnoses.load_dotenv",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setenv("DEVAGENT_LLM_API_KEY", "test-key")
+    monkeypatch.setenv("DEVAGENT_LLM_MODEL", "gpt-5.6-luna")
+    monkeypatch.setenv("DEVAGENT_LLM_API_MODE", "invalid")
+
+    with pytest.raises(DiagnosisServiceError) as exc_info:
+        create_diagnosis_llm_client()
+
+    assert exc_info.value.code == DiagnosisServiceErrorCode.CONFIGURATION_ERROR
+    assert "API 模式" in exc_info.value.message
 
 
 def test_openapi_ci_diagnosis_example_uses_valid_commit_id():

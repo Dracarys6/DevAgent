@@ -10,7 +10,7 @@ from devagent.event import InMemoryEventStore, InMemoryEventBus
 from devagent.llm import (
     LLMClient,
     MockLLMClient,
-    OpenAICompatibleLLMClient,
+    create_openai_llm_client,
     tool_registry_to_openai_tools,
 )
 from devagent.tools import ReadFileTool, RiskLevel, SearchCodeTool, ToolRegistry
@@ -50,6 +50,8 @@ class LLMClientFactory:
         api_key = os.getenv("DEVAGENT_LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
         model = task.model or os.getenv("DEVAGENT_LLM_MODEL")
         base_url = task.base_url or os.getenv("DEVAGENT_LLM_BASE_URL")
+        api_mode = os.getenv("DEVAGENT_LLM_API_MODE", "chat_completions")
+        reasoning_effort = os.getenv("DEVAGENT_LLM_REASONING_EFFORT") or None
 
         if not api_key:
             raise ValueError("缺少 LLM API Key，请设置 DEVAGENT_LLM_API_KEY")
@@ -58,10 +60,12 @@ class LLMClientFactory:
                 "缺少 LLM 模型名称，请在请求中传入 model 或设置 DEVAGENT_LLM_MODEL"
             )
 
-        return OpenAICompatibleLLMClient(
+        return create_openai_llm_client(
             api_key=api_key,
             model=model,
             base_url=base_url,
+            api_mode=api_mode,
+            reasoning_effort=reasoning_effort,
             tools=tool_registry_to_openai_tools(
                 registry=tool_registry,
                 allowed_risk_levels={RiskLevel.LOW},

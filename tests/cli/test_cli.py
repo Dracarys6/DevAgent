@@ -43,6 +43,10 @@ def test_build_parser_parses_cli_arguments():
             "test-model",
             "--base-url",
             "https://example.test/v1",
+            "--api-mode",
+            "responses",
+            "--reasoning-effort",
+            "medium",
         ]
     )
 
@@ -54,6 +58,8 @@ def test_build_parser_parses_cli_arguments():
     assert args.provider == "real"
     assert args.model == "test-model"
     assert args.base_url == "https://example.test/v1"
+    assert args.api_mode == "responses"
+    assert args.reasoning_effort == "medium"
 
 
 def test_create_tool_registry_for_real_provider_excludes_high_risk_tools():

@@ -13,7 +13,7 @@ from devagent.diagnosis.service import (
     LocalCIEvidenceCollector,
 )
 
-from devagent.llm import LLMClient, OpenAICompatibleLLMClient
+from devagent.llm import LLMClient, create_openai_llm_client
 
 router = APIRouter(prefix="/api/v1/diagnoses", tags=["diagnoses"])
 
@@ -24,6 +24,8 @@ def create_diagnosis_llm_client() -> LLMClient:
     api_key = os.getenv("DEVAGENT_LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
     model = os.getenv("DEVAGENT_LLM_MODEL")
     base_url = os.getenv("DEVAGENT_LLM_BASE_URL")
+    api_mode = os.getenv("DEVAGENT_LLM_API_MODE", "chat_completions")
+    reasoning_effort = os.getenv("DEVAGENT_LLM_REASONING_EFFORT") or None
 
     if not api_key:
         raise DiagnosisServiceError(
@@ -36,12 +38,20 @@ def create_diagnosis_llm_client() -> LLMClient:
             message="诊断服务缺少 LLM 模型名称",
         )
 
-    return OpenAICompatibleLLMClient(
-        api_key=api_key,
-        model=model,
-        base_url=base_url,
-        response_format={"type": "json_object"},
-    )
+    try:
+        return create_openai_llm_client(
+            api_key=api_key,
+            model=model,
+            base_url=base_url,
+            api_mode=api_mode,
+            reasoning_effort=reasoning_effort,
+            response_format={"type": "json_object"},
+        )
+    except ValueError as exc:
+        raise DiagnosisServiceError(
+            code=DiagnosisServiceErrorCode.CONFIGURATION_ERROR,
+            message=f"诊断服务 LLM 配置无效: {exc}",
+        ) from exc
 
 
 def get_diagnosis_service() -> DiagnosisService:
