@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from devagent.api.app import app
 from devagent.api.routes.tasks import task_manager
+from devagent.api.schemas import AgentTaskCreateRequest, LLMProvider
 
 client = TestClient(app)
 
@@ -11,7 +12,7 @@ client = TestClient(app)
 def test_create_agent_task_returns_pending():
     response = client.post(
         "/api/v1/agent/tasks",
-        json={"question": "请分析项目"},
+        json={"question": "请分析项目", "provider": "mock"},
     )
 
     assert response.status_code == 201
@@ -24,7 +25,7 @@ def test_create_agent_task_returns_pending():
 def test_create_agent_task_returns_uuid_task_id():
     response = client.post(
         "/api/v1/agent/tasks",
-        json={"question": "请分析项目"},
+        json={"question": "请分析项目", "provider": "mock"},
     )
 
     data = response.json()
@@ -35,11 +36,11 @@ def test_create_agent_task_returns_uuid_task_id():
 def test_create_agent_task_returns_different_task_ids():
     first = client.post(
         "/api/v1/agent/tasks",
-        json={"question": "请分析第一个任务"},
+        json={"question": "请分析第一个任务", "provider": "mock"},
     )
     second = client.post(
         "/api/v1/agent/tasks",
-        json={"question": "请分析第二个任务"},
+        json={"question": "请分析第二个任务", "provider": "mock"},
     )
 
     assert first.status_code == 201
@@ -138,7 +139,7 @@ def test_cancel_terminal_task_returns_409():
 def test_list_agent_tasks_contains_created_task():
     created = client.post(
         "/api/v1/agent/tasks",
-        json={"question": "请分析列表接口"},
+        json={"question": "请分析列表接口", "provider": "mock"},
     )
     task_id = created.json()["task_id"]
 
@@ -152,7 +153,7 @@ def test_list_agent_tasks_contains_created_task():
 def test_get_agent_task_events_returns_runtime_events():
     created = client.post(
         "/api/v1/agent/tasks",
-        json={"question": "请分析事件接口"},
+        json={"question": "请分析事件接口", "provider": "mock"},
     )
     task_id = created.json()["task_id"]
 
@@ -246,13 +247,27 @@ def test_openapi_schema_contains_create_task_path():
     assert "/api/v1/agent/tasks/{task_id}/events" in response.json()["paths"]
 
 
-def test_openapi_create_task_example_omits_optional_llm_fields():
+def test_create_task_request_uses_current_real_defaults():
+    request = AgentTaskCreateRequest(question="你好")
+
+    assert request.workspace == "."
+    assert request.provider == LLMProvider.REAL
+    assert request.model is None
+    assert request.base_url is None
+    assert request.max_steps == 10
+    assert request.max_tool_calls == 20
+
+
+def test_openapi_create_task_example_matches_current_defaults():
     response = client.get("/openapi.json")
 
     schema = response.json()["components"]["schemas"]["AgentTaskCreateRequest"]
     example = schema["examples"][0]
 
-    assert example["question"] == "请分析项目结构"
-    assert example["provider"] == "mock"
-    assert "model" not in example
-    assert "base_url" not in example
+    assert example == {
+        "question": "你好",
+        "workspace": ".",
+        "provider": "real",
+        "max_steps": 10,
+        "max_tool_calls": 20,
+    }

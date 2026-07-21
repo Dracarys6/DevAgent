@@ -502,6 +502,10 @@ function TasksView({
         workspace: String(form.get("workspace")),
         provider,
         model: provider === "real" ? String(form.get("model") || "") || undefined : undefined,
+        base_url:
+          provider === "real"
+            ? String(form.get("base_url") || "") || undefined
+            : undefined,
         max_steps: Number(form.get("max_steps")),
         max_tool_calls: Number(form.get("max_tool_calls")),
       });
@@ -658,7 +662,7 @@ function TasksView({
                 name="question"
                 required
                 autoFocus
-                defaultValue="请分析这个项目的核心架构和入口"
+                defaultValue="你好"
               />
             </label>
             <div className="form-grid">
@@ -668,14 +672,18 @@ function TasksView({
               </label>
               <label>
                 Provider
-                <select name="provider" defaultValue="mock">
+                <select name="provider" defaultValue="real">
                   <option value="mock">Mock（离线演示）</option>
                   <option value="real">Real（服务端环境变量）</option>
                 </select>
               </label>
               <label>
                 Model（Real 可选覆盖）
-                <input name="model" placeholder="例如 gpt-5" />
+                <input name="model" placeholder="默认使用 DEVAGENT_LLM_MODEL" />
+              </label>
+              <label>
+                Base URL（Real 可选覆盖）
+                <input name="base_url" placeholder="默认使用 DEVAGENT_LLM_BASE_URL" />
               </label>
               <label>
                 最大步骤

@@ -16,9 +16,6 @@ DevAgent Console 是后端 Agent Runtime 的 Web GUI，首版覆盖：
 ./scripts/start.sh
 ```
 
-脚本会在服务就绪后默认打开浏览器空白页，不会自动访问前端 URL。使用
-`./scripts/start.sh --no-open` 可以只启动服务；按 `Ctrl+C` 会同时停止前后端。
-
 需要分别调试进程时，可先在项目根目录启动 API：
 
 ```bash
@@ -37,6 +34,11 @@ npm run dev
 `/health` 代理到 `http://127.0.0.1:8000`。
 
 如果前端与 API 不在同一域名，可通过 `VITE_API_BASE_URL` 指定 API 地址。
+
+新建 Agent 任务与 HTTP Task API 使用相同默认值：问题为“你好”、provider 为
+`real`、workspace 为 `.`、步骤上限为 10、工具调用预算为 20。`model` 和
+`base_url` 默认留空，由服务端的 `DEVAGENT_LLM_MODEL` 和
+`DEVAGENT_LLM_BASE_URL` 提供；也可以在创建表单中覆盖。Mock 仍作为显式的离线演示选项。
 
 ## 当前边界
 

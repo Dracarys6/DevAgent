@@ -7,8 +7,12 @@ client = TestClient(app)
 
 # 连续创建多个任务
 def test_create_multiple_tasks_keeps_task_state_isolated():
-    first = client.post("/api/v1/agent/tasks", json={"question": "任务 A"})
-    second = client.post("/api/v1/agent/tasks", json={"question": "任务 B"})
+    first = client.post(
+        "/api/v1/agent/tasks", json={"question": "任务 A", "provider": "mock"}
+    )
+    second = client.post(
+        "/api/v1/agent/tasks", json={"question": "任务 B", "provider": "mock"}
+    )
 
     assert first.status_code == 201
     assert second.status_code == 201
@@ -29,8 +33,12 @@ def test_create_multiple_tasks_keeps_task_state_isolated():
 
 # 事件按 task_id 隔离
 def test_task_events_are_isolated_by_task_id():
-    task_A = client.post("/api/v1/agent/tasks", json={"question": "任务 A"})
-    task_B = client.post("/api/v1/agent/tasks", json={"question": "任务 B"})
+    task_A = client.post(
+        "/api/v1/agent/tasks", json={"question": "任务 A", "provider": "mock"}
+    )
+    task_B = client.post(
+        "/api/v1/agent/tasks", json={"question": "任务 B", "provider": "mock"}
+    )
 
     assert task_A.status_code == 201
     assert task_B.status_code == 201
@@ -74,7 +82,7 @@ def test_task_events_are_isolated_by_task_id():
 def test_list_agent_tasks_contains_created_task():
     created = client.post(
         "/api/v1/agent/tasks",
-        json={"question": "请分析列表接口"},
+        json={"question": "请分析列表接口", "provider": "mock"},
     )
     task_id = created.json()["task_id"]
 
