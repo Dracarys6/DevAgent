@@ -3,6 +3,7 @@ import type {
   CodeReviewReport,
   DiagnosisReport,
   GitCommitSummary,
+  GitHubReviewTask,
   PermissionRequest,
   TaskTrace,
 } from "./types";
@@ -90,6 +91,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ ref, workspace }),
     }),
+  getGitHubReviewTask: (taskId: string) =>
+    request<GitHubReviewTask>(
+      `/api/v1/integrations/github/review-tasks/${encodeURIComponent(taskId)}`,
+    ),
 };
 
 export function openTaskStream(

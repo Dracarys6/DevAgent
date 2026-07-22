@@ -132,3 +132,23 @@ export interface CodeReviewReport {
   evidence: Evidence[];
   missing_evidence: MissingEvidence[];
 }
+
+export type GitHubReviewTaskStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed";
+
+export interface GitHubReviewTask {
+  task_id: string;
+  delivery_id: string;
+  installation_id: number;
+  locator: {
+    platform: string;
+    repository: string;
+    number: number;
+  };
+  status: GitHubReviewTaskStatus;
+  report_id: string | null;
+  error_message: string | null;
+}

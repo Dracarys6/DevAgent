@@ -39,6 +39,7 @@ import type {
   AgentTask,
   CodeReviewReport,
   DiagnosisReport,
+  GitHubReviewTask,
   PermissionRequest,
   TaskStatus,
   TaskTrace,
@@ -889,8 +890,49 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
 
 function GitHubReviewMode({ onError }: { onError: (message: string) => void }) {
   const [copied, setCopied] = useState(false);
+  const [taskId, setTaskId] = useState("");
+  const [task, setTask] = useState<GitHubReviewTask | null>(null);
+  const [loadingTask, setLoadingTask] = useState(false);
+  const [pollingPaused, setPollingPaused] = useState(false);
   const webhookPath = "/api/v1/integrations/github/webhooks";
   const webhookUrl = new URL(getApiUrl(webhookPath), window.location.origin).toString();
+  const activeTaskId = task?.task_id;
+  const activeTaskStatus = task?.status;
+
+  const loadTask = useCallback(async (id: string, background = false) => {
+    if (!background) setLoadingTask(true);
+    try {
+      setTask(await api.getGitHubReviewTask(id));
+      setPollingPaused(false);
+    } catch (cause) {
+      if (background) setPollingPaused(true);
+      onError(cause instanceof Error ? cause.message : "GitHub 审查任务查询失败");
+    } finally {
+      if (!background) setLoadingTask(false);
+    }
+  }, [onError]);
+
+  useEffect(() => {
+    const shouldPoll =
+      activeTaskId &&
+      (activeTaskStatus === "pending" || activeTaskStatus === "running") &&
+      !pollingPaused;
+    if (!shouldPoll) return;
+    const intervalId = window.setInterval(() => {
+      void loadTask(activeTaskId, true);
+    }, 2000);
+    return () => window.clearInterval(intervalId);
+  }, [activeTaskId, activeTaskStatus, loadTask, pollingPaused]);
+
+  async function queryTask(event: FormEvent) {
+    event.preventDefault();
+    const normalizedTaskId = taskId.trim();
+    if (!normalizedTaskId) return;
+    setTaskId(normalizedTaskId);
+    if (task?.task_id !== normalizedTaskId) setTask(null);
+    setPollingPaused(false);
+    await loadTask(normalizedTaskId);
+  }
 
   async function copyWebhookUrl() {
     try {
@@ -906,17 +948,84 @@ function GitHubReviewMode({ onError }: { onError: (message: string) => void }) {
     <div className="github-review-mode">
       <section className="github-review-hero">
         <div>
-          <span className="integration-state"><CircleDot size={12} /> 服务端装配后可用</span>
+          <span className="integration-state integration-ready">
+            <Check size={12} /> 自动化闭环完成
+          </span>
           <h2>GitHub Pull Request 建议模式</h2>
           <p>
-            GitHub 发送 PR 事件后，DevAgent 校验签名与 delivery，再异步生成摘要和可定位的
-            inline comments。
+            Review Evaluation 固定基线和真实 GitHub App adapter 已就绪，覆盖 installation
+            token、受控 workspace 与评论回写；专用测试仓库的真实 PR smoke 仍待验收。
           </p>
         </div>
         <a className="secondary-button" href={getApiUrl("/docs")} target="_blank" rel="noreferrer">
           <ExternalLink size={15} /> 查看 API 契约
         </a>
       </section>
+
+      <section className="github-task-lookup">
+        <div className="github-task-lookup-copy">
+          <div className="section-title"><Search size={17} /><h3>Review task status</h3></div>
+          <p>粘贴 webhook 返回的 task_id，查询 repository、delivery、report_id 和执行状态。</p>
+        </div>
+        <form onSubmit={(event) => void queryTask(event)}>
+          <input
+            required
+            value={taskId}
+            onChange={(event) => setTaskId(event.target.value)}
+            placeholder="Webhook response task_id"
+            aria-label="GitHub Review Task ID"
+          />
+          <button className="primary-button" disabled={loadingTask}>
+            {loadingTask ? <LoaderCircle className="spin" size={15} /> : <Search size={15} />}
+            查询任务
+          </button>
+        </form>
+      </section>
+
+      {task && (
+        <section className="github-task-result" aria-live="polite">
+          <header>
+            <div>
+              <StatusBadge status={task.status} />
+              <strong>{task.locator.repository} #{task.locator.number}</strong>
+            </div>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => void loadTask(task.task_id)}
+              aria-label="刷新 GitHub 审查任务"
+              title="刷新任务"
+            >
+              <RefreshCw size={15} />
+            </button>
+          </header>
+          <div className="github-task-details">
+            <div><span>Task ID</span><code>{task.task_id}</code></div>
+            <div><span>Delivery</span><code>{task.delivery_id}</code></div>
+            <div><span>Installation</span><strong>#{task.installation_id}</strong></div>
+            <div><span>Platform</span><strong>{task.locator.platform}</strong></div>
+          </div>
+          {task.report_id && (
+            <div className="github-task-report">
+              <Check size={16} /><span>Review report</span><code>{task.report_id}</code>
+            </div>
+          )}
+          {task.error_message && (
+            <div className="github-task-error">
+              <AlertTriangle size={16} /><span>{task.error_message}</span>
+            </div>
+          )}
+          {(task.status === "pending" || task.status === "running") && (
+            <p className={pollingPaused ? "task-polling paused" : "task-polling"}>
+              {pollingPaused ? (
+                <><AlertTriangle size={13} /> 自动刷新已暂停，请手动刷新后重试</>
+              ) : (
+                <><LoaderCircle className="spin" size={13} /> 每 2 秒自动刷新</>
+              )}
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="github-webhook-card">
         <div className="section-title"><GitPullRequest size={17} /><h3>Webhook endpoint</h3></div>
@@ -984,8 +1093,8 @@ function GitHubReviewMode({ onError }: { onError: (message: string) => void }) {
           <span>摘要 + Inline</span>
         </div>
         <p>
-          HTTP 202 只表示事件已被接收，不表示审查完成。当前后端尚未提供 delivery 或 GitHub
-          审查任务查询接口，因此此页面不展示虚构的执行历史。
+          HTTP 202 只表示事件已被接收，不表示审查完成。使用响应中的 task_id 查询任务；当前
+          后端仍使用进程内任务存储，服务重启后状态会清空。
         </p>
       </section>
     </div>

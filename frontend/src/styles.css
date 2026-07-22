@@ -95,7 +95,7 @@ h1, h2, h3, p { margin-top: 0; }
 .task-meta { justify-content: flex-start; }
 .task-meta span { margin-left: auto; font-family: "IBM Plex Mono"; }
 .status { display: inline-block; font: 500 9px "IBM Plex Mono"; letter-spacing: .5px; padding: 3px 7px; border-radius: 4px; color: var(--blue); background: rgba(123,183,255,.1); }
-.status-done, .status-diagnosed { color: var(--accent); background: var(--accent-dim); }
+.status-done, .status-diagnosed, .status-completed { color: var(--accent); background: var(--accent-dim); }
 .status-failed, .status-cancelled { color: var(--danger); background: rgba(255,116,116,.1); }
 .status-running { color: var(--warning); background: rgba(246,199,106,.1); }
 .status-waiting_permission { color: #d9a5ff; background: rgba(217,165,255,.1); }
@@ -260,7 +260,7 @@ nav button:nth-child(5).active { color: #9bb2ff; background: rgba(117, 150, 255,
 .task-item.selected { background: linear-gradient(90deg, rgba(91, 214, 208, .08), #192235 34%); border-color: #344d65; box-shadow: inset 2px 0 #5bd6d0; }
 .task-item > strong { font-size: 11px; font-weight: 500; color: #e1e6f0; }
 .status { border-radius: 10px; padding: 2px 7px; background: transparent; border: 1px solid #354057; }
-.status-done, .status-diagnosed { color: #74c99a; background: transparent; border-color: #284537; }
+.status-done, .status-diagnosed, .status-completed { color: #74c99a; background: transparent; border-color: #284537; }
 .status-failed, .status-cancelled { color: #ed8080; background: transparent; border-color: #4a2929; }
 .status-running { color: #d9b66f; background: transparent; border-color: #4b402b; }
 .status-waiting_permission { color: #c4a1df; background: transparent; border-color: #44344f; }
@@ -439,8 +439,30 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 .github-review-hero p { max-width: 710px; margin: 0; color: #aab4c7; font-size: 10px; line-height: 1.7; }
 .integration-state { display: inline-flex; align-items: center; gap: 6px; color: var(--warning); font: 8px "IBM Plex Mono"; letter-spacing: .8px; text-transform: uppercase; }
 .integration-state svg { fill: currentColor; }
+.integration-state.integration-ready { color: var(--success); }
 .github-review-hero a { flex: none; text-decoration: none; }
-.github-webhook-card, .github-flow-card { padding: 19px 21px; }
+.github-webhook-card, .github-flow-card, .github-task-lookup, .github-task-result { padding: 19px 21px; }
+.github-task-lookup, .github-task-result { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.github-task-lookup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, .9fr); align-items: end; gap: 24px; }
+.github-task-lookup-copy .section-title { margin-bottom: 7px; }
+.github-task-lookup-copy > p { margin: 0; color: #8996ab; font-size: 9px; line-height: 1.65; }
+.github-task-lookup form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
+.github-task-lookup input { min-width: 0; width: 100%; padding: 9px 11px; color: var(--text); background: #0c111b; border: 1px solid #2c364b; border-radius: 6px; outline: 0; font: 10px "IBM Plex Mono"; }
+.github-task-lookup input:focus { border-color: #708fe8; }
+.github-task-result { display: grid; gap: 15px; border-color: #354261; }
+.github-task-result > header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.github-task-result > header > div { display: flex; align-items: center; gap: 10px; }
+.github-task-result > header strong { font-size: 13px; }
+.github-task-details { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.github-task-details > div { min-width: 0; padding: 11px 12px; background: #0e131d; border: 1px solid #293248; border-radius: 6px; }
+.github-task-details span, .github-task-details strong, .github-task-details code { display: block; }
+.github-task-details span { margin-bottom: 6px; color: #68758d; font: 8px "IBM Plex Mono"; text-transform: uppercase; }
+.github-task-details strong, .github-task-details code { overflow: hidden; color: #c5cede; font: 9px "IBM Plex Mono"; text-overflow: ellipsis; white-space: nowrap; }
+.github-task-report, .github-task-error, .task-polling { display: flex; align-items: center; gap: 8px; margin: 0; padding: 9px 11px; border-radius: 6px; font-size: 9px; }
+.github-task-report { color: #82d4a8; background: rgba(112, 214, 162, .06); border: 1px solid rgba(112, 214, 162, .2); }
+.github-task-report code { margin-left: auto; color: #a8dfc1; font: 9px "IBM Plex Mono"; }
+.github-task-error, .task-polling.paused { color: #ef9090; background: rgba(255, 116, 116, .06); border: 1px solid rgba(255, 116, 116, .2); }
+.task-polling { color: #d9b66f; background: rgba(214, 168, 75, .06); border: 1px solid rgba(214, 168, 75, .2); }
 .webhook-url-row { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
 .webhook-url-row code { min-width: 0; overflow: hidden; padding: 11px 13px; color: #9bb2ff; background: #0c111b; border: 1px solid #2c364b; border-radius: 6px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .webhook-url-row button { min-width: 104px; }
@@ -523,7 +545,8 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 :root[data-theme="light"] .task-item > strong { color: #27334a; }
 :root[data-theme="light"] .status { border-color: #cbd3e0; }
 :root[data-theme="light"] .status-done,
-:root[data-theme="light"] .status-diagnosed { color: #23734f; border-color: #a9d4bf; }
+:root[data-theme="light"] .status-diagnosed,
+:root[data-theme="light"] .status-completed { color: #23734f; border-color: #a9d4bf; }
 :root[data-theme="light"] .status-failed,
 :root[data-theme="light"] .status-cancelled { color: #bd454b; border-color: #e2b4b7; }
 :root[data-theme="light"] .status-running { color: #936516; border-color: #dfca9c; }
@@ -608,13 +631,20 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 :root[data-theme="light"] .github-review-hero,
 :root[data-theme="light"] .github-webhook-card,
 :root[data-theme="light"] .github-info-card,
-:root[data-theme="light"] .github-flow-card { color: #253149; background-color: #fff; border-color: #d7deea; }
+:root[data-theme="light"] .github-flow-card,
+:root[data-theme="light"] .github-task-lookup,
+:root[data-theme="light"] .github-task-result { color: #253149; background-color: #fff; border-color: #d7deea; }
 :root[data-theme="light"] .github-review-hero { background: linear-gradient(135deg, #eef2fc, #f6f1fc); border-color: #cdd7ee; }
 :root[data-theme="light"] .github-review-hero p,
 :root[data-theme="light"] .github-info-card > p,
 :root[data-theme="light"] .github-webhook-card > p,
-:root[data-theme="light"] .github-flow-card > p { color: #66728a; }
+:root[data-theme="light"] .github-flow-card > p,
+:root[data-theme="light"] .github-task-lookup-copy > p { color: #66728a; }
 :root[data-theme="light"] .webhook-url-row code { color: #475d9f; background: #f8f9fc; border-color: #d4dbe7; }
+:root[data-theme="light"] .github-task-lookup input { color: #172033; background: #f8f9fc; border-color: #d4dbe7; }
+:root[data-theme="light"] .github-task-details > div { background: #f8f9fc; border-color: #d8deea; }
+:root[data-theme="light"] .github-task-details strong,
+:root[data-theme="light"] .github-task-details code { color: #455168; }
 :root[data-theme="light"] .github-card-index { color: #8490a3; }
 :root[data-theme="light"] .github-status-list dd { color: #66728a; }
 :root[data-theme="light"] .github-info-card ul { color: #455168; }
@@ -669,4 +699,9 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
   .github-review-hero a { width: fit-content; }
   .webhook-url-row { grid-template-columns: 1fr; }
   .webhook-url-row button { width: 100%; }
+  .github-task-lookup { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .github-task-lookup form { grid-template-columns: minmax(0, 1fr); }
+  .github-task-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .github-task-report { align-items: flex-start; flex-wrap: wrap; }
+  .github-task-report code { width: 100%; margin: 0; overflow-wrap: anywhere; }
 }
