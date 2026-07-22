@@ -6,7 +6,10 @@ DevAgent Console 是后端 Agent Runtime 的 Web GUI，首版覆盖：
 - 通过 SSE 实时刷新执行 Trace；
 - 查看 LLM、工具、权限与错误事件；
 - 查询并处理高风险工具审批；
-- 提交 CI 诊断并展示 finding、recommendation 与 evidence。
+- 提交 CI 诊断并展示 finding、recommendation 与 evidence；
+- 比较本地 Git refs 并保留代码审查历史；
+- 展示 GitHub PR 建议模式的 webhook 接入、安全边界和处理流程；
+- 通过内嵌 Swagger UI 调试 HTTP API。
 
 ## 本地运行
 
@@ -45,4 +48,7 @@ npm run dev
 - 后端任务、事件和权限请求保存在内存中，API 重启后会清空。
 - CI 诊断依赖服务端配置 `DEVAGENT_LLM_API_KEY` 和
   `DEVAGENT_LLM_MODEL`。
+- GitHub PR 建议由 GitHub webhook 触发，浏览器不保存或发送 webhook
+  secret。当前页面提供接入说明和 Webhook URL；后端尚未提供 delivery
+  与 GitHub 审查任务查询接口，因此不会展示平台任务历史。
 - 权限页面只处理已有审批请求，不在前端构造或模拟审批数据。

@@ -9,6 +9,7 @@ import {
   CircleDot,
   Clock3,
   Code2,
+  Copy,
   FileSearch,
   ExternalLink,
   GitCommitHorizontal,
@@ -46,6 +47,7 @@ import type {
 
 type View = "tasks" | "diagnosis" | "review" | "permissions" | "api";
 type Theme = "dark" | "light";
+type ReviewMode = "local" | "github";
 
 interface DiagnosisHistoryInput {
   commit_id: string;
@@ -739,6 +741,7 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
   const [workspace, setWorkspace] = useState(() => latest?.input.workspace ?? ".");
   const [report, setReport] = useState<CodeReviewReport | null>(() => latest?.report ?? null);
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<ReviewMode>("local");
 
   useEffect(() => {
     historyEntries.filter((entry) => !entry.title).forEach((entry) => {
@@ -799,61 +802,192 @@ function CodeReviewView({ onError }: { onError: (message: string) => void }) {
         <div>
           <span className="eyebrow">EVIDENCE-DRIVEN REVIEW</span>
           <h1>代码审查</h1>
-          <p>比较真实合入范围，定位有证据支持的代码风险和测试缺口。</p>
+          <p>本地比较真实合入范围，或通过 GitHub Pull Request 自动发布非阻塞建议。</p>
         </div>
       </header>
-      <form className="review-form" onSubmit={(event) => void review(event)}>
-        <label>
-          Base Ref
-          <input required value={baseRef} onChange={(event) => setBaseRef(event.target.value)} />
-        </label>
-        <span className="ref-arrow">→</span>
-        <label>
-          Head Ref
-          <input required value={headRef} onChange={(event) => setHeadRef(event.target.value)} />
-        </label>
-        <label>
-          Workspace
-          <input required value={workspace} onChange={(event) => setWorkspace(event.target.value)} />
-        </label>
-        <button className="primary-button" disabled={loading}>
-          {loading ? <LoaderCircle className="spin" size={16} /> : <GitPullRequest size={16} />}
-          开始审查
+      <div className="review-mode-switch" role="tablist" aria-label="代码审查模式">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "local"}
+          className={mode === "local" ? "active" : ""}
+          onClick={() => setMode("local")}
+        >
+          <Code2 size={15} /> 本地 Ref 审查
         </button>
-      </form>
-      <LocalHistoryPanel
-        entries={historyEntries}
-        activeId={report?.review_id ?? null}
-        onSelect={(entry) => {
-          setBaseRef(entry.input.base_ref);
-          setHeadRef(entry.input.head_ref);
-          setWorkspace(entry.input.workspace);
-          setReport(entry.report);
-        }}
-        onClear={() => {
-          history.clear();
-          setReport(null);
-        }}
-        renderTitle={(entry) => entry.title ?? `${entry.input.base_ref} → ${entry.input.head_ref}`}
-        renderMeta={(entry) => `${entry.input.base_ref} → ${entry.input.head_ref} · ${entry.report.findings.length} findings`}
-      />
-      {!report ? (
-        <div className="feature-placeholder review-placeholder">
-          <EmptyState
-            icon={<GitPullRequest />}
-            title="准备审查合入范围"
-            description="输入 Base 与 Head Ref。审查只给出建议，不会修改、批准或合入代码。"
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "github"}
+          className={mode === "github" ? "active" : ""}
+          onClick={() => setMode("github")}
+        >
+          <GitPullRequest size={15} /> GitHub PR 建议
+        </button>
+      </div>
+      {mode === "local" ? (
+        <>
+          <form className="review-form" onSubmit={(event) => void review(event)}>
+            <label>
+              Base Ref
+              <input required value={baseRef} onChange={(event) => setBaseRef(event.target.value)} />
+            </label>
+            <span className="ref-arrow">→</span>
+            <label>
+              Head Ref
+              <input required value={headRef} onChange={(event) => setHeadRef(event.target.value)} />
+            </label>
+            <label>
+              Workspace
+              <input required value={workspace} onChange={(event) => setWorkspace(event.target.value)} />
+            </label>
+            <button className="primary-button" disabled={loading}>
+              {loading ? <LoaderCircle className="spin" size={16} /> : <GitPullRequest size={16} />}
+              开始审查
+            </button>
+          </form>
+          <LocalHistoryPanel
+            entries={historyEntries}
+            activeId={report?.review_id ?? null}
+            onSelect={(entry) => {
+              setBaseRef(entry.input.base_ref);
+              setHeadRef(entry.input.head_ref);
+              setWorkspace(entry.input.workspace);
+              setReport(entry.report);
+            }}
+            onClear={() => {
+              history.clear();
+              setReport(null);
+            }}
+            renderTitle={(entry) => entry.title ?? `${entry.input.base_ref} → ${entry.input.head_ref}`}
+            renderMeta={(entry) => `${entry.input.base_ref} → ${entry.input.head_ref} · ${entry.report.findings.length} findings`}
           />
-          <div className="pipeline">
-            <span>Git Compare</span><ChevronRight size={16} />
-            <span>Evidence</span><ChevronRight size={16} />
-            <span>Risk Analysis</span><ChevronRight size={16} />
-            <span>Review Report</span>
-          </div>
-        </div>
+          {!report ? (
+            <div className="feature-placeholder review-placeholder">
+              <EmptyState
+                icon={<GitPullRequest />}
+                title="准备审查合入范围"
+                description="输入 Base 与 Head Ref。审查只给出建议，不会修改、批准或合入代码。"
+              />
+              <div className="pipeline">
+                <span>Git Compare</span><ChevronRight size={16} />
+                <span>Evidence</span><ChevronRight size={16} />
+                <span>Risk Analysis</span><ChevronRight size={16} />
+                <span>Review Report</span>
+              </div>
+            </div>
+          ) : (
+            <CodeReviewReportView report={report} />
+          )}
+        </>
       ) : (
-        <CodeReviewReportView report={report} />
+        <GitHubReviewMode onError={onError} />
       )}
+    </div>
+  );
+}
+
+function GitHubReviewMode({ onError }: { onError: (message: string) => void }) {
+  const [copied, setCopied] = useState(false);
+  const webhookPath = "/api/v1/integrations/github/webhooks";
+  const webhookUrl = new URL(getApiUrl(webhookPath), window.location.origin).toString();
+
+  async function copyWebhookUrl() {
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      onError("无法复制 Webhook URL，请手动选择地址");
+    }
+  }
+
+  return (
+    <div className="github-review-mode">
+      <section className="github-review-hero">
+        <div>
+          <span className="integration-state"><CircleDot size={12} /> 服务端装配后可用</span>
+          <h2>GitHub Pull Request 建议模式</h2>
+          <p>
+            GitHub 发送 PR 事件后，DevAgent 校验签名与 delivery，再异步生成摘要和可定位的
+            inline comments。
+          </p>
+        </div>
+        <a className="secondary-button" href={getApiUrl("/docs")} target="_blank" rel="noreferrer">
+          <ExternalLink size={15} /> 查看 API 契约
+        </a>
+      </section>
+
+      <section className="github-webhook-card">
+        <div className="section-title"><GitPullRequest size={17} /><h3>Webhook endpoint</h3></div>
+        <div className="webhook-url-row">
+          <code>{webhookUrl}</code>
+          <button type="button" className="secondary-button" onClick={() => void copyWebhookUrl()}>
+            {copied ? <Check size={15} /> : <Copy size={15} />}
+            {copied ? "已复制" : "复制地址"}
+          </button>
+        </div>
+        <p>
+          GitHub 必须访问公网 HTTPS 地址；本地 URL 需要通过受控转发服务暴露。Webhook secret
+          仅配置在服务端，不进入浏览器。
+        </p>
+      </section>
+
+      <div className="github-review-grid">
+        <section className="github-info-card">
+          <span className="github-card-index">01 / EVENTS</span>
+          <h3>触发事件</h3>
+          <div className="event-chip-list">
+            <span>opened</span>
+            <span>reopened</span>
+            <span>synchronize</span>
+            <span>ready_for_review</span>
+          </div>
+          <p>其他事件会返回 <code>ignored</code>，不会创建审查任务。</p>
+        </section>
+        <section className="github-info-card">
+          <span className="github-card-index">02 / DELIVERY</span>
+          <h3>接收语义</h3>
+          <dl className="github-status-list">
+            <div><dt>accepted</dt><dd>已创建异步任务</dd></div>
+            <div><dt>duplicate</dt><dd>delivery 已处理</dd></div>
+            <div><dt>ignored</dt><dd>事件不在触发范围</dd></div>
+          </dl>
+        </section>
+        <section className="github-info-card">
+          <span className="github-card-index">03 / PERMISSIONS</span>
+          <h3>GitHub App 最小权限</h3>
+          <ul>
+            <li>Metadata：Read</li>
+            <li>Contents：Read</li>
+            <li>Pull requests：Write</li>
+          </ul>
+          <p>使用 installation token，不把个人 PAT 作为长期凭据。</p>
+        </section>
+        <section className="github-info-card github-safety-card">
+          <span className="github-card-index">04 / BOUNDARY</span>
+          <h3><ShieldCheck size={16} /> 非阻塞建议</h3>
+          <p>只更新摘要评论并发布可稳定定位的行内建议。</p>
+          <div className="blocked-actions">
+            <span>不批准</span><span>不拒绝</span><span>不合并</span><span>不修改代码</span>
+          </div>
+        </section>
+      </div>
+
+      <section className="github-flow-card">
+        <div className="section-title"><Activity size={17} /><h3>处理链路</h3></div>
+        <div className="github-flow">
+          <span>PR Webhook</span><ChevronRight size={16} />
+          <span>签名校验</span><ChevronRight size={16} />
+          <span>Delivery 去重</span><ChevronRight size={16} />
+          <span>异步审查</span><ChevronRight size={16} />
+          <span>摘要 + Inline</span>
+        </div>
+        <p>
+          HTTP 202 只表示事件已被接收，不表示审查完成。当前后端尚未提供 delivery 或 GitHub
+          审查任务查询接口，因此此页面不展示虚构的执行历史。
+        </p>
+      </section>
     </div>
   );
 }

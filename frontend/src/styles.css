@@ -426,6 +426,45 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 .local-history-list span { margin-top: 5px; color: #7f8ba1; font-size: 8px; }
 .local-history-list time { position: absolute; top: 9px; right: 9px; color: #657188; font: 7px "IBM Plex Mono"; }
 
+.review-mode-switch { max-width: 1100px; margin: 0 auto 12px; display: flex; gap: 4px; padding: 4px; background: #0c111b; border: 1px solid #293248; border-radius: 8px; }
+.review-mode-switch button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 160px; padding: 8px 13px; color: #7f8ba1; background: transparent; border: 1px solid transparent; border-radius: 5px; font-size: 10px; }
+.review-mode-switch button:hover { color: #c4cede; background: #131a27; }
+.review-mode-switch button.active { color: #d9e1f0; background: #1a2233; border-color: #34415a; box-shadow: 0 3px 12px rgba(0, 0, 0, .18); }
+.review-mode-switch button:first-child.active svg { color: var(--cyan); }
+.review-mode-switch button:last-child.active svg { color: var(--violet); }
+.github-review-mode { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.github-review-hero, .github-webhook-card, .github-info-card, .github-flow-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.github-review-hero { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 23px; background: linear-gradient(135deg, rgba(117, 150, 255, .09), rgba(179, 140, 255, .05)); border-color: #354261; }
+.github-review-hero h2 { margin: 9px 0 7px; font-size: 18px; }
+.github-review-hero p { max-width: 710px; margin: 0; color: #aab4c7; font-size: 10px; line-height: 1.7; }
+.integration-state { display: inline-flex; align-items: center; gap: 6px; color: var(--warning); font: 8px "IBM Plex Mono"; letter-spacing: .8px; text-transform: uppercase; }
+.integration-state svg { fill: currentColor; }
+.github-review-hero a { flex: none; text-decoration: none; }
+.github-webhook-card, .github-flow-card { padding: 19px 21px; }
+.webhook-url-row { display: grid; grid-template-columns: 1fr auto; gap: 9px; }
+.webhook-url-row code { min-width: 0; overflow: hidden; padding: 11px 13px; color: #9bb2ff; background: #0c111b; border: 1px solid #2c364b; border-radius: 6px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.webhook-url-row button { min-width: 104px; }
+.github-webhook-card > p, .github-flow-card > p { margin: 10px 0 0; color: #8996ab; font-size: 9px; line-height: 1.65; }
+.github-review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.github-info-card { min-height: 180px; padding: 19px 21px; }
+.github-card-index { color: #68758d; font: 8px "IBM Plex Mono"; letter-spacing: .7px; }
+.github-info-card h3 { display: flex; align-items: center; gap: 7px; margin: 9px 0 15px; font-size: 13px; }
+.github-info-card > p { margin: 13px 0 0; color: #8996ab; font-size: 9px; line-height: 1.65; }
+.github-info-card > p code { color: #bca6eb; }
+.event-chip-list, .blocked-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.event-chip-list span { padding: 5px 8px; color: #80d7d3; background: rgba(91, 214, 208, .06); border: 1px solid rgba(91, 214, 208, .2); border-radius: 5px; font: 8px "IBM Plex Mono"; }
+.github-status-list { display: grid; gap: 7px; margin: 0; }
+.github-status-list > div { display: grid; grid-template-columns: 85px 1fr; gap: 10px; align-items: center; }
+.github-status-list dt { color: #bca6eb; font: 9px "IBM Plex Mono"; }
+.github-status-list dd { margin: 0; color: #9ca8bb; font-size: 9px; }
+.github-info-card ul { display: grid; gap: 7px; margin: 0; padding-left: 17px; color: #b9c3d4; font: 9px "IBM Plex Mono"; }
+.github-safety-card { background: linear-gradient(145deg, rgba(112, 214, 162, .055), var(--panel) 55%); border-color: rgba(112, 214, 162, .22); }
+.github-safety-card h3 svg { color: var(--success); }
+.blocked-actions span { padding: 4px 7px; color: #96a3b7; background: #0e131d; border: 1px solid #293248; border-radius: 5px; font-size: 8px; }
+.github-flow { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 3px; }
+.github-flow span { flex: none; padding: 7px 10px; color: #bdc8d9; background: #0e131d; border: 1px solid #2b3549; border-radius: 5px; font: 8px "IBM Plex Mono"; }
+.github-flow svg { flex: none; color: #62718b; }
+
 .api-explorer-page { min-height: 100vh; padding: 34px 38px 38px; background: var(--bg); }
 .api-explorer-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
 .api-explorer-header h1 { margin: 5px 0 7px; font-size: 22px; letter-spacing: -.5px; }
@@ -562,6 +601,26 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
 :root[data-theme="light"] .local-history-list strong { color: #2e3a51; }
 :root[data-theme="light"] .local-history-list span,
 :root[data-theme="light"] .local-history-list time { color: #6f7b90; }
+:root[data-theme="light"] .review-mode-switch { background: #fff; border-color: #d7deea; }
+:root[data-theme="light"] .review-mode-switch button { color: #6f7b90; }
+:root[data-theme="light"] .review-mode-switch button:hover { color: #344158; background: #f1f4f8; }
+:root[data-theme="light"] .review-mode-switch button.active { color: #253149; background: #edf1f8; border-color: #d0d8e5; box-shadow: none; }
+:root[data-theme="light"] .github-review-hero,
+:root[data-theme="light"] .github-webhook-card,
+:root[data-theme="light"] .github-info-card,
+:root[data-theme="light"] .github-flow-card { color: #253149; background-color: #fff; border-color: #d7deea; }
+:root[data-theme="light"] .github-review-hero { background: linear-gradient(135deg, #eef2fc, #f6f1fc); border-color: #cdd7ee; }
+:root[data-theme="light"] .github-review-hero p,
+:root[data-theme="light"] .github-info-card > p,
+:root[data-theme="light"] .github-webhook-card > p,
+:root[data-theme="light"] .github-flow-card > p { color: #66728a; }
+:root[data-theme="light"] .webhook-url-row code { color: #475d9f; background: #f8f9fc; border-color: #d4dbe7; }
+:root[data-theme="light"] .github-card-index { color: #8490a3; }
+:root[data-theme="light"] .github-status-list dd { color: #66728a; }
+:root[data-theme="light"] .github-info-card ul { color: #455168; }
+:root[data-theme="light"] .github-safety-card { background: linear-gradient(145deg, #eff9f5, #fff 55%); border-color: #c6e6d6; }
+:root[data-theme="light"] .blocked-actions span,
+:root[data-theme="light"] .github-flow span { color: #536077; background: #f8f9fc; border-color: #d8deea; }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 68px 1fr; }
@@ -596,10 +655,18 @@ pre { color: #c2cada; background: #0a0e17; border-color: #293248; border-radius:
   .diagnosis-form .primary-button { width: 100%; }
   .review-form .primary-button { width: 100%; }
   .ref-arrow { display: none; }
+  .review-mode-switch { overflow-x: auto; }
+  .review-mode-switch button { flex: 1; min-width: 140px; }
+  .github-review-hero { align-items: flex-start; }
+  .github-review-grid { grid-template-columns: minmax(0, 1fr); }
   .review-finding header, .finding-footer { display: grid; grid-template-columns: 1fr; }
   .review-finding header > code { text-align: left; }
   .api-explorer-page { padding: 22px 14px 18px; }
   .api-explorer-header { display: grid; gap: 14px; }
   .api-explorer-actions { flex-wrap: wrap; }
   .api-explorer-frame { height: 720px; min-height: 0; }
+  .github-review-hero { display: grid; gap: 15px; }
+  .github-review-hero a { width: fit-content; }
+  .webhook-url-row { grid-template-columns: 1fr; }
+  .webhook-url-row button { width: 100%; }
 }
