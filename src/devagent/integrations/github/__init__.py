@@ -6,6 +6,14 @@ from .adapters import (
     GitHubReviewPublisher,
     GitHubReviewPublishError,
 )
+from .auth import (
+    DEFAULT_GITHUB_API_BASE_URL,
+    GITHUB_API_VERSION,
+    GitHubAppCredentials,
+    GitHubAuthenticationError,
+    GitHubInstallationTokenProvider,
+    InstallationToken,
+)
 from .client import (
     FakeGitHubClient,
     GitHubClient,
@@ -21,6 +29,11 @@ from .delivery_store import (
     DeliveryStoreCapacityError,
     InMemoryWebhookDeliveryStore,
 )
+from .factory import (
+    GitHubIntegrationSettings,
+    RealGitHubReviewPortFactory,
+    create_real_github_review_task_manager,
+)
 from .models import (
     GitHubInstallation,
     GitHubPullRequest,
@@ -31,20 +44,37 @@ from .models import (
     GitHubWebhookStatus,
 )
 from .security import GitHubSignatureError, verify_github_signature
-from .tasks import GitHubReviewTask, GitHubReviewTaskManager, GitHubReviewTaskStatus
+from .real_client import RealGitHubClient
+from .tasks import (
+    FixedGitHubReviewPortFactory,
+    GitHubReviewPortFactory,
+    GitHubReviewPorts,
+    GitHubReviewTask,
+    GitHubReviewTaskManager,
+    GitHubReviewTaskStatus,
+)
+from .workspace import ControlledGitHubWorkspace
 
 __all__ = [
     "DELIVERY_MAX_ENTRIES",
+    "DEFAULT_GITHUB_API_BASE_URL",
     "GITHUB_REVIEW_MARKER",
+    "GITHUB_API_VERSION",
+    "ControlledGitHubWorkspace",
     "DeliveryState",
     "DeliveryStoreCapacityError",
     "FakeGitHubClient",
+    "FixedGitHubReviewPortFactory",
+    "GitHubAppCredentials",
+    "GitHubAuthenticationError",
     "GitHubClient",
     "GitHubClientError",
     "GitHubDiffLine",
     "GitHubDiffSide",
     "GitHubInlineCommentError",
+    "GitHubIntegrationSettings",
     "GitHubInstallation",
+    "GitHubInstallationTokenProvider",
     "GitHubPullRequest",
     "GitHubPullRequestData",
     "GitHubPullRequestSource",
@@ -53,6 +83,8 @@ __all__ = [
     "GitHubRepository",
     "GitHubReviewPublisher",
     "GitHubReviewPublishError",
+    "GitHubReviewPortFactory",
+    "GitHubReviewPorts",
     "GitHubReviewTask",
     "GitHubReviewTaskManager",
     "GitHubReviewTaskStatus",
@@ -60,5 +92,9 @@ __all__ = [
     "GitHubWebhookResponse",
     "GitHubWebhookStatus",
     "InMemoryWebhookDeliveryStore",
+    "InstallationToken",
+    "RealGitHubClient",
+    "RealGitHubReviewPortFactory",
+    "create_real_github_review_task_manager",
     "verify_github_signature",
 ]

@@ -1467,7 +1467,7 @@ pytest tests/
 
 周期：约 1 到 2 周。
 
-当前状态：第 6 周 Day 36 到 Day 42 已完成并验收，CI / 日志工具、诊断契约、DiagnosisService 和 CI Diagnosis API 已形成可重复闭环；第 7 周从代码合入审查领域模型开始。
+当前状态：第 6 周诊断闭环和第 7 周代码合入审查自动化闭环已完成；Review Evaluation 已形成固定基线，GitHub App 真实 PR smoke 等待专用测试仓库和外部配置验收。
 
 ### 任务清单
 
@@ -1483,14 +1483,14 @@ pytest tests/
 * [x] 实现 provider 无关的 DiagnosisService，负责证据标准化、Prompt 构造、LLMClient 调用和报告校验。
 * [x] 实现 `POST /api/v1/diagnoses/ci`，返回通过 Pydantic 校验的 DiagnosisReport 或结构化错误。
 * [x] 使用 MockLLMClient / 固定 LLMClient 完成可重复集成测试；真实 provider 只用于显式 smoke test。
-* [ ] 实现 `git_compare(base_ref, head_ref, workspace)`，安全读取合入范围和 diff hunk。
-* [ ] 定义 `CodeReviewReport`、`ReviewFinding`、`ReviewSeverity`、`ReviewCategory` 等结构化审查契约。
-* [ ] 实现 provider 无关的 `CodeReviewService`，负责变更证据采集、Prompt 构造、LLMClient 调用和报告校验。
-* [ ] 实现 `POST /api/v1/reviews/code`，输入 `base_ref`、`head_ref` 和 workspace，返回结构化审查报告或证据不足状态。
-* [ ] 定义 `PullRequestSource`、`ReviewPublisher` 和 `WebhookDeliveryStore` 协议，让核心审查服务不依赖 GitHub SDK 或内存存储。
-* [ ] 实现 GitHub App adapter：校验 webhook 签名、解析 PR base/head SHA、读取变更、触发审查并回写建议。
-* [ ] 实现 `POST /api/v1/integrations/github/webhooks`；首版用有界内存 DeliveryStore 保证 delivery ID 幂等，并更新同一条带标记的摘要评论，避免重复刷屏。
-* [ ] 建立包含正确性、安全、兼容性、性能和测试缺口的固定 merge review eval cases。
+* [x] 实现 `git_compare(base_ref, head_ref, workspace)`，安全读取合入范围和 diff hunk。
+* [x] 定义 `CodeReviewReport`、`ReviewFinding`、`ReviewSeverity`、`ReviewCategory` 等结构化审查契约。
+* [x] 实现 provider 无关的 `CodeReviewService`，负责变更证据采集、Prompt 构造、LLMClient 调用和报告校验。
+* [x] 实现 `POST /api/v1/reviews/code`，输入 `base_ref`、`head_ref` 和 workspace，返回结构化审查报告或证据不足状态。
+* [x] 定义 `PullRequestSource`、`ReviewPublisher` 和 `WebhookDeliveryStore` 协议，让核心审查服务不依赖 GitHub SDK 或内存存储。
+* [x] 实现 GitHub App adapter：校验 webhook 签名、解析 PR base/head SHA、读取变更、触发审查并回写建议。
+* [x] 实现 `POST /api/v1/integrations/github/webhooks`；首版用有界内存 DeliveryStore 保证 delivery ID 幂等，并更新同一条带标记的摘要评论，避免重复刷屏。
+* [x] 建立包含正确性、安全、兼容性、性能和测试缺口的固定 merge review eval cases。
 * [ ] 在专用 GitHub 测试仓库安装真实 GitHub App，创建包含已知缺陷的真实 PR，完成真实 webhook、installation token、代码审查和评论回写 smoke test。
 * [ ] 将真实 PR URL、base/head SHA、delivery GUID、report_id、摘要/inline comment URL、各阶段耗时和验收结论记录到 `docs/evaluation/github_pr_smoke.md`；不得记录任何凭据。
 

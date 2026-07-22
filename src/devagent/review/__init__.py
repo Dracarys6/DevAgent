@@ -36,6 +36,7 @@ __all__ = [
     "CodeReviewServiceErrorCode",
     "LocalCodeReviewEvidenceCollector",
     "ReviewIdFactory",
+    "DeterministicCodeReviewLLMClient",
 ]
 
 
@@ -48,9 +49,15 @@ def __getattr__(name: str):
         "CodeReviewServiceErrorCode",
         "LocalCodeReviewEvidenceCollector",
         "ReviewIdFactory",
+        "DeterministicCodeReviewLLMClient",
     }
     if name not in service_exports:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    if name == "DeterministicCodeReviewLLMClient":
+        from .fixed_llm import DeterministicCodeReviewLLMClient
+
+        return DeterministicCodeReviewLLMClient
 
     from . import service
 

@@ -832,18 +832,18 @@ Day 45：设计证据驱动的 Merge Review Prompt [x]
 边界：只报告证据支持的可行动问题，区分 correctness、security、compatibility、performance、maintainability、test_gap，不把格式偏好升级为阻塞问题
 验收：固定输出通过 CodeReviewReport 校验；证据不足时返回 missing_evidence
 
-Day 46：实现 CodeReviewService
+Day 46：实现 CodeReviewService [x]
 产出：src/devagent/review/service.py、tests/review/test_service.py
 执行链：git_compare -> Evidence -> read_file / search_code 补充代码上下文 -> LLMClient.chat() -> CodeReviewReport.model_validate_json()
 验收：模型非法 JSON、悬空 evidence_id、工具失败均转换为结构化错误或证据不足状态
 
-Day 47：实现代码审查 API 与平台协议
+Day 47：实现代码审查 API 与平台协议 [x]
 产出：src/devagent/api/routes/reviews.py、src/devagent/review/ports.py、tests/api/test_reviews.py
 接口：POST /api/v1/reviews/code
 协议：PullRequestSource、ReviewPublisher、WebhookDeliveryStore
 验收：输入 base_ref、head_ref 和 workspace，返回结构化报告；核心 service 不导入 GitHub SDK；API 不自动修改、批准或合入代码
 
-Day 48：接入 GitHub Pull Request 建议模式
+Day 48：接入 GitHub Pull Request 建议模式 [x]
 产出：src/devagent/integrations/github/、src/devagent/api/routes/github_webhooks.py、tests/integrations/github/
 接口：POST /api/v1/integrations/github/webhooks
 触发事件：opened、reopened、synchronize、ready_for_review
@@ -851,7 +851,7 @@ Day 48：接入 GitHub Pull Request 建议模式
 验收：基于原始 body 和常量时间比较校验 X-Hub-Signature-256；有界内存 DeliveryStore 保证 delivery ID 幂等；使用 FakeGitHubClient 回写摘要和以 line / side 定位的 inline comments，无法映射时降级到摘要；不访问真实网络
 学习记录：对应 daily 文档解释 GitHub App installation token、webhook 签名、delivery redelivery、202 异步确认和 review comment line / side 定位
 
-Day 49：建立 Review Evaluation 并完成端到端验收
+Day 49：建立 Review Evaluation 并完成端到端验收 [进行中：自动化闭环完成，真实 PR smoke 待验收]
 产出：eval/cases/code_review/、src/devagent/eval/review_metrics.py、tests/eval/test_review_metrics.py、tests/integration/test_github_pr_review.py、eval/reports/code_review_baseline.md、docs/evaluation/github_pr_smoke.md
 样例：正确性、安全、兼容性、性能、测试缺口、无缺陷变更和固定 GitHub webhook payload
 真实验证：在专用 GitHub 测试仓库安装 GitHub App，创建包含已知缺陷的真实 PR；先用固定 LLM 响应验证平台链路，再显式使用真实 provider 完成一次分析

@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import threading
 from typing import Annotated
 
 from dotenv import load_dotenv
@@ -13,19 +14,30 @@ from fastapi import (
     Request,
     status,
 )
+import httpx
 from pydantic import ValidationError
 
 from devagent.integrations.github import (
     DeliveryStoreCapacityError,
     GitHubPullRequestWebhook,
+    GitHubIntegrationSettings,
+    GitHubReviewTask,
     GitHubReviewTaskManager,
     GitHubSignatureError,
     GitHubWebhookResponse,
     GitHubWebhookStatus,
     InMemoryWebhookDeliveryStore,
+    create_real_github_review_task_manager,
     verify_github_signature,
 )
-from devagent.review import PullRequestLocator, WebhookDeliveryStore
+from devagent.review import (
+    CodeReviewServiceError,
+    DeterministicCodeReviewLLMClient,
+    PullRequestLocator,
+    WebhookDeliveryStore,
+)
+
+from .reviews import create_review_llm_client
 
 router = APIRouter(
     prefix="/api/v1/integrations/github",
@@ -37,7 +49,9 @@ TRIGGER_ACTIONS = frozenset(
 )
 
 _delivery_store = InMemoryWebhookDeliveryStore()
-_review_task_manager: GitHubReviewTaskManager | None = None
+_UNINITIALIZED = object()
+_review_task_manager: GitHubReviewTaskManager | None | object = _UNINITIALIZED
+_review_task_manager_lock = threading.Lock()
 
 
 def get_github_webhook_secret() -> str:
@@ -60,8 +74,53 @@ def get_delivery_store() -> WebhookDeliveryStore:
 
 
 def get_github_review_task_manager() -> GitHubReviewTaskManager | None:
-    """返回应用装配的任务管理器；测试通过 dependency_overrides 注入 Fake。"""
-    return _review_task_manager
+    """惰性装配真实任务管理器；测试通过 dependency_overrides 注入 Fake。"""
+    global _review_task_manager
+    if _review_task_manager is _UNINITIALIZED:
+        with _review_task_manager_lock:
+            if _review_task_manager is _UNINITIALIZED:
+                _review_task_manager = _create_configured_task_manager()
+    if isinstance(_review_task_manager, GitHubReviewTaskManager):
+        return _review_task_manager
+    return None
+
+
+def _create_configured_task_manager() -> GitHubReviewTaskManager | None:
+    load_dotenv(dotenv_path=Path.cwd() / ".env", override=False)
+    required = {
+        "app_client_id": os.getenv("DEVAGENT_GITHUB_APP_CLIENT_ID"),
+        "app_private_key_path": os.getenv("DEVAGENT_GITHUB_APP_PRIVATE_KEY_PATH"),
+        "allowed_repository": os.getenv("DEVAGENT_GITHUB_ALLOWED_REPOSITORY"),
+        "workspace": os.getenv("DEVAGENT_GITHUB_WORKSPACE"),
+    }
+    if not all(required.values()):
+        return None
+    try:
+        settings = GitHubIntegrationSettings(
+            **required,
+            api_base_url=os.getenv(
+                "DEVAGENT_GITHUB_API_BASE_URL", "https://api.github.com"
+            ),
+        )
+        return create_real_github_review_task_manager(
+            settings=settings,
+            llm_client=_create_github_review_llm_client(),
+            delivery_store=_delivery_store,
+            http_client=httpx.Client(),
+        )
+    except (CodeReviewServiceError, OSError, ValueError):
+        # ! 配置错误可能包含本地路径或 provider 细节，HTTP 层只暴露固定 503。
+        return None
+
+
+def _create_github_review_llm_client():
+    fixed_smoke = os.getenv("DEVAGENT_GITHUB_SMOKE_FIXED_LLM") == "1"
+    smoke_enabled = os.getenv("DEVAGENT_ENABLE_GITHUB_SMOKE") == "1"
+    if fixed_smoke:
+        if not smoke_enabled:
+            raise ValueError("固定 GitHub Review LLM 仅允许在显式 smoke 模式使用")
+        return DeterministicCodeReviewLLMClient()
+    return create_review_llm_client()
 
 
 @router.post(
@@ -151,6 +210,7 @@ async def receive_github_webhook(
     try:
         task = task_manager.create_task(
             delivery_id=delivery_id,
+            installation_id=payload.installation.id,
             locator=PullRequestLocator(
                 platform="github",
                 repository=payload.repository.full_name,
@@ -222,3 +282,33 @@ def _ignored_delivery_id(delivery_id: str | None) -> str:
     if delivery_id and delivery_id.strip() and len(delivery_id) <= 255:
         return delivery_id.strip()
     return "not-applicable"
+
+
+@router.get(
+    "/review-tasks/{task_id}",
+    response_model=GitHubReviewTask,
+)
+def get_github_review_task(
+    task_id: str,
+    task_manager: GitHubReviewTaskManager | None = Depends(
+        get_github_review_task_manager
+    ),
+) -> GitHubReviewTask:
+    if task_manager is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "github_review_not_configured",
+                "message": "GitHub 审查任务管理器未配置",
+            },
+        )
+    try:
+        return task_manager.get_task(task_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "github_review_task_not_found",
+                "message": "GitHub 审查任务不存在",
+            },
+        ) from exc

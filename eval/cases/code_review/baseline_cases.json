@@ -1,0 +1,493 @@
+[
+  {
+    "case_id": "correctness-boundary",
+    "description": "数组边界判断遗漏最后一个元素",
+    "clean_change": false,
+    "full_context_chars": 10000,
+    "bounded_context_chars": 5000,
+    "expected_findings": [
+      {
+        "expected_id": "X1",
+        "severity": "high",
+        "category": "correctness",
+        "file_path": "src/batch.py",
+        "line_start": 24,
+        "line_end": 24
+      }
+    ],
+    "diff_lines": [
+      {
+        "file_path": "src/batch.py",
+        "line": 24,
+        "side": "head"
+      }
+    ],
+    "report": {
+      "review_id": "eval-correctness-boundary",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "发现一个需要处理的合入风险。",
+      "findings": [
+        {
+          "finding_id": "R1",
+          "severity": "high",
+          "category": "correctness",
+          "title": "数组边界判断遗漏最后一个元素",
+          "description": "数组边界判断遗漏最后一个元素，可能影响合入后的运行行为。",
+          "file_path": "src/batch.py",
+          "line_start": 24,
+          "line_end": null,
+          "side": "head",
+          "evidence_ids": [
+            "E1"
+          ],
+          "suggestion": "在合入前修正该逻辑并补充回归测试。",
+          "verification_steps": [
+            "运行对应失败路径的回归测试"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "E1",
+          "kind": "git_diff",
+          "tool_name": "git_compare",
+          "source": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "locator": "path=src/batch.py;line=24",
+          "excerpt": "@@ -24,1 +24,1 @@\\n+ changed_line"
+        }
+      ],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "correctness-error-path",
+    "description": "异常分支错误返回成功状态",
+    "clean_change": false,
+    "full_context_chars": 11000,
+    "bounded_context_chars": 5500,
+    "expected_findings": [
+      {
+        "expected_id": "X1",
+        "severity": "high",
+        "category": "correctness",
+        "file_path": "src/runner.py",
+        "line_start": 41,
+        "line_end": 41
+      }
+    ],
+    "diff_lines": [
+      {
+        "file_path": "src/runner.py",
+        "line": 41,
+        "side": "head"
+      }
+    ],
+    "report": {
+      "review_id": "eval-correctness-error-path",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "发现一个需要处理的合入风险。",
+      "findings": [
+        {
+          "finding_id": "R1",
+          "severity": "high",
+          "category": "correctness",
+          "title": "异常分支错误返回成功状态",
+          "description": "异常分支错误返回成功状态，可能影响合入后的运行行为。",
+          "file_path": "src/runner.py",
+          "line_start": 41,
+          "line_end": null,
+          "side": "head",
+          "evidence_ids": [
+            "E1"
+          ],
+          "suggestion": "在合入前修正该逻辑并补充回归测试。",
+          "verification_steps": [
+            "运行对应失败路径的回归测试"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "E1",
+          "kind": "git_diff",
+          "tool_name": "git_compare",
+          "source": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "locator": "path=src/runner.py;line=41",
+          "excerpt": "@@ -41,1 +41,1 @@\\n+ changed_line"
+        }
+      ],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "security-path-traversal",
+    "description": "用户路径未经约束即拼接到工作目录",
+    "clean_change": false,
+    "full_context_chars": 12000,
+    "bounded_context_chars": 6000,
+    "expected_findings": [
+      {
+        "expected_id": "X1",
+        "severity": "critical",
+        "category": "security",
+        "file_path": "src/download.py",
+        "line_start": 20,
+        "line_end": 20
+      }
+    ],
+    "diff_lines": [
+      {
+        "file_path": "src/download.py",
+        "line": 20,
+        "side": "head"
+      }
+    ],
+    "report": {
+      "review_id": "eval-security-path-traversal",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "发现一个需要处理的合入风险。",
+      "findings": [
+        {
+          "finding_id": "R1",
+          "severity": "high",
+          "category": "security",
+          "title": "用户路径未经约束即拼接到工作目录",
+          "description": "用户路径未经约束即拼接到工作目录，可能影响合入后的运行行为。",
+          "file_path": "src/download.py",
+          "line_start": 20,
+          "line_end": null,
+          "side": "head",
+          "evidence_ids": [
+            "E1"
+          ],
+          "suggestion": "在合入前修正该逻辑并补充回归测试。",
+          "verification_steps": [
+            "运行对应失败路径的回归测试"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "E1",
+          "kind": "git_diff",
+          "tool_name": "git_compare",
+          "source": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "locator": "path=src/download.py;line=20",
+          "excerpt": "@@ -20,1 +20,1 @@\\n+ changed_line"
+        }
+      ],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "security-permission-order",
+    "description": "高风险操作先执行后申请权限",
+    "clean_change": false,
+    "full_context_chars": 13000,
+    "bounded_context_chars": 6500,
+    "expected_findings": [
+      {
+        "expected_id": "X1",
+        "severity": "critical",
+        "category": "security",
+        "file_path": "src/executor.py",
+        "line_start": 57,
+        "line_end": 57
+      }
+    ],
+    "diff_lines": [
+      {
+        "file_path": "src/executor.py",
+        "line": 57,
+        "side": "head"
+      }
+    ],
+    "report": {
+      "review_id": "eval-security-permission-order",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "发现一个可维护性问题，但未识别权限顺序风险。",
+      "findings": [
+        {
+          "finding_id": "R1",
+          "severity": "high",
+          "category": "maintainability",
+          "title": "执行顺序较难理解",
+          "description": "当前控制流较复杂，建议整理执行顺序。",
+          "file_path": "src/executor.py",
+          "line_start": 57,
+          "line_end": null,
+          "side": "head",
+          "evidence_ids": [
+            "E1"
+          ],
+          "suggestion": "重构控制流以提升可读性。",
+          "verification_steps": [
+            "运行对应失败路径的回归测试"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "E1",
+          "kind": "git_diff",
+          "tool_name": "git_compare",
+          "source": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "locator": "path=src/executor.py;line=57",
+          "excerpt": "@@ -57,1 +57,1 @@\\n+ changed_line"
+        }
+      ],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "compatibility-public-contract",
+    "description": "公共返回字段被无兼容迁移地删除",
+    "clean_change": false,
+    "full_context_chars": 14000,
+    "bounded_context_chars": 7000,
+    "expected_findings": [
+      {
+        "expected_id": "X1",
+        "severity": "high",
+        "category": "compatibility",
+        "file_path": "src/api.py",
+        "line_start": 33,
+        "line_end": 33
+      }
+    ],
+    "diff_lines": [
+      {
+        "file_path": "src/api.py",
+        "line": 33,
+        "side": "head"
+      }
+    ],
+    "report": {
+      "review_id": "eval-compatibility-public-contract",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "发现一个需要处理的合入风险。",
+      "findings": [
+        {
+          "finding_id": "R1",
+          "severity": "high",
+          "category": "compatibility",
+          "title": "公共返回字段被无兼容迁移地删除",
+          "description": "公共返回字段被无兼容迁移地删除，可能影响合入后的运行行为。",
+          "file_path": "src/api.py",
+          "line_start": 33,
+          "line_end": null,
+          "side": "head",
+          "evidence_ids": [
+            "E1"
+          ],
+          "suggestion": "在合入前修正该逻辑并补充回归测试。",
+          "verification_steps": [
+            "运行对应失败路径的回归测试"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "E1",
+          "kind": "git_diff",
+          "tool_name": "git_compare",
+          "source": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "locator": "path=src/api.py;line=33",
+          "excerpt": "@@ -33,1 +33,1 @@\\n+ changed_line"
+        }
+      ],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "performance-unbounded-read",
+    "description": "请求路径读取完整日志导致无界内存增长",
+    "clean_change": false,
+    "full_context_chars": 15000,
+    "bounded_context_chars": 7500,
+    "expected_findings": [
+      {
+        "expected_id": "X1",
+        "severity": "high",
+        "category": "performance",
+        "file_path": "src/log_reader.py",
+        "line_start": 18,
+        "line_end": 18
+      }
+    ],
+    "diff_lines": [
+      {
+        "file_path": "src/log_reader.py",
+        "line": 18,
+        "side": "head"
+      }
+    ],
+    "report": {
+      "review_id": "eval-performance-unbounded-read",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "发现一个需要处理的合入风险。",
+      "findings": [
+        {
+          "finding_id": "R1",
+          "severity": "high",
+          "category": "performance",
+          "title": "请求路径读取完整日志导致无界内存增长",
+          "description": "请求路径读取完整日志导致无界内存增长，可能影响合入后的运行行为。",
+          "file_path": "src/log_reader.py",
+          "line_start": 18,
+          "line_end": null,
+          "side": "head",
+          "evidence_ids": [
+            "E1"
+          ],
+          "suggestion": "在合入前修正该逻辑并补充回归测试。",
+          "verification_steps": [
+            "运行对应失败路径的回归测试"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "E1",
+          "kind": "git_diff",
+          "tool_name": "git_compare",
+          "source": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "locator": "path=src/log_reader.py;line=18",
+          "excerpt": "@@ -18,1 +18,1 @@\\n+ changed_line"
+        }
+      ],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "test-gap-failure-branch",
+    "description": "新增失败分支但测试只覆盖成功路径",
+    "clean_change": false,
+    "full_context_chars": 16000,
+    "bounded_context_chars": 8000,
+    "expected_findings": [
+      {
+        "expected_id": "X1",
+        "severity": "high",
+        "category": "test_gap",
+        "file_path": "tests/test_upload.py",
+        "line_start": 62,
+        "line_end": 62
+      }
+    ],
+    "diff_lines": [
+      {
+        "file_path": "tests/test_upload.py",
+        "line": 62,
+        "side": "head"
+      }
+    ],
+    "report": {
+      "review_id": "eval-test-gap-failure-branch",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "发现一个需要处理的合入风险。",
+      "findings": [
+        {
+          "finding_id": "R1",
+          "severity": "high",
+          "category": "test_gap",
+          "title": "新增失败分支但测试只覆盖成功路径",
+          "description": "新增失败分支但测试只覆盖成功路径，可能影响合入后的运行行为。",
+          "file_path": "tests/test_upload.py",
+          "line_start": 62,
+          "line_end": null,
+          "side": "head",
+          "evidence_ids": [
+            "E1"
+          ],
+          "suggestion": "在合入前修正该逻辑并补充回归测试。",
+          "verification_steps": [
+            "运行对应失败路径的回归测试"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "E1",
+          "kind": "git_diff",
+          "tool_name": "git_compare",
+          "source": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "locator": "path=tests/test_upload.py;line=62",
+          "excerpt": "@@ -62,1 +62,1 @@\\n+ changed_line"
+        }
+      ],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "clean-refactor",
+    "description": "保持行为不变的函数提取",
+    "clean_change": true,
+    "full_context_chars": 8000,
+    "bounded_context_chars": 4000,
+    "expected_findings": [],
+    "diff_lines": [],
+    "report": {
+      "review_id": "eval-clean-refactor",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "未发现可行动的合入风险。",
+      "findings": [],
+      "evidence": [],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "clean-typed-change",
+    "description": "有完整测试覆盖的类型收紧",
+    "clean_change": true,
+    "full_context_chars": 8000,
+    "bounded_context_chars": 4000,
+    "expected_findings": [],
+    "diff_lines": [],
+    "report": {
+      "review_id": "eval-clean-typed-change",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "未发现可行动的合入风险。",
+      "findings": [],
+      "evidence": [],
+      "missing_evidence": []
+    }
+  },
+  {
+    "case_id": "clean-doc-change",
+    "description": "准确的文档与错误文案更新",
+    "clean_change": true,
+    "full_context_chars": 8000,
+    "bounded_context_chars": 4000,
+    "expected_findings": [],
+    "diff_lines": [],
+    "report": {
+      "review_id": "eval-clean-doc-change",
+      "base_ref": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "head_ref": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "reviewed",
+      "summary": "未发现可行动的合入风险。",
+      "findings": [],
+      "evidence": [],
+      "missing_evidence": []
+    }
+  }
+]

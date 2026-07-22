@@ -11,11 +11,13 @@ from starlette.requests import Request
 
 from devagent.api.app import app
 from devagent.api.routes.github_webhooks import (
+    _create_github_review_llm_client,
     get_delivery_store,
     get_github_review_task_manager,
     get_github_webhook_secret,
     receive_github_webhook,
 )
+from devagent.review import DeterministicCodeReviewLLMClient
 from devagent.integrations.github import InMemoryWebhookDeliveryStore
 
 WEBHOOK_SECRET = "fixed-webhook-secret"
@@ -81,15 +83,32 @@ class RecordingTaskManager:
         self.fail_create = fail_create
         self.create_calls: list[dict[str, object]] = []
         self.run_calls: list[str] = []
+        self.tasks: dict[str, object] = {}
 
     def create_task(self, **kwargs: object):
         self.create_calls.append(kwargs)
         if self.fail_create:
             raise RuntimeError("token=secret-scheduling-detail")
-        return SimpleNamespace(task_id=f"github-task-{len(self.create_calls)}")
+        task = SimpleNamespace(
+            task_id=f"github-task-{len(self.create_calls)}",
+            delivery_id=str(kwargs["delivery_id"]),
+            installation_id=int(kwargs["installation_id"]),
+            locator=kwargs["locator"],
+            status="pending",
+            report_id=None,
+            error_message=None,
+        )
+        self.tasks[task.task_id] = task
+        return task
 
     def run_task(self, task_id: str) -> None:
         self.run_calls.append(task_id)
+
+    def get_task(self, task_id: str):
+        try:
+            return self.tasks[task_id]
+        except KeyError as exc:
+            raise KeyError("GitHub 审查任务不存在") from exc
 
 
 @pytest.fixture
@@ -125,6 +144,7 @@ def test_target_actions_return_accepted_and_schedule_one_task(
     }
     assert store.claim_calls == ["delivery-1"]
     assert len(manager.create_calls) == 1
+    assert manager.create_calls[0]["installation_id"] == 123
     locator = manager.create_calls[0]["locator"]
     assert locator.platform == "github"
     assert locator.repository == "openai/devagent"
@@ -148,6 +168,23 @@ def test_duplicate_delivery_does_not_create_second_task(github_api) -> None:
         "task_id": None,
     }
     assert len(manager.create_calls) == 1
+
+
+def test_get_review_task_returns_task_and_unknown_is_404(github_api) -> None:
+    client, _, _ = github_api
+    body = encode_payload(make_payload())
+    created = client.post(WEBHOOK_URL, content=body, headers=make_headers(body))
+
+    found = client.get(
+        f"/api/v1/integrations/github/review-tasks/{created.json()['task_id']}"
+    )
+    missing = client.get("/api/v1/integrations/github/review-tasks/unknown")
+
+    assert found.status_code == 200
+    assert found.json()["delivery_id"] == "delivery-1"
+    assert found.json()["installation_id"] == 123
+    assert missing.status_code == 404
+    assert missing.json()["detail"]["code"] == "github_review_task_not_found"
 
 
 def test_non_target_action_and_non_pull_request_event_are_ignored(github_api) -> None:
@@ -272,6 +309,22 @@ def test_missing_task_manager_returns_503_without_claiming_delivery() -> None:
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "github_review_not_configured"
     assert store.claim_calls == []
+
+
+def test_fixed_review_llm_requires_explicit_smoke_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DEVAGENT_GITHUB_SMOKE_FIXED_LLM", "1")
+    monkeypatch.delenv("DEVAGENT_ENABLE_GITHUB_SMOKE", raising=False)
+
+    with pytest.raises(ValueError, match="显式 smoke"):
+        _create_github_review_llm_client()
+
+    monkeypatch.setenv("DEVAGENT_ENABLE_GITHUB_SMOKE", "1")
+    assert isinstance(
+        _create_github_review_llm_client(),
+        DeterministicCodeReviewLLMClient,
+    )
 
 
 def test_task_creation_failure_releases_delivery_and_sanitizes_error() -> None:

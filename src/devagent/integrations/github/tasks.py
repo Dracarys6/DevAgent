@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 import threading
 from typing import Protocol
@@ -24,6 +25,33 @@ class CodeReviewRunner(Protocol):
     ) -> CodeReviewReport: ...
 
 
+@dataclass(frozen=True)
+class GitHubReviewPorts:
+    source: PullRequestSource
+    publisher: ReviewPublisher
+
+
+class GitHubReviewPortFactory(Protocol):
+    def create(self, installation_id: int) -> GitHubReviewPorts: ...
+
+
+class FixedGitHubReviewPortFactory:
+    """保留 Day48 Fake 和本地测试所需的固定 ports。"""
+
+    def __init__(
+        self,
+        *,
+        source: PullRequestSource,
+        publisher: ReviewPublisher,
+    ) -> None:
+        self._ports = GitHubReviewPorts(source=source, publisher=publisher)
+
+    def create(self, installation_id: int) -> GitHubReviewPorts:
+        if isinstance(installation_id, bool) or installation_id < 1:
+            raise ValueError("installation_id 必须大于或等于 1")
+        return self._ports
+
+
 class GitHubReviewTaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
@@ -36,6 +64,7 @@ class GitHubReviewTask(BaseModel):
 
     task_id: str = Field(min_length=1)
     delivery_id: str = Field(min_length=1, max_length=255)
+    installation_id: int = Field(ge=1)
     locator: PullRequestLocator
     status: GitHubReviewTaskStatus
     report_id: str | None = None
@@ -48,14 +77,23 @@ class GitHubReviewTaskManager:
     def __init__(
         self,
         *,
-        source: PullRequestSource,
         service: CodeReviewRunner,
-        publisher: ReviewPublisher,
         delivery_store: WebhookDeliveryStore,
+        port_factory: GitHubReviewPortFactory | None = None,
+        source: PullRequestSource | None = None,
+        publisher: ReviewPublisher | None = None,
     ) -> None:
-        self._source = source
+        if port_factory is None:
+            if source is None or publisher is None:
+                raise ValueError("必须提供 port_factory 或完整的 source / publisher")
+            port_factory = FixedGitHubReviewPortFactory(
+                source=source,
+                publisher=publisher,
+            )
+        elif source is not None or publisher is not None:
+            raise ValueError("port_factory 不能与 source / publisher 同时提供")
+        self._port_factory = port_factory
         self._service = service
-        self._publisher = publisher
         self._delivery_store = delivery_store
         self._tasks: dict[str, GitHubReviewTask] = {}
         self._task_ids_by_delivery: dict[str, str] = {}
@@ -65,6 +103,7 @@ class GitHubReviewTaskManager:
         self,
         *,
         delivery_id: str,
+        installation_id: int,
         locator: PullRequestLocator,
     ) -> GitHubReviewTask:
         with self._lock:
@@ -73,6 +112,7 @@ class GitHubReviewTaskManager:
             task = GitHubReviewTask(
                 task_id=str(uuid4()),
                 delivery_id=delivery_id,
+                installation_id=installation_id,
                 locator=locator,
                 status=GitHubReviewTaskStatus.PENDING,
             )
@@ -98,14 +138,15 @@ class GitHubReviewTaskManager:
             task.status = GitHubReviewTaskStatus.RUNNING
 
         try:
-            snapshot = self._source.get_pull_request(task.locator)
+            ports = self._port_factory.create(task.installation_id)
+            snapshot = ports.source.get_pull_request(task.locator)
             report = self._service.review(
                 base_ref=snapshot.base_ref,
                 head_ref=snapshot.head_ref,
                 workspace=snapshot.workspace,
             )
             task.report_id = report.review_id
-            self._publisher.publish(pull_request=snapshot, report=report)
+            ports.publisher.publish(pull_request=snapshot, report=report)
             self._delivery_store.mark_completed(task.delivery_id)
         except Exception:
             # ! 外部异常可能包含 token 或响应正文，任务只保存固定脱敏信息。

@@ -4,11 +4,11 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具，以及证据驱动的 CI 诊断执行服务和 API。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求和诊断报告。
+当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具、证据驱动的 CI 诊断，以及代码合入审查和 GitHub Pull Request 建议模式。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求、诊断报告和 GitHub PR 建议状态。
 
 ```text
-当前进度：Agent Runtime + ToolRegistry + ToolExecutor + PermissionManager + EventBus + SSE/WebSocket + Trace + Task API + Git/CI/Log Tools + DiagnosisService + CI Diagnosis API + React Console
-当前阶段：第 6 周诊断闭环已完成，第 7 周进入代码合入审查与 Review Evaluation
+当前进度：Agent Runtime + ToolRegistry + ToolExecutor + PermissionManager + EventBus + SSE/WebSocket + Trace + Task API + Git/CI/Log Tools + DiagnosisService + CodeReviewService + GitHub PR Adapter + Review Evaluation + React Console
+当前阶段：第 7 周自动化开发闭环已完成，等待专用 GitHub App 与真实 PR smoke 验收
 测试状态：使用 `.venv/bin/pytest -q` 执行全量回归
 Python 要求：3.11+
 ```
@@ -52,14 +52,17 @@ Python 要求：3.11+
 | Trace 查询 | 将事件流聚合为任务摘要和可回放步骤 | 已完成基础版 |
 | 诊断执行服务 | 证据标准化、LLM 调用、Pydantic 报告校验和失败降级 | 已完成基础版 |
 | CI 诊断 API | `POST /api/v1/diagnoses/ci` 返回结构化报告或结构化错误 | 已完成基础版 |
+| 代码审查服务与 API | merge-base diff、证据驱动 finding、结构化重试与 `POST /api/v1/reviews/code` | 已完成基础版 |
+| GitHub PR 建议模式 | 签名校验、delivery 幂等、installation token、摘要 upsert 与 inline comment | 自动化闭环完成，真实 smoke 待验收 |
+| Review Evaluation | 固定 case、风险召回率、可行动准确率、误报率、证据与 diff 定位指标 | 已完成基线 |
 | 可视化控制台 | React 页面展示任务、事件、Trace、权限和诊断结果 | 已完成初版 |
 | Agent Skills | 面向业务组合 ToolRegistry 工具能力，预留 MCP 扩展 | 规划中 |
 | 权限审批 | 高风险工具审批、策略管理、危险命令防护和审批 API | 已完成基础版 |
 | Trace 与事件流 | 统一事件协议、EventBus、SSE/WebSocket、执行回放 | 已完成基础版 |
 | 研发诊断 | CI 失败诊断契约与 API、日志根因分析契约、Git diff 分析 | 已完成基础版 |
-| 代码合入审查 | base/head 变更审查、结构化建议和 Review Evaluation | 进行中 |
+| 代码合入审查 | base/head 变更审查、结构化建议和 Review Evaluation | 自动化闭环完成 |
 | RAG / Memory | 代码、日志、CI、文档和历史案例检索，上下文压缩 | 规划中 |
-| Evaluation | 工具命中率、证据命中率、延迟、失败率等指标评测 | 规划中 |
+| Evaluation | Review 固定基线已完成；RAG、工具命中率和证据命中率继续扩展 | 已完成基础版 |
 | 多 Agent 编排 | 子任务拆分、并发、预算限制、取消传播 | 规划中 |
 
 ---
@@ -198,6 +201,17 @@ curl -X POST http://127.0.0.1:8000/api/v1/diagnoses/ci \
 ```
 
 报告使用 `Evidence`、`Finding` 和 `MissingEvidence` 区分已确认症状、推断和缺失证据。自动化测试使用固定 LLM 响应，不访问真实模型网络。
+
+GitHub Pull Request 建议模式接收签名 webhook，并提供任务状态查询：
+
+```text
+POST /api/v1/integrations/github/webhooks
+GET  /api/v1/integrations/github/review-tasks/{task_id}
+```
+
+真实 GitHub App 只申请 `Metadata: Read`、`Contents: Read` 和
+`Pull requests: Read and write`。专用测试仓库的配置、只读探测和 opened / synchronize /
+redelivery 验收步骤见 [`docs/evaluation/github_pr_smoke.md`](docs/evaluation/github_pr_smoke.md)。
 
 通过默认 Registry 调用工具：
 
