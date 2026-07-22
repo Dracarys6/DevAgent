@@ -19,6 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
+    load_dotenv(dotenv_path=PROJECT_ROOT / ".env", override=False)
     _require_explicit_enable()
     settings = _load_settings()
     _validate_local_files(settings)
@@ -66,7 +67,6 @@ def _require_explicit_enable() -> None:
 
 
 def _load_settings() -> GitHubIntegrationSettings:
-    load_dotenv(dotenv_path=PROJECT_ROOT / ".env", override=False)
     values = {
         "app_client_id": os.getenv("DEVAGENT_GITHUB_APP_CLIENT_ID"),
         "app_private_key_path": os.getenv("DEVAGENT_GITHUB_APP_PRIVATE_KEY_PATH"),

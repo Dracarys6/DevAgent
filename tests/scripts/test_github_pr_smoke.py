@@ -8,6 +8,7 @@ from scripts.github_pr_smoke import (
     _load_installation_id,
     _require_explicit_enable,
     _validate_local_files,
+    main,
 )
 
 
@@ -40,3 +41,17 @@ def test_smoke_rejects_missing_local_files(tmp_path: Path) -> None:
 
     with pytest.raises(SystemExit, match="private key"):
         _validate_local_files(settings)
+
+
+def test_main_loads_dotenv_before_checking_enable(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    env_path = tmp_path / ".env"
+    env_path.write_text("DEVAGENT_ENABLE_GITHUB_SMOKE=1\n", encoding="utf-8")
+    monkeypatch.setattr("scripts.github_pr_smoke.PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr("sys.argv", ["github_pr_smoke.py", "--check-config"])
+    monkeypatch.delenv("DEVAGENT_ENABLE_GITHUB_SMOKE", raising=False)
+
+    with pytest.raises(SystemExit, match="配置不完整"):
+        main()
