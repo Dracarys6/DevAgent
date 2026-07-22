@@ -8,6 +8,7 @@ from .traces import router as traces_router
 from .diagnoses import router as diagnoses_router
 from .reviews import router as reviews_router
 from .git_commits import router as git_commits_router
+from .github_webhooks import router as github_webhooks_router
 
 __all__ = [
     "tasks_router",
@@ -18,4 +19,5 @@ __all__ = [
     "diagnoses_router",
     "reviews_router",
     "git_commits_router",
+    "github_webhooks_router",
 ]
