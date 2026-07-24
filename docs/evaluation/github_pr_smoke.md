@@ -102,6 +102,11 @@ webhook URL as:
 https://<temporary-host>/api/v1/integrations/github/webhooks
 ```
 
+When direct HTTPS tunneling is unavailable, GitHub's documented `smee.io` development
+proxy is also suitable. Configure the GitHub App with the Smee channel URL, then point
+`smee-client` at the complete local webhook URL. Smee returns its own response to
+GitHub, so the DevAgent response body and `task_id` must be observed locally.
+
 Restart DevAgent after changing `.env`. The real task manager is assembled lazily and
 caches credentials and installation tokens in memory.
 
@@ -134,36 +139,50 @@ Fill this section after the real run. IDs and URLs are safe to record; credentia
 not.
 
 ```text
-Date:
-Repository / PR URL:
-Base SHA:
-Initial head SHA:
-Updated head SHA:
+Date: 2026-07-24
+Repository / PR URL: https://github.com/Dracarys6/devagent-review-smoke/pull/1
+Base SHA: 6d1dfea2c1a9dc38422d8e9f3ccdffd63811d7b1
+Initial head SHA: 1b90aeea271b9e027528d3b64756451584cc0012
+Updated fixed-LLM head SHA: 737585c92917d20fc6d05dbe4385a40f50f5455c
+Final real-provider head SHA: 8f59dc6dbf1ee8e7db105b70fc0b642e733ecd96
 
-Opened delivery GUID:
-Opened task_id:
-Opened report_id:
+Opened delivery GUID: 70fc3ee0-870d-11f1-82e5-3ca7890780ae
+Opened task_id: not observable through the Smee proxy response
+Opened report_id: e6fe12d3-7136-4391-94c4-ba008576a010
 
-Synchronize delivery GUID:
-Synchronize task_id:
-Synchronize report_id:
+Synchronize delivery GUID: ac4f7890-870d-11f1-85dd-fe3d403cf3ec
+Synchronize task_id: not observable through the Smee proxy response
+Synchronize report_id: 9bb9d281-bcd0-4907-9896-968fcf97e1c0
 
-Redelivery GUID:
-Redelivery result:
+Redelivery GUID: ac4f7890-870d-11f1-85dd-fe3d403cf3ec
+Redelivery result: duplicate; summary ID, updated_at, and report_id remained unchanged
 
-Summary comment URL:
-Inline comment URL(s):
-Summary comment count after synchronize:
+Real-provider delivery GUID: 316ad460-870f-11f1-967b-c9017f3862d1
+Real-provider task_id: not observable through the Smee proxy response
+Real-provider report_id: 3ce108d6-e7a1-455c-97f0-6a86f75b83ea
+Diagnostic signed-replay task_id: 3b6305a5-72a3-4f83-8a51-acb84ea1bd38
+Diagnostic signed-replay report_id: 019f6dcf-29cc-4be9-a67b-8b835c373193
 
-Webhook to summary latency:
-Evidence collection latency:
-LLM latency:
-Publishing latency:
+Summary comment URL: https://github.com/Dracarys6/devagent-review-smoke/pull/1#issuecomment-5065772571
+Inline comment URL(s): https://github.com/Dracarys6/devagent-review-smoke/pull/1#discussion_r3642731530
+Summary comment count after synchronize: 1
 
-Fixed LLM result:
-Real provider result:
-Final conclusion:
+Webhook to summary latency: reopened 5.7s; fixed synchronize 7.2s; real provider 37.2s
+Evidence collection latency: fixed local p95 210.112ms; real stages not separately instrumented
+LLM latency: 26.3s for a direct real-provider run on the same base/head evidence
+Publishing latency: not separately instrumented
+
+Fixed LLM result: reopened, synchronize, and redelivery passed; summary count stayed 1
+Real provider result: one HIGH security finding at src/downloads.py:7 RIGHT
+Final conclusion: passed; real GitHub webhook, App auth, PR evidence, model, summary
+  upsert, inline publishing, and delivery deduplication were all exercised
 ```
+
+One earlier real-provider delivery did not publish and could not be correlated to a
+task because Smee hides the local response body. A signed local replay completed, and
+the subsequent native GitHub `synchronize` delivery completed in 37.2 seconds. This
+leaves delivery-to-task correlation and per-stage production timing as observability
+improvements; it does not change the final end-to-end result.
 
 Do not record the App private key, JWT, installation token, webhook secret,
 Authorization header, or LLM API key.
