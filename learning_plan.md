@@ -910,7 +910,7 @@ Evaluation 数据集
 每日任务与验收：
 
 ```text
-Day 50：定义 RAG / Memory 数据模型
+Day 50：定义 RAG / Memory 数据模型 [x]
 产出：src/devagent/memory/models.py
 类型：Document、Chunk、EvidenceSnippet、RetrievalResult
 验收：每条 evidence 都包含 source、path、line_range 或等价定位信息
