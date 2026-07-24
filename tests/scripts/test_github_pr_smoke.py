@@ -52,6 +52,13 @@ def test_main_loads_dotenv_before_checking_enable(
     monkeypatch.setattr("scripts.github_pr_smoke.PROJECT_ROOT", tmp_path)
     monkeypatch.setattr("sys.argv", ["github_pr_smoke.py", "--check-config"])
     monkeypatch.delenv("DEVAGENT_ENABLE_GITHUB_SMOKE", raising=False)
+    for variable in (
+        "DEVAGENT_GITHUB_APP_CLIENT_ID",
+        "DEVAGENT_GITHUB_APP_PRIVATE_KEY_PATH",
+        "DEVAGENT_GITHUB_ALLOWED_REPOSITORY",
+        "DEVAGENT_GITHUB_WORKSPACE",
+    ):
+        monkeypatch.delenv(variable, raising=False)
 
     with pytest.raises(SystemExit, match="配置不完整"):
         main()
