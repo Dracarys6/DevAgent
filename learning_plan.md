@@ -915,7 +915,7 @@ Day 50：定义 RAG / Memory 数据模型 [x]
 类型：Document、Chunk、EvidenceSnippet、RetrievalResult
 验收：每条 evidence 都包含 source、path、line_range 或等价定位信息
 
-Day 51：实现本地切片器
+Day 51：实现本地切片器 [x]
 产出：src/devagent/memory/chunker.py、tests/memory/test_chunker.py
 范围：代码、Markdown、日志、CI JSON
 验收：chunk 保留来源、行号、类型和稳定 chunk_id
