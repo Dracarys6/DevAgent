@@ -81,6 +81,18 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 - If a boundary is important, write it as scope wording, not as a negative checklist.
 - Daily docs should reference the relevant `plan.md` milestone when possible.
 
+## Guided Development Rules
+
+- When the user asks for step-by-step development guidance, inspect the current
+  implementation and run the narrowest relevant test before proposing the next step.
+- Break the daily task into dependency-ordered, independently verifiable steps. Give
+  one active step at a time with its goal, relevant principle, exact files, focused
+  code skeleton, and acceptance commands.
+- Review the user's result from the previous step before advancing. Do not silently
+  complete later steps or overwhelm the learning flow with the entire final solution.
+- Keep temporary scaffolding explicit, for example with `NotImplementedError`, so an
+  unfinished method cannot appear to succeed by returning `None`.
+
 ## Error Feedback Rules
 
 - When the developer points out a mistake in implementation, planning, testing, documentation, or process, fix the immediate issue first.
