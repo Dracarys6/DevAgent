@@ -920,7 +920,7 @@ Day 51：实现本地切片器 [x]
 范围：代码、Markdown、日志、CI JSON
 验收：chunk 保留来源、行号、类型和稳定 chunk_id
 
-Day 52：实现关键词检索器
+Day 52：实现关键词检索器 [x]
 产出：src/devagent/memory/retriever.py、tests/memory/test_retriever.py
 策略：先用关键词 / BM25 / ripgrep-backed 检索，不急着接向量库
 验收：Top-5 能找回预期文件或日志片段

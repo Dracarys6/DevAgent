@@ -1,9 +1,9 @@
-from devagent.memory.chunker import (
+from .chunker import (
     ChunkingConfig,
     ChunkingError,
     chunk_document,
 )
-from devagent.memory.models import (
+from .models import (
     Chunk,
     ChunkType,
     Document,
@@ -11,15 +11,19 @@ from devagent.memory.models import (
     LineRange,
     RetrievalResult,
 )
+from .retriever import BM25Config, KeywordRetriever, RetrievalError
 
 __all__ = [
+    "BM25Config",
     "Chunk",
     "ChunkType",
     "ChunkingConfig",
     "ChunkingError",
     "Document",
     "EvidenceSnippet",
+    "KeywordRetriever",
     "LineRange",
+    "RetrievalError",
     "RetrievalResult",
     "chunk_document",
 ]
