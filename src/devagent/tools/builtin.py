@@ -4,6 +4,7 @@ from .models import RiskLevel, ToolResult
 from .git_tools import GitDiffArgs, GitCompareArgs
 from .ci_tools import GetCIResultArgs
 from .log_tools import SearchLogArgs
+from .knowledge_tools import KnowledgeRetrieveArgs
 from .adapters import (
     read_file_as_tool_result,
     search_code_as_tool_result,
@@ -12,6 +13,7 @@ from .adapters import (
     get_ci_result_as_tool_result,
     search_log_as_tool_result,
     git_compare_as_tool_result,
+    knowledge_retrieve_as_tool_result,
 )
 from .registry import ToolRegistry
 
@@ -111,6 +113,16 @@ class GitCompareTool(BaseTool[GitCompareArgs]):
         return git_compare_as_tool_result(**args.model_dump())
 
 
+class KnowledgeRetrieveTool(BaseTool[KnowledgeRetrieveArgs]):
+    name = "knowledge_retrieve"
+    description = "在工作区代码、文档和日志中检索相关的有界证据片段。"
+    args_model = KnowledgeRetrieveArgs
+    risk_level = RiskLevel.LOW
+
+    def execute(self, args: KnowledgeRetrieveArgs) -> ToolResult:
+        return knowledge_retrieve_as_tool_result(**args.model_dump())
+
+
 def create_builtin_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(ReadFileTool())
@@ -120,4 +132,5 @@ def create_builtin_registry() -> ToolRegistry:
     registry.register(GetCIResultTool())
     registry.register(SearchLogTool())
     registry.register(GitCompareTool())
+    registry.register(KnowledgeRetrieveTool())
     return registry

@@ -925,7 +925,7 @@ Day 52：实现关键词检索器 [x]
 策略：先用关键词 / BM25 / ripgrep-backed 检索，不急着接向量库
 验收：Top-5 能找回预期文件或日志片段
 
-Day 53：实现 knowledge_retrieve 工具
+Day 53：实现 knowledge_retrieve 工具 [x]
 产出：src/devagent/tools/knowledge_tools.py
 工具接口：knowledge_retrieve(query, workspace, top_k) -> ToolResult
 验收：ToolResult 返回压缩后的 evidence snippets，而不是整文件内容

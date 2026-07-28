@@ -1,4 +1,11 @@
-from devagent.tools import GetCIResultTool, GitCompareTool, GitDiffTool, SearchLogTool
+from devagent.tools import (
+    GetCIResultTool,
+    GitCompareTool,
+    GitDiffTool,
+    SearchLogTool,
+    KnowledgeRetrieveTool,
+    RunShellTool,
+)
 
 
 def test_tools_package_exports_git_diff_tool():
@@ -15,3 +22,11 @@ def test_tools_package_exports_search_log_tool():
 
 def test_tools_package_exports_git_compare_tool():
     assert GitCompareTool.name == "git_compare"
+
+
+def test_tools_package_exports_run_shell_tool():
+    assert RunShellTool.name == "run_shell"
+
+
+def test_tools_package_exports_knowledge_retrieve_tool() -> None:
+    assert KnowledgeRetrieveTool.name == "knowledge_retrieve"

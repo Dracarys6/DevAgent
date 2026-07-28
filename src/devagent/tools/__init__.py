@@ -9,6 +9,7 @@ from .builtin import (
     GetCIResultTool,
     SearchLogTool,
     GitCompareTool,
+    KnowledgeRetrieveTool,
     create_builtin_registry,
 )
 from .models import ErrorCode, RiskLevel, ToolResult
@@ -31,6 +32,7 @@ __all__ = [
     "RunShellTool",
     "SearchCodeTool",
     "SearchLogTool",
+    "KnowledgeRetrieveTool",
     "ToolRegistry",
     "ToolResult",
     "create_builtin_registry",

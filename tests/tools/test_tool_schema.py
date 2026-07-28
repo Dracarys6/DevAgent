@@ -62,6 +62,7 @@ def test_builtin_tools_export_expected_risk_levels():
         "run_shell": RiskLevel.HIGH.value,
         "search_code": RiskLevel.LOW.value,
         "search_log": RiskLevel.LOW.value,
+        "knowledge_retrieve": RiskLevel.LOW.value,
     }
 
 
@@ -90,3 +91,18 @@ def test_git_compare_schema_exposes_review_range_parameters():
         "head_ref",
         "workspace",
     }
+
+
+def test_knowledge_retrieve_schema_exposes_bounded_retrieval_parameters() -> None:
+    schemas = create_builtin_registry().schemas()
+    schema = next(item for item in schemas if item["name"] == "knowledge_retrieve")
+    properties = schema["parameters"]["properties"]
+
+    assert set(properties) == {"query", "workspace", "top_k"}
+    assert set(schema["parameters"]["required"]) == {"query", "workspace"}
+    assert properties["top_k"]["default"] == 5
+    assert properties["top_k"]["minimum"] == 1
+    assert properties["top_k"]["maximum"] == 50
+    assert properties["query"]["description"]
+    assert properties["workspace"]["description"]
+    assert properties["top_k"]["description"]

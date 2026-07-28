@@ -24,6 +24,7 @@ from .log_tools import (
     DEFAULT_MAX_LOG_ENTRIES,
     search_log,
 )
+from .knowledge_tools import knowledge_retrieve
 
 
 def _error_code_from_exception(
@@ -174,6 +175,22 @@ def _git_compare_error_code(error: Exception) -> ErrorCode:
             ("无法解析 base_ref", ErrorCode.COMMAND_EXECUTION_FAILED),
             ("无法解析 head_ref", ErrorCode.COMMAND_EXECUTION_FAILED),
             ("没有共同祖先", ErrorCode.COMMAND_EXECUTION_FAILED),
+        ),
+    )
+
+
+def _knowledge_retrieve_error_code(error: Exception) -> ErrorCode:
+    return _error_code_from_exception(
+        error,
+        default=ErrorCode.KNOWLEDGE_RETRIEVAL_ERROR,
+        message_rules=(
+            ("query", ErrorCode.INVALID_PARAMETER),
+            ("top_k", ErrorCode.INVALID_PARAMETER),
+            ("工作区不存在", ErrorCode.WORKSPACE_NOT_FOUND),
+            ("工作区不是目录", ErrorCode.WORKSPACE_NOT_DIR),
+            ("工作区之外", ErrorCode.PATH_OUTSIDE_WORKSPACE),
+            ("不是普通文件", ErrorCode.NOT_A_FILE),
+            ("UTF-8", ErrorCode.READ_FILE_ERROR),
         ),
     )
 
@@ -395,4 +412,36 @@ def git_compare_as_tool_result(
         default_error_code=ErrorCode.GIT_COMPARE_ERROR,
         error_message_prefix="比较 Git 变更失败",
         error_code_mapper=_git_compare_error_code,
+    )
+
+
+def knowledge_retrieve_as_tool_result(
+    query: str,
+    workspace: str | Path,
+    top_k: int = 5,
+) -> ToolResult:
+    metadata = {
+        "query": query,
+        "workspace": str(workspace),
+        "top_k": top_k,
+    }
+
+    def action() -> str:
+        result = knowledge_retrieve(query, workspace, top_k)
+        metadata.update(
+            {
+                "total_candidates": result.total_candidates,
+                "item_count": len(result.items),
+                "retrieval_ms": result.retrieval_ms,
+                "truncated": result.truncated,
+            }
+        )
+        return result.model_dump_json()
+
+    return _to_tool_result(
+        action=action,
+        metadata=metadata,
+        default_error_code=ErrorCode.KNOWLEDGE_RETRIEVAL_ERROR,
+        error_message_prefix="检索工作区知识失败",
+        error_code_mapper=_knowledge_retrieve_error_code,
     )

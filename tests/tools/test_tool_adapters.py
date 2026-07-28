@@ -13,10 +13,12 @@ from devagent.tools.adapters import (
     git_compare_as_tool_result,
     git_diff_as_tool_result,
     search_log_as_tool_result,
+    knowledge_retrieve_as_tool_result,
 )
 
 from devagent.tools.models import ErrorCode
 from devagent.tools.git_tools import GitCompareResult
+from devagent.memory import RetrievalResult
 
 
 def test_read_file_as_tool_result_success(tmp_path: Path):
@@ -412,3 +414,75 @@ def test_search_log_as_tool_result_maps_permission_error(
 
     assert result.success is False
     assert result.error_code == ErrorCode.PERMISSION_DENIED
+
+
+def test_knowledge_retrieve_as_tool_result_returns_structured_evidence(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "uploader.py").write_text(
+        "def build_upload_timeout(): pass\n",
+        encoding="utf-8",
+    )
+
+    tool_result = knowledge_retrieve_as_tool_result(
+        "upload timeout",
+        tmp_path,
+        top_k=3,
+    )
+    retrieval = RetrievalResult.model_validate_json(tool_result.content)
+
+    assert tool_result.success is True
+    assert retrieval.items[0].path == "uploader.py"
+    assert tool_result.metadata["query"] == "upload timeout"
+    assert tool_result.metadata["top_k"] == 3
+    assert tool_result.metadata["item_count"] == len(retrieval.items)
+    assert tool_result.metadata["total_candidates"] == retrieval.total_candidates
+    assert tool_result.metadata["retrieval_ms"] == retrieval.retrieval_ms
+
+
+def test_knowledge_retrieve_adapter_maps_missing_workspace(
+    tmp_path: Path,
+) -> None:
+    result = knowledge_retrieve_as_tool_result(
+        "upload",
+        tmp_path / "missing",
+    )
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.WORKSPACE_NOT_FOUND
+    assert result.content == ""
+
+
+def test_knowledge_retrieve_adapter_maps_workspace_file(tmp_path: Path) -> None:
+    workspace_file = tmp_path / "workspace.txt"
+    workspace_file.write_text("content", encoding="utf-8")
+
+    result = knowledge_retrieve_as_tool_result("content", workspace_file)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.WORKSPACE_NOT_DIR
+
+
+def test_knowledge_retrieve_adapter_maps_non_utf8_file(tmp_path: Path) -> None:
+    (tmp_path / "invalid.txt").write_bytes(b"\xff\xfe")
+
+    result = knowledge_retrieve_as_tool_result("content", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.READ_FILE_ERROR
+
+
+def test_knowledge_retrieve_adapter_maps_invalid_query(tmp_path: Path) -> None:
+    result = knowledge_retrieve_as_tool_result("   ", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.INVALID_PARAMETER
+
+
+def test_knowledge_retrieve_adapter_maps_invalid_ci_json(tmp_path: Path) -> None:
+    (tmp_path / "broken.json").write_text("{invalid", encoding="utf-8")
+
+    result = knowledge_retrieve_as_tool_result("pipeline", tmp_path)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.KNOWLEDGE_RETRIEVAL_ERROR

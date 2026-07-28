@@ -1,5 +1,6 @@
 import json
 import sys
+import pytest
 from pathlib import Path
 
 from devagent.tools.builtin import (
@@ -10,6 +11,7 @@ from devagent.tools.builtin import (
     RunShellTool,
     SearchCodeTool,
     SearchLogTool,
+    KnowledgeRetrieveTool,
     create_builtin_registry,
 )
 from devagent.tools.models import ErrorCode, RiskLevel
@@ -146,6 +148,7 @@ def test_builtin_tool_risk_levels():
     assert SearchLogTool.risk_level == RiskLevel.LOW
     assert RunShellTool.risk_level == RiskLevel.HIGH
     assert GitCompareTool.risk_level == RiskLevel.LOW
+    assert KnowledgeRetrieveTool.risk_level == RiskLevel.LOW
 
 
 def test_builtin_tool_arguments_are_validated_before_execution(tmp_path: Path):
@@ -169,8 +172,50 @@ def test_create_builtin_registry_registers_all_tools():
         "get_ci_result",
         "git_compare",
         "git_diff",
+        "knowledge_retrieve",
         "read_file",
         "run_shell",
         "search_code",
         "search_log",
     ]
+
+
+def test_knowledge_retrieve_tool_returns_workspace_evidence(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "uploader.py").write_text(
+        "def build_upload_timeout(): pass\n",
+        encoding="utf-8",
+    )
+
+    result = KnowledgeRetrieveTool().invoke(
+        {
+            "query": "upload timeout",
+            "workspace": str(tmp_path),
+            "top_k": 3,
+        }
+    )
+    content = json.loads(result.content)
+
+    assert result.success is True
+    assert content["items"][0]["path"] == "uploader.py"
+    assert result.metadata["item_count"] == 1
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"query": "", "workspace": "workspace"},
+        {"query": "upload", "workspace": ""},
+        {"query": "upload", "workspace": "workspace", "top_k": 0},
+        {"query": "upload", "workspace": "workspace", "top_k": 51},
+        {"query": "upload", "workspace": "workspace", "top_k": True},
+    ],
+)
+def test_knowledge_retrieve_tool_validates_arguments(
+    arguments: dict[str, object],
+) -> None:
+    result = KnowledgeRetrieveTool().invoke(arguments)
+
+    assert result.success is False
+    assert result.error_code == ErrorCode.ARGUMENT_VALIDATION_ERROR
