@@ -81,6 +81,33 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 - If a boundary is important, write it as scope wording, not as a negative checklist.
 - Daily docs should reference the relevant `plan.md` milestone when possible.
 
+## Interview-Driven Development Rules
+
+- Default to Codex-led delivery: inspect the existing design, implement the complete
+  vertical slice, add tests, synchronize documentation, verify the result, and create
+  the focused local commit.
+- Reserve one to three user-owned checkpoints per development day for work with high
+  learning value. Good checkpoints include defining a core contract, explaining a
+  design tradeoff, interpreting a failing test or trace, completing one critical test,
+  or manually exercising an API. Do not hand off repetitive scaffolding or mechanical
+  edits merely to create user work.
+- Before a substantial implementation, explain the problem, data flow, module
+  boundaries, chosen design, important alternatives, and failure or safety boundaries
+  that are likely to be challenged in AI Agent or backend interviews.
+- After implementation, connect the explanation to real code and measurable behavior.
+  Include likely interview questions, concise answer points, and at least one debugging
+  or extension scenario when the feature is substantial.
+- Do not pause after every implementation step by default. Group mechanical work and
+  pause only at a planned learning checkpoint, when a decision genuinely needs user
+  input, or when the user explicitly requests guided development.
+- Treat the user's ability to explain the data flow, tradeoffs, edge cases, test
+  strategy, and relevant performance, reliability, observability, or security metrics
+  as part of daily acceptance.
+- Adapt the emphasis to the current module: Agent runtime, tool calling, RAG, memory,
+  evaluation, and multi-agent work should foreground AI Agent interview depth, while
+  APIs, persistence, concurrency, security, and operations should foreground backend
+  engineering depth.
+
 ## Guided Development Rules
 
 - When the user asks for step-by-step development guidance, inspect the current
