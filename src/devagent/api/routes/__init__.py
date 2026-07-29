@@ -9,6 +9,7 @@ from .diagnoses import router as diagnoses_router
 from .reviews import router as reviews_router
 from .git_commits import router as git_commits_router
 from .github_webhooks import router as github_webhooks_router
+from .knowledge import router as knowledge_router
 
 __all__ = [
     "tasks_router",
@@ -20,4 +21,5 @@ __all__ = [
     "reviews_router",
     "git_commits_router",
     "github_webhooks_router",
+    "knowledge_router",
 ]

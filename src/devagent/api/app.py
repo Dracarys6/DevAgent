@@ -11,6 +11,7 @@ from devagent.api.routes import (
     reviews_router,
     git_commits_router,
     github_webhooks_router,
+    knowledge_router,
 )
 from devagent.config import get_config
 
@@ -35,6 +36,7 @@ app.include_router(diagnoses_router)
 app.include_router(reviews_router)
 app.include_router(git_commits_router)
 app.include_router(github_webhooks_router)
+app.include_router(knowledge_router)
 
 
 @app.get("/health")

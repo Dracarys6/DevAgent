@@ -10,6 +10,7 @@ import {
   Clock3,
   Code2,
   Copy,
+  Database,
   FileSearch,
   ExternalLink,
   GitCommitHorizontal,
@@ -40,13 +41,20 @@ import type {
   CodeReviewReport,
   DiagnosisReport,
   GitHubReviewTask,
+  KnowledgeSearchResult,
   PermissionRequest,
   TaskStatus,
   TaskTrace,
   TraceStep,
 } from "./types";
 
-type View = "tasks" | "diagnosis" | "review" | "permissions" | "api";
+type View =
+  | "tasks"
+  | "diagnosis"
+  | "review"
+  | "knowledge"
+  | "permissions"
+  | "api";
 type Theme = "dark" | "light";
 type ReviewMode = "local" | "github";
 
@@ -59,6 +67,12 @@ interface ReviewHistoryInput {
   base_ref: string;
   head_ref: string;
   workspace: string;
+}
+
+interface KnowledgeHistoryInput {
+  query: string;
+  workspace: string;
+  top_k: number;
 }
 
 const terminalStatuses: TaskStatus[] = ["DONE", "FAILED", "CANCELLED"];
@@ -343,6 +357,12 @@ function App() {
             <GitPullRequest size={18} /> 代码审查
           </button>
           <button
+            className={view === "knowledge" ? "active" : ""}
+            onClick={() => setView("knowledge")}
+          >
+            <Database size={18} /> 知识检索
+          </button>
+          <button
             className={view === "permissions" ? "active" : ""}
             onClick={() => setView("permissions")}
           >
@@ -418,6 +438,7 @@ function App() {
         )}
         {view === "diagnosis" && <DiagnosisView onError={setError} />}
         {view === "review" && <CodeReviewView onError={setError} />}
+        {view === "knowledge" && <KnowledgeView onError={setError} />}
         {view === "permissions" && (
           <PermissionsView
             requests={permissions}
@@ -427,6 +448,210 @@ function App() {
         )}
         {view === "api" && <ApiExplorerView />}
       </main>
+    </div>
+  );
+}
+
+function KnowledgeView({ onError }: { onError: (message: string) => void }) {
+  const history = useLocalHistory<KnowledgeHistoryInput, KnowledgeSearchResult>(
+    "devagent-knowledge-history-v1",
+  );
+  const latest = history.entries[0];
+  const [query, setQuery] = useState(
+    () => latest?.input.query ?? "knowledge_retrieve 如何限制工作区文件",
+  );
+  const [workspace, setWorkspace] = useState(
+    () => latest?.input.workspace ?? ".",
+  );
+  const [topK, setTopK] = useState(() => latest?.input.top_k ?? 5);
+  const [result, setResult] = useState<KnowledgeSearchResult | null>(
+    () => latest?.report ?? null,
+  );
+  const [loading, setLoading] = useState(false);
+
+  async function searchKnowledge(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedQuery = query.trim();
+    const normalizedWorkspace = workspace.trim();
+    setLoading(true);
+    try {
+      const nextResult = await api.searchKnowledge(
+        normalizedQuery,
+        normalizedWorkspace,
+        topK,
+      );
+      setResult(nextResult);
+      history.add({
+        id: crypto.randomUUID(),
+        title: normalizedQuery,
+        created_at: new Date().toISOString(),
+        input: {
+          query: normalizedQuery,
+          workspace: normalizedWorkspace,
+          top_k: topK,
+        },
+        report: nextResult,
+      });
+    } catch (cause) {
+      onError(cause instanceof Error ? cause.message : "知识检索失败");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="content-page knowledge-page">
+      <header className="page-header">
+        <div>
+          <span className="eyebrow">RAG / MEMORY</span>
+          <h1>工作区知识检索</h1>
+          <p>直接测试确定性 BM25 检索，查看进入 Agent 上下文前的 Top-K 证据。</p>
+        </div>
+        <a
+          className="secondary-button"
+          href={getApiUrl("/docs#/knowledge/search_workspace_knowledge_api_v1_knowledge_search_post")}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <ExternalLink size={15} /> API 契约
+        </a>
+      </header>
+
+      <form
+        className="knowledge-form"
+        onSubmit={(event) => void searchKnowledge(event)}
+      >
+        <label className="knowledge-query">
+          <Search size={16} /> 检索问题
+          <input
+            required
+            maxLength={2000}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="例如：GitHub webhook 如何校验签名"
+          />
+        </label>
+        <label>
+          <Code2 size={16} /> Workspace
+          <input
+            required
+            value={workspace}
+            onChange={(event) => setWorkspace(event.target.value)}
+          />
+        </label>
+        <label>
+          <Braces size={16} /> Top K
+          <input
+            required
+            type="number"
+            min={1}
+            max={50}
+            value={topK}
+            onChange={(event) => setTopK(Number(event.target.value))}
+          />
+        </label>
+        <button className="primary-button" disabled={loading}>
+          {loading ? (
+            <LoaderCircle className="spin" size={16} />
+          ) : (
+            <Search size={16} />
+          )}
+          开始检索
+        </button>
+      </form>
+
+      <LocalHistoryPanel
+        entries={history.entries}
+        activeId={
+          history.entries.find((entry) => entry.report === result)?.id ?? null
+        }
+        onSelect={(entry) => {
+          setQuery(entry.input.query);
+          setWorkspace(entry.input.workspace);
+          setTopK(entry.input.top_k);
+          setResult(entry.report);
+        }}
+        onClear={() => {
+          history.clear();
+          setResult(null);
+        }}
+        renderTitle={(entry) => entry.title ?? entry.input.query}
+        renderMeta={(entry) =>
+          `${entry.input.workspace} · ${entry.report.items.length}/${entry.report.total_candidates} 条`
+        }
+      />
+
+      {!result ? (
+        <div className="feature-placeholder knowledge-placeholder">
+          <EmptyState
+            icon={<Database />}
+            title="搜索当前工作区知识"
+            description="支持代码、Markdown、日志和常见配置文件；检索在后端完成，结果不会经过 LLM 改写。"
+          />
+          <div className="pipeline">
+            <span>Workspace</span><ChevronRight size={16} />
+            <span>Chunk</span><ChevronRight size={16} />
+            <span>BM25</span><ChevronRight size={16} />
+            <span>Evidence</span>
+          </div>
+        </div>
+      ) : (
+        <KnowledgeResultView result={result} />
+      )}
+    </div>
+  );
+}
+
+function KnowledgeResultView({ result }: { result: KnowledgeSearchResult }) {
+  return (
+    <div className="knowledge-result" aria-live="polite">
+      <section className="knowledge-overview">
+        <div>
+          <span className="eyebrow">RETRIEVAL RESULT</span>
+          <h2>{result.query}</h2>
+        </div>
+        <div className="knowledge-metrics">
+          <div><strong>{result.total_candidates}</strong><span>候选片段</span></div>
+          <div><strong>{result.items.length}</strong><span>返回证据</span></div>
+          <div><strong>{result.retrieval_ms.toFixed(2)}</strong><span>检索 ms</span></div>
+          <div>
+            <strong>{result.truncated ? "YES" : "NO"}</strong>
+            <span>结果截断</span>
+          </div>
+        </div>
+      </section>
+
+      {result.items.length === 0 ? (
+        <section className="knowledge-empty">
+          <EmptyState
+            icon={<Search />}
+            title="没有匹配证据"
+            description="尝试使用代码标识符、文件名或更具体的研发关键词。"
+          />
+        </section>
+      ) : (
+        <section className="knowledge-evidence-list">
+          {result.items.map((item) => (
+            <article className="knowledge-evidence" key={item.chunk_id}>
+              <header>
+                <div>
+                  <span className="knowledge-rank">#{item.rank}</span>
+                  <code>{item.path}:{item.line_range.start}-{item.line_range.end}</code>
+                </div>
+                <span className="knowledge-score">
+                  score {item.score.toFixed(4)}
+                </span>
+              </header>
+              <pre>{item.excerpt}</pre>
+              <footer>
+                <span>{item.source}</span>
+                <span>{item.metadata.retrieval_method ?? "keyword"}</span>
+                <code>{shortId(item.chunk_id)}</code>
+              </footer>
+            </article>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

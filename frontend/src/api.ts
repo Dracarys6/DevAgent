@@ -4,6 +4,7 @@ import type {
   DiagnosisReport,
   GitCommitSummary,
   GitHubReviewTask,
+  KnowledgeSearchResult,
   PermissionRequest,
   TaskTrace,
 } from "./types";
@@ -95,6 +96,15 @@ export const api = {
     request<GitHubReviewTask>(
       `/api/v1/integrations/github/review-tasks/${encodeURIComponent(taskId)}`,
     ),
+  searchKnowledge: (query: string, workspace: string, topK: number) =>
+    request<KnowledgeSearchResult>("/api/v1/knowledge/search", {
+      method: "POST",
+      body: JSON.stringify({
+        query,
+        workspace,
+        top_k: topK,
+      }),
+    }),
 };
 
 export function openTaskStream(

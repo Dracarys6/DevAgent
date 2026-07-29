@@ -10,6 +10,8 @@ DevAgent Console 是后端 Agent Runtime 的 Web GUI，首版覆盖：
 - 比较本地 Git refs 并保留代码审查历史；
 - 展示 GitHub PR 建议模式的 webhook 接入、安全边界和处理流程，并通过
   `task_id` 查询异步审查状态；
+- 在工作区中直接执行确定性 BM25 知识检索，展示 Top-K 证据、文件行号、
+  检索耗时与截断状态，并保留最近 10 次本地查询；
 - 通过内嵌 Swagger UI 调试 HTTP API。
 
 ## 本地运行
@@ -44,9 +46,24 @@ npm run dev
 `base_url` 默认留空，由服务端的 `DEVAGENT_LLM_MODEL` 和
 `DEVAGENT_LLM_BASE_URL` 提供；也可以在创建表单中覆盖。Mock 仍作为显式的离线演示选项。
 
+## 知识检索
+
+“知识检索”页面调用 `POST /api/v1/knowledge/search`，直接消费后端
+`RetrievalResult`，不经过 LLM 改写。输入研发问题、服务端工作区路径和
+`top_k`（1–50）后，页面会展示候选片段数、返回证据数、检索耗时、截断状态，
+以及每条证据的排名、BM25 分数、相对文件路径、行号和原文片段。
+
+后端当前按请求扫描工作区，支持 Python、Markdown、日志、JSON、TOML、YAML 和
+纯文本文件；会跳过 Git、虚拟环境、`node_modules`、缓存目录和软链接，并限制
+单文件、总字符数与可索引文件数量。页面最近 10 次查询保存在浏览器
+`localStorage`，只用于单浏览器恢复，不代表服务端索引或历史持久化。
+
 ## 当前边界
 
 - 后端任务、事件和权限请求保存在内存中，API 重启后会清空。
+- 知识检索尚未引入持久化索引或向量检索，大型工作区每次请求都会重新发现、加载
+  和切片文件；页面显示的 `retrieval_ms` 仅统计 BM25 检索器内部耗时，不包含文件
+  扫描、读取和切片时间。
 - CI 诊断依赖服务端配置 `DEVAGENT_LLM_API_KEY` 和
   `DEVAGENT_LLM_MODEL`。
 - GitHub PR 建议由 GitHub webhook 触发，浏览器不保存或发送 webhook

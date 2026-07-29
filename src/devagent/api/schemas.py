@@ -169,3 +169,45 @@ class GitCommitSummaryRequest(BaseModel):
         if self.ref != self.ref.strip():
             raise ValueError("ref 不能包含首尾空白")
         return self
+
+
+class KnowledgeSearchRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "query": "GitHub webhook 如何校验签名",
+                    "workspace": ".",
+                    "top_k": 5,
+                }
+            ]
+        },
+    )
+
+    query: str = Field(
+        min_length=1,
+        max_length=2000,
+        description="需要检索的研发问题或关键词",
+    )
+    workspace: str = Field(
+        default=".",
+        min_length=1,
+        max_length=2000,
+        description="需要检索的工作区目录",
+    )
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        strict=True,
+        description="最多返回的证据片段数量",
+    )
+
+    @model_validator(mode="after")
+    def validate_search_input(self) -> "KnowledgeSearchRequest":
+        if self.query != self.query.strip():
+            raise ValueError("query 不能包含首尾空白")
+        if self.workspace != self.workspace.strip():
+            raise ValueError("workspace 不能包含首尾空白")
+        return self

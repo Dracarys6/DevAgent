@@ -152,3 +152,27 @@ export interface GitHubReviewTask {
   report_id: string | null;
   error_message: string | null;
 }
+
+export interface KnowledgeEvidence {
+  chunk_id: string;
+  document_id: string;
+  source: string;
+  path: string;
+  line_range: {
+    start: number;
+    end: number;
+  };
+  excerpt: string;
+  score: number;
+  rank: number;
+  metadata: Record<string, string>;
+}
+
+export interface KnowledgeSearchResult {
+  query: string;
+  top_k: number;
+  total_candidates: number;
+  items: KnowledgeEvidence[];
+  retrieval_ms: number;
+  truncated: boolean;
+}
