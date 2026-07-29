@@ -1,0 +1,222 @@
+[
+  {
+    "case_id": "event-bus-publish",
+    "description": "查找事件发布入口",
+    "category": "event",
+    "query": "EventBus publish AgentEvent subscribers",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/event/bus.py"],
+    "expected_keywords": ["publish", "AgentEvent"]
+  },
+  {
+    "case_id": "event-store-task-events",
+    "description": "查找任务事件存储方式",
+    "category": "event",
+    "query": "EventStore append list_by_task task_id",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/event/store.py"],
+    "expected_keywords": ["append", "task_id"]
+  },
+  {
+    "case_id": "task-manager-cancel",
+    "description": "查找任务取消流程",
+    "category": "task",
+    "query": "TaskManager cancel_task cancellation_event cancelled",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/task/manager.py"],
+    "expected_keywords": ["cancel_task", "cancellation_event"]
+  },
+  {
+    "case_id": "trace-by-task",
+    "description": "查找 Trace 的任务查询入口",
+    "category": "trace",
+    "query": "TraceService build_trace task_id ordered events",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/trace/service.py"],
+    "expected_keywords": ["build_trace", "task_id"]
+  },
+  {
+    "case_id": "permission-policy-match",
+    "description": "查找权限策略匹配规则",
+    "category": "permission",
+    "query": "PermissionManager match_policy tool_name risk_level decision",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/permission/manager.py"],
+    "expected_keywords": ["match_policy", "risk_level"]
+  },
+  {
+    "case_id": "command-guard-dangerous",
+    "description": "查找危险命令阻断逻辑",
+    "category": "security",
+    "query": "CommandGuard classify dangerous rm recursive root block",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/security/command_guard.py"],
+    "expected_keywords": ["BLOCKED", "recursive"]
+  },
+  {
+    "case_id": "tool-executor-permission",
+    "description": "查找高风险工具的审批入口",
+    "category": "tool",
+    "query": "ToolExecutor high risk PermissionManager request permission",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/tools/executor.py"],
+    "expected_keywords": ["requires_permission", "PermissionManager"]
+  },
+  {
+    "case_id": "sse-event-queue",
+    "description": "查找 SSE 事件队列与清理逻辑",
+    "category": "api",
+    "query": "SSE StreamingResponse asyncio Queue try finally unsubscribe",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/api/stream.py"],
+    "expected_keywords": ["Queue", "finally"]
+  },
+  {
+    "case_id": "websocket-subscription",
+    "description": "查找 WebSocket 事件订阅流程",
+    "category": "api",
+    "query": "WebSocket accept subscribe send_json disconnect",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/api/websocket.py"],
+    "expected_keywords": ["accept", "send_json"]
+  },
+  {
+    "case_id": "ci-upload-timeout",
+    "description": "查找 CI 中上传超时失败",
+    "category": "ci",
+    "query": "CI test_large_upload dynamic timeout expected_seconds actual_seconds",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["ci/failed.json"],
+    "expected_keywords": ["expected_seconds", "actual_seconds"]
+  },
+  {
+    "case_id": "log-upload-timeout",
+    "description": "查找日志中的上传超时异常",
+    "category": "log",
+    "query": "UploadTimeoutError upload_id elapsed_seconds bandwidth",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["logs/task.log"],
+    "expected_keywords": ["UploadTimeoutError", "elapsed_seconds"]
+  },
+  {
+    "case_id": "diagnosis-evidence-binding",
+    "description": "查找诊断报告如何绑定证据",
+    "category": "diagnosis",
+    "query": "DiagnosisReport findings evidence_ids Evidence validate references",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/diagnosis/service.py"],
+    "expected_keywords": ["evidence_ids", "DiagnosisReport"]
+  },
+  {
+    "case_id": "review-diff-location",
+    "description": "查找审查发现的 diff 定位",
+    "category": "review",
+    "query": "ReviewFinding diff file_path line_start side HEAD",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/review/service.py"],
+    "expected_keywords": ["file_path", "line_start"]
+  },
+  {
+    "case_id": "document-chunking",
+    "description": "查找文档切片与定位信息",
+    "category": "memory",
+    "query": "chunk_document Document Chunk LineRange overlap",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/memory/chunker.py"],
+    "expected_keywords": ["chunk_document", "LineRange"]
+  },
+  {
+    "case_id": "bm25-ranking",
+    "description": "查找 BM25 关键词排序原理",
+    "category": "memory",
+    "query": "BM25 KeywordRetriever term frequency inverse document frequency rank",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/memory/retriever.py"],
+    "expected_keywords": ["BM25", "inverse document frequency"]
+  },
+  {
+    "case_id": "knowledge-workspace-boundary",
+    "description": "查找知识工具的工作区安全边界",
+    "category": "tool",
+    "query": "knowledge_retrieve workspace resolve path traversal symlink limits",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/tools/knowledge_tools.py"],
+    "expected_keywords": ["path traversal", "symlink"]
+  },
+  {
+    "case_id": "evidence-line-range",
+    "description": "查找证据定位字段",
+    "category": "memory",
+    "query": "EvidenceSnippet source path line_range start end location",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["src/memory/chunker.py"],
+    "expected_keywords": ["EvidenceSnippet", "line_range"]
+  },
+  {
+    "case_id": "high-risk-command-approval",
+    "description": "查找高风险命令为什么需要审批",
+    "category": "docs",
+    "query": "高风险 命令 为什么 需要 用户 审批 权限",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": false,
+    "expected_paths": ["docs/safety.md"],
+    "expected_keywords": ["审批", "最小权限"]
+  },
+  {
+    "case_id": "negative-payment-billing",
+    "description": "确认语料不包含支付账单系统",
+    "category": "negative",
+    "query": "payment billing invoice settlement",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": true,
+    "expected_paths": [],
+    "expected_keywords": []
+  },
+  {
+    "case_id": "negative-kubernetes-deployment",
+    "description": "确认语料不包含 Kubernetes 部署配置",
+    "category": "negative",
+    "query": "kubernetes helm deployment ingress",
+    "expected_tool_name": "knowledge_retrieve",
+    "top_k": 5,
+    "expect_empty": true,
+    "expected_paths": [],
+    "expected_keywords": []
+  }
+]

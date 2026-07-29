@@ -1,0 +1,7 @@
+{
+  "status": "failed",
+  "test": "test_large_upload_uses_dynamic_timeout",
+  "expected_seconds": 12,
+  "actual_seconds": 3,
+  "message": "dynamic timeout was lower than the required upload duration"
+}
