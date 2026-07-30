@@ -59,7 +59,6 @@ def test_runtime_completes_default_mock_workflow():
     runtime, client = create_runtime()
 
     result = runtime.run("请分析项目中的 ToolRegistry")
-    events = result.events
 
     assert result.success is True
     assert result.status == AgentRunStatus.SUCCESS
@@ -616,9 +615,7 @@ def test_runtime_publish_repeated_tool_call_error():
 
 
 def test_runtime_event_bus_subscriber_error_does_not_fail_run():
-    runtime, _client = create_runtime_with_event_bus(
-        [LLMResponse.final_answer("done")]
-    )
+    runtime, _client = create_runtime_with_event_bus([LLMResponse.final_answer("done")])
 
     assert runtime.event_bus is not None
     runtime.event_bus.subscribe(

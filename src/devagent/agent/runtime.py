@@ -23,6 +23,11 @@ from devagent.event import (
     LLMCallFinished,
     LLMCallStarted,
 )
+from .context_manager import (
+    ContextCompressionError,
+    ContextCompressionResult,
+    ContextManager,
+)
 
 
 class AgentRuntime:
@@ -49,6 +54,7 @@ class AgentRuntime:
         event_bus: InMemoryEventBus | None = None,
         task_id: str | None = None,
         session_id: str | None = None,
+        context_manager: ContextManager | None = None,
     ) -> None:
         self.llm_client = llm_client
         self.tool_registry = tool_registry
@@ -64,6 +70,9 @@ class AgentRuntime:
         self.task_id = task_id or "runtime"
         self.session_id = session_id
         self.sequence_allocator = InMemorySequenceAllocator()
+        self.context_manager = context_manager
+        # * 保留每轮模型实际上下文的压缩指标，不覆盖完整消息历史。
+        self.context_history: list[ContextCompressionResult] = []
 
     def run(self, user_input: str) -> AgentRunResult:
         """
@@ -101,12 +110,13 @@ class AgentRuntime:
 
         for step in range(1, self.max_steps + 1):
             try:
+                request_messages = self._prepare_request_messages(messages)
                 self._add_event(
                     events,
                     AgentEventType.LLM_START,
                     "开始调用 LLM",
                     step=step,
-                    metadata={"message_count": len(messages)},
+                    metadata={"message_count": len(request_messages)},
                 )
                 self._publish_runtime_event(
                     LLMCallStarted(
@@ -115,18 +125,24 @@ class AgentRuntime:
                         sequence_id=self._next_sequence_id(),
                         message="LLM 调用开始",
                         step=step,
-                        message_count=len(messages),
+                        message_count=len(request_messages),
                     )
                 )
-                response: LLMResponse = self.llm_client.chat(messages)
+                response: LLMResponse = self.llm_client.chat(request_messages)
             except Exception as exc:
+                error_prefix = (
+                    "构造 LLM 上下文失败"
+                    if isinstance(exc, ContextCompressionError)
+                    else "LLM 调用失败"
+                )
+                error_message = f"{error_prefix}: {exc}"
                 self._publish_runtime_event(
                     AgentError(
                         task_id=self.task_id,
                         session_id=self.session_id,
                         sequence_id=self._next_sequence_id(),
-                        message="LLM 调用失败",
-                        error_message=f"LLM 调用失败: {exc}",
+                        message=error_prefix,
+                        error_message=error_message,
                         payload={"status": AgentRunStatus.LLM_ERROR.value},
                     )
                 )
@@ -146,7 +162,7 @@ class AgentRuntime:
                     status=AgentRunStatus.LLM_ERROR,
                     steps=step,
                     tool_call_count=tool_call_count,
-                    error_message=f"LLM 调用失败: {exc}",
+                    error_message=error_message,
                 )
 
             self._add_event(
@@ -176,7 +192,6 @@ class AgentRuntime:
 
                 for tool_call in response.tool_calls:
                     if tool_call_count >= self.max_tool_calls:
-
                         self._publish_runtime_event(
                             AgentError(
                                 task_id=self.task_id,
@@ -420,6 +435,16 @@ class AgentRuntime:
         snapshot = deepcopy(messages)
         self.messages = snapshot
         self.message_history.append(deepcopy(snapshot))
+
+    def _prepare_request_messages(
+        self,
+        messages: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        if self.context_manager is None:
+            return messages
+        result = self.context_manager.compress(messages)
+        self.context_history.append(result.model_copy(deep=True))
+        return result.messages
 
     def _finish_with_error(
         self,
