@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from datetime import datetime, timezone
 
 
@@ -27,6 +27,7 @@ class AgentEvent(BaseModel):
 
 class AgentRunStatus(str, Enum):
     SUCCESS = "success"  # 模型返回 final_answer
+    WAITING_PERMISSION = "waiting_permission"  # 高风险工具等待用户审批
     MAX_STEPS_EXCEEDED = "max_steps_exceeded"  # 达到最大 LLM 调用轮数
     MAX_TOOL_CALLS_EXCEEDED = "max_tool_calls_exceeded"  # 工具调用次数超过预算
     REPEATED_TOOL_CALL = "repeated_tool_call"  # 检测到重复工具调用
@@ -41,5 +42,17 @@ class AgentRunResult(BaseModel):
     steps: int = 0
     tool_call_count: int = 0
     error_message: str | None = None
+    permission_request_id: str | None = None
     messages: list[dict[str, Any]] = Field(default_factory=list)
     events: list[AgentEvent] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_permission_checkpoint(self) -> "AgentRunResult":
+        if self.status == AgentRunStatus.WAITING_PERMISSION:
+            if self.success or self.permission_request_id is None:
+                raise ValueError(
+                    "等待权限的运行结果必须失败暂停并包含 permission_request_id"
+                )
+        elif self.permission_request_id is not None:
+            raise ValueError("非等待权限结果不能包含 permission_request_id")
+        return self

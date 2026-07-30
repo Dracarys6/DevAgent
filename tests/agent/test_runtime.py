@@ -1,12 +1,39 @@
 import json
 from pathlib import Path
 
+from pydantic import BaseModel
+
 from devagent.agent.runtime import AgentRuntime
 from devagent.agent.models import AgentEventType, AgentRunStatus
 from devagent.llm.mock_client import MockLLMClient
 from devagent.llm.models import LLMResponse, ToolCall
+from devagent.permission import InMemoryPermissionManager, PermissionDecision, RiskLevel
+from devagent.tools import BaseTool, ToolExecutor, ToolRegistry, ToolResult
 from devagent.tools.builtin import create_builtin_registry
-from devagent.event import EventType, BaseEvent, InMemoryEventBus
+from devagent.event import (
+    EventType,
+    BaseEvent,
+    InMemoryEventBus,
+    InMemorySequenceAllocator,
+)
+
+
+class ApprovalArgs(BaseModel):
+    value: str
+
+
+class ApprovalTool(BaseTool[ApprovalArgs]):
+    name = "approval_tool"
+    description = "测试高风险审批恢复。"
+    args_model = ApprovalArgs
+    risk_level = RiskLevel.HIGH
+
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    def execute(self, args: ApprovalArgs) -> ToolResult:
+        self.call_count += 1
+        return ToolResult.ok(f"approved:{args.value}")
 
 
 def create_runtime(
@@ -498,8 +525,12 @@ def test_runtime_publish_success():
         EventType.AGENT_STARTED,
         EventType.LLM_CALL_STARTED,
         EventType.LLM_CALL_FINISHED,
+        EventType.TOOL_CALL_STARTED,
+        EventType.TOOL_CALL_FINISHED,
         EventType.LLM_CALL_STARTED,
         EventType.LLM_CALL_FINISHED,
+        EventType.TOOL_CALL_STARTED,
+        EventType.TOOL_CALL_FINISHED,
         EventType.LLM_CALL_STARTED,
         EventType.LLM_CALL_FINISHED,
         EventType.AGENT_FINISHED,
@@ -511,6 +542,77 @@ def test_runtime_publish_success():
     assert events[-1].message == "Agent 运行成功结束"
     assert events[-1].status == AgentRunStatus.SUCCESS.value
     assert events[-1].final_answer == result.final_answer
+
+
+def test_runtime_pauses_and_resumes_high_risk_tool_without_replaying_llm():
+    bus = InMemoryEventBus()
+    allocator = InMemorySequenceAllocator()
+    permission_manager = InMemoryPermissionManager(
+        event_bus=bus,
+        sequence_allocator=allocator,
+    )
+    registry = ToolRegistry()
+    tool = ApprovalTool()
+    registry.register(tool)
+    executor = ToolExecutor(
+        registry=registry,
+        permission_manager=permission_manager,
+    )
+    client = MockLLMClient(
+        responses=[
+            LLMResponse.tool_calls_response(
+                [
+                    ToolCall(
+                        id="call_approval_1",
+                        name="approval_tool",
+                        arguments={"value": "safe"},
+                    )
+                ]
+            ),
+            LLMResponse.final_answer("审批后完成"),
+        ]
+    )
+    runtime = AgentRuntime(
+        llm_client=client,
+        tool_registry=registry,
+        tool_executor=executor,
+        event_bus=bus,
+        sequence_allocator=allocator,
+        task_id="approval-task",
+    )
+
+    waiting = runtime.run("执行高风险工具")
+
+    assert waiting.status == AgentRunStatus.WAITING_PERMISSION
+    assert waiting.permission_request_id is not None
+    assert waiting.tool_call_count == 0
+    assert client.call_count == 1
+    assert tool.call_count == 0
+
+    permission_manager.resolve(
+        waiting.permission_request_id,
+        PermissionDecision.ALLOW,
+    )
+    completed = runtime.resume(waiting.permission_request_id)
+
+    assert completed.success is True
+    assert completed.status == AgentRunStatus.SUCCESS
+    assert completed.tool_call_count == 1
+    assert client.call_count == 2
+    assert tool.call_count == 1
+    assert json.loads(client.requests[1][-1]["content"])["content"] == "approved:safe"
+    assert [event.event_type for event in bus.list_events("approval-task")] == [
+        EventType.AGENT_STARTED,
+        EventType.LLM_CALL_STARTED,
+        EventType.LLM_CALL_FINISHED,
+        EventType.TOOL_CALL_STARTED,
+        EventType.PERMISSION_REQUESTED,
+        EventType.PERMISSION_RESOLVED,
+        EventType.TOOL_CALL_FINISHED,
+        EventType.LLM_CALL_STARTED,
+        EventType.LLM_CALL_FINISHED,
+        EventType.AGENT_FINISHED,
+    ]
 
 
 def test_runtime_publish_agent_error():

@@ -1,5 +1,6 @@
 import json
 from copy import deepcopy
+from collections.abc import Generator
 from typing import Any
 
 from .models import (
@@ -10,6 +11,12 @@ from .models import (
 )
 from devagent.llm.base import LLMClient
 from devagent.llm.models import LLMResponse, LLMResponseType, ToolCall
+from devagent.tools.executor import (
+    ToolExecutionContext,
+    ToolExecutionResult,
+    ToolExecutionStatus,
+    ToolExecutor,
+)
 from devagent.tools.models import ToolResult
 from devagent.tools.registry import ToolRegistry
 from devagent.event import (
@@ -55,9 +62,15 @@ class AgentRuntime:
         task_id: str | None = None,
         session_id: str | None = None,
         context_manager: ContextManager | None = None,
+        tool_executor: ToolExecutor | None = None,
+        sequence_allocator: InMemorySequenceAllocator | None = None,
+        workspace: str | None = None,
     ) -> None:
+        if tool_executor is not None and tool_executor.registry is not tool_registry:
+            raise ValueError("ToolExecutor 必须使用 AgentRuntime 的 ToolRegistry")
         self.llm_client = llm_client
         self.tool_registry = tool_registry
+        self.tool_executor = tool_executor or ToolExecutor(registry=tool_registry)
         self.system_prompt = system_prompt
         self.max_steps = max_steps
         self.max_tool_calls = max_tool_calls
@@ -69,12 +82,66 @@ class AgentRuntime:
         self.event_bus = event_bus
         self.task_id = task_id or "runtime"
         self.session_id = session_id
-        self.sequence_allocator = InMemorySequenceAllocator()
+        self.sequence_allocator = sequence_allocator or InMemorySequenceAllocator()
+        self.workspace = workspace
         self.context_manager = context_manager
         # * 保留每轮模型实际上下文的压缩指标，不覆盖完整消息历史。
         self.context_history: list[ContextCompressionResult] = []
+        self._workflow: Generator[AgentRunResult, str, AgentRunResult] | None = None
+        self._reported_event_count = 0
+        self.pending_permission_request_id: str | None = None
 
     def run(self, user_input: str) -> AgentRunResult:
+        """开始一次新的 Agent 工作流，必要时暂停等待权限审批。"""
+        if self._workflow is not None:
+            raise RuntimeError("AgentRuntime 已有等待恢复的工作流")
+        self._reported_event_count = 0
+        self.pending_permission_request_id = None
+        self._workflow = self._run_workflow(user_input)
+        return self._advance_workflow()
+
+    def resume(self, permission_request_id: str) -> AgentRunResult:
+        """使用已处理的权限请求恢复当前 Agent 工作流。"""
+        if self._workflow is None or self.pending_permission_request_id is None:
+            raise RuntimeError("AgentRuntime 没有等待权限审批的工作流")
+        if permission_request_id != self.pending_permission_request_id:
+            raise ValueError("权限请求与当前待恢复工具调用不匹配")
+        return self._advance_workflow(permission_request_id)
+
+    def _advance_workflow(
+        self,
+        permission_request_id: str | None = None,
+    ) -> AgentRunResult:
+        if self._workflow is None:
+            raise RuntimeError("AgentRuntime 工作流不存在")
+        try:
+            if permission_request_id is None:
+                raw_result = next(self._workflow)
+            else:
+                raw_result = self._workflow.send(permission_request_id)
+        except StopIteration as completed:
+            raw_result = completed.value
+            self._workflow = None
+        except Exception:
+            self._workflow = None
+            self.pending_permission_request_id = None
+            raise
+
+        # * EventStore 只追加本次 run/resume 新产生的兼容事件，避免恢复时重复落库。
+        new_events = raw_result.events[self._reported_event_count :]
+        self._reported_event_count = len(raw_result.events)
+        result = raw_result.model_copy(update={"events": deepcopy(new_events)})
+        self.pending_permission_request_id = (
+            result.permission_request_id
+            if result.status == AgentRunStatus.WAITING_PERMISSION
+            else None
+        )
+        return result
+
+    def _run_workflow(
+        self,
+        user_input: str,
+    ) -> Generator[AgentRunResult, str, AgentRunResult]:
         """
         运行一次 Agent。
         返回：
@@ -280,7 +347,34 @@ class AgentRuntime:
                         },
                     )
 
-                    tool_result = self._execute_tool_call(tool_call)
+                    execution_result = self._execute_tool_call(tool_call)
+                    if (
+                        execution_result.status
+                        == ToolExecutionStatus.WAITING_PERMISSION
+                    ):
+                        permission_request = execution_result.permission_request
+                        if permission_request is None:
+                            raise RuntimeError("ToolExecutor 未返回权限请求")
+                        self._save_messages(messages)
+                        resolved_request_id = yield AgentRunResult(
+                            success=False,
+                            status=AgentRunStatus.WAITING_PERMISSION,
+                            final_answer="",
+                            steps=step,
+                            tool_call_count=tool_call_count,
+                            error_message=None,
+                            permission_request_id=permission_request.request_id,
+                            messages=deepcopy(messages),
+                            events=deepcopy(events),
+                        )
+                        execution_result = self._resume_tool_call(
+                            resolved_request_id,
+                            tool_call,
+                        )
+
+                    tool_result = execution_result.tool_result
+                    if tool_result is None:
+                        raise RuntimeError("ToolExecutor 未返回 ToolResult")
                     self._append_tool_result(messages, tool_call, tool_result)
                     tool_call_count += 1
                     self._add_event(
@@ -293,6 +387,7 @@ class AgentRuntime:
                         metadata={
                             "success": tool_result.success,
                             "error_code": tool_result.error_code,
+                            "execution_status": execution_result.status.value,
                         },
                     )
 
@@ -404,11 +499,34 @@ class AgentRuntime:
             }
         )
 
-    def _execute_tool_call(self, tool_call: ToolCall) -> ToolResult:
+    def _execute_tool_call(self, tool_call: ToolCall) -> ToolExecutionResult:
         """
         执行单个工具调用。
         """
-        return self.tool_registry.execute(tool_call.name, tool_call.arguments)
+        return self.tool_executor.execute(
+            tool_call,
+            self._tool_execution_context(tool_call),
+        )
+
+    def _resume_tool_call(
+        self,
+        permission_request_id: str,
+        tool_call: ToolCall,
+    ) -> ToolExecutionResult:
+        return self.tool_executor.resume(
+            permission_request_id,
+            self._tool_execution_context(tool_call),
+        )
+
+    def _tool_execution_context(self, tool_call: ToolCall) -> ToolExecutionContext:
+        return ToolExecutionContext(
+            task_id=self.task_id,
+            session_id=self.session_id,
+            tool_call_id=tool_call.id,
+            workspace=self.workspace,
+            event_bus=self.event_bus,
+            sequence_allocator=self.sequence_allocator,
+        )
 
     def _append_tool_result(
         self,

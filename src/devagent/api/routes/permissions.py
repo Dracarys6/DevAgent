@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from devagent.api.schemas import (
     PermissionRequestListResponse,
@@ -6,13 +6,13 @@ from devagent.api.schemas import (
     PermissionResolveRequest,
 )
 from devagent.permission import (
-    InMemoryPermissionManager,
     InvalidPermissionTransitionError,
     PermissionRequest,
     PermissionRequestNotFoundError,
 )
 
-permission_manager = InMemoryPermissionManager()
+from .tasks import permission_manager, task_manager
+
 router = APIRouter(prefix="/api/v1/permissions", tags=["permissions"])
 
 
@@ -45,6 +45,7 @@ def get_request(request_id: str) -> PermissionRequestResponse:
 def resolve_request(
     request_id: str,
     request: PermissionResolveRequest,
+    background_tasks: BackgroundTasks,
 ) -> PermissionRequestResponse:
     try:
         resolved_request = permission_manager.resolve(
@@ -52,6 +53,8 @@ def resolve_request(
             decision=request.decision,
             decision_reason=request.decision_reason,
         )
+        if task_manager.can_resume_permission(request_id):
+            background_tasks.add_task(task_manager.resume_task, request_id)
     except PermissionRequestNotFoundError as exc:
         raise HTTPException(
             status_code=404,

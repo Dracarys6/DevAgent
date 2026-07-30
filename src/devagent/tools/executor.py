@@ -5,7 +5,11 @@ from pydantic import BaseModel, Field
 
 from devagent.llm.models import ToolCall
 from devagent.permission.manager import InMemoryPermissionManager
-from devagent.permission.models import PermissionDecision, PermissionRequest
+from devagent.permission.models import (
+    PermissionDecision,
+    PermissionRequest,
+    PermissionStatus,
+)
 from devagent.permission.policy_store import InMemoryPermissionPolicyStore
 from devagent.security import CommandGuard
 from devagent.tools.models import ErrorCode, RiskLevel, ToolResult
@@ -25,6 +29,10 @@ class ToolExecutionStatus(str, Enum):
     EXECUTED = "EXECUTED"
     BLOCKED = "BLOCKED"
     WAITING_PERMISSION = "WAITING_PERMISSION"
+
+
+class PermissionResumeError(ValueError):
+    """权限请求不能安全地恢复对应工具调用。"""
 
 
 class ToolExecutionContext(BaseModel):
@@ -57,6 +65,7 @@ class ToolExecutor:
         self.permission_manager = permission_manager or InMemoryPermissionManager()
         self.policy_store = policy_store or InMemoryPermissionPolicyStore()
         self.command_guard = command_guard or CommandGuard()
+        self._resumed_permission_request_ids: set[str] = set()
 
     def execute(
         self,
@@ -233,6 +242,153 @@ class ToolExecutor:
             reason="等待用户审批高风险工具执行",
             metadata=metadata,
         )
+
+    def resume(
+        self,
+        permission_request_id: str,
+        context: ToolExecutionContext | None = None,
+    ) -> ToolExecutionResult:
+        """按一次已处理的权限请求恢复原始工具调用。"""
+        context = context or ToolExecutionContext()
+        if permission_request_id in self._resumed_permission_request_ids:
+            raise PermissionResumeError("权限请求已用于恢复工具调用")
+
+        request = self.permission_manager.get_request(permission_request_id)
+        self._validate_resume_request(request, context)
+        tool_call = ToolCall(
+            id=request.tool_call_id or "",
+            name=request.tool_name,
+            arguments=request.tool_arguments,
+        )
+        sequence_allocator = context.sequence_allocator or InMemorySequenceAllocator()
+        tool_call_id = context.tool_call_id or tool_call.id
+
+        if request.status == PermissionStatus.APPROVED:
+            guard_block = self._guard_resumed_tool(
+                tool_call=tool_call,
+                context=context,
+                sequence_allocator=sequence_allocator,
+                tool_call_id=tool_call_id,
+            )
+            if guard_block is not None:
+                self._resumed_permission_request_ids.add(permission_request_id)
+                return guard_block
+            result = self._execute_registered_tool(
+                tool_call,
+                reason="用户批准本次高风险工具调用",
+                metadata={
+                    "tool_name": tool_call.name,
+                    "risk_level": request.risk_level.value,
+                    "permission_request_id": permission_request_id,
+                    "permission_decision": PermissionDecision.ALLOW.value,
+                },
+            )
+            self._publish_tool_execution_result(
+                result=result,
+                tool_call=tool_call,
+                context=context,
+                sequence_allocator=sequence_allocator,
+                tool_call_id=tool_call_id,
+                status=ToolExecutionStatus.EXECUTED,
+            )
+        else:
+            reason = request.decision_reason or "用户拒绝本次高风险工具调用"
+            tool_result = ToolResult.fail(
+                ErrorCode.PERMISSION_DENIED,
+                error_message=reason,
+                metadata={
+                    "tool_name": tool_call.name,
+                    "risk_level": request.risk_level.value,
+                    "permission_request_id": permission_request_id,
+                    "permission_decision": PermissionDecision.DENY.value,
+                },
+            )
+            result = ToolExecutionResult(
+                status=ToolExecutionStatus.BLOCKED,
+                tool_result=tool_result,
+                reason=reason,
+                metadata=tool_result.metadata,
+            )
+            self._publish_tool_failed(
+                tool_call=tool_call,
+                context=context,
+                sequence_allocator=sequence_allocator,
+                tool_call_id=tool_call_id,
+                error_code=ErrorCode.PERMISSION_DENIED,
+                error_message=reason,
+                status=ToolExecutionStatus.BLOCKED,
+                reason=reason,
+            )
+
+        self._resumed_permission_request_ids.add(permission_request_id)
+        return result
+
+    def _validate_resume_request(
+        self,
+        request: PermissionRequest,
+        context: ToolExecutionContext,
+    ) -> None:
+        if request.status == PermissionStatus.PENDING:
+            raise PermissionResumeError("权限请求尚未处理")
+        if request.status not in {
+            PermissionStatus.APPROVED,
+            PermissionStatus.DENIED,
+        }:
+            raise PermissionResumeError(
+                f"权限请求状态不能恢复工具调用: {request.status.value}"
+            )
+        if context.task_id is not None and request.task_id != context.task_id:
+            raise PermissionResumeError("权限请求不属于当前任务")
+        if (
+            context.tool_call_id is not None
+            and request.tool_call_id != context.tool_call_id
+        ):
+            raise PermissionResumeError("权限请求不属于当前工具调用")
+
+    def _guard_resumed_tool(
+        self,
+        *,
+        tool_call: ToolCall,
+        context: ToolExecutionContext,
+        sequence_allocator: InMemorySequenceAllocator,
+        tool_call_id: str,
+    ) -> ToolExecutionResult | None:
+        # ! 审批与实际执行之间环境可能变化，Shell 恢复前必须再次经过安全规则。
+        if tool_call.name != "run_shell":
+            return None
+        guard_result = self.command_guard.validate(
+            tool_call.arguments.get("command", []),
+            self._workspace_for_guard(tool_call, context),
+        )
+        if guard_result.allowed:
+            return None
+        metadata = {
+            "tool_name": tool_call.name,
+            "guard_decision": guard_result.decision.value,
+            "matched_rule": guard_result.matched_rule,
+        }
+        tool_result = ToolResult.fail(
+            ErrorCode.PERMISSION_DENIED,
+            error_message=f"命令被安全规则拦截: {guard_result.reason}",
+            metadata=metadata,
+        )
+        result = ToolExecutionResult(
+            status=ToolExecutionStatus.BLOCKED,
+            tool_result=tool_result,
+            reason=guard_result.reason,
+            metadata=metadata,
+        )
+        self._publish_tool_failed(
+            tool_call=tool_call,
+            context=context,
+            sequence_allocator=sequence_allocator,
+            tool_call_id=tool_call_id,
+            error_code=ErrorCode.PERMISSION_DENIED,
+            error_message=tool_result.error_message or "命令被安全规则拦截",
+            status=ToolExecutionStatus.BLOCKED,
+            reason=guard_result.reason,
+        )
+        return result
 
     def _execute_registered_tool(
         self,

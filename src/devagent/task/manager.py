@@ -5,23 +5,44 @@ from typing import Protocol
 
 from dotenv import load_dotenv
 
-from devagent.agent import AgentEvent, AgentEventType, AgentRuntime, AgentRunResult
-from devagent.event import InMemoryEventStore, InMemoryEventBus
+from devagent.agent import (
+    AgentEvent,
+    AgentEventType,
+    AgentRuntime,
+    AgentRunResult,
+    AgentRunStatus,
+)
+from devagent.event import (
+    InMemoryEventBus,
+    InMemoryEventStore,
+    InMemorySequenceAllocator,
+)
 from devagent.llm import (
     LLMClient,
     MockLLMClient,
     create_openai_llm_client,
     tool_registry_to_openai_tools,
 )
-from devagent.tools import ReadFileTool, RiskLevel, SearchCodeTool, ToolRegistry
+from devagent.permission import (
+    InMemoryPermissionManager,
+    InMemoryPermissionPolicyStore,
+)
+from devagent.tools import (
+    ReadFileTool,
+    SearchCodeTool,
+    ToolExecutor,
+    ToolRegistry,
+)
 from devagent.tools.builtin import create_builtin_registry
 
-from .models import AgentTask, TaskStatus
+from .models import AgentTask, InvalidTaskTransitionError, TaskStatus
 from .repository import InMemoryTaskRepository
 
 
 class RuntimeLike(Protocol):
     def run(self, question: str) -> AgentRunResult: ...
+
+    def resume(self, permission_request_id: str) -> AgentRunResult: ...
 
 
 def create_low_risk_registry() -> ToolRegistry:
@@ -66,10 +87,7 @@ class LLMClientFactory:
             base_url=base_url,
             api_mode=api_mode,
             reasoning_effort=reasoning_effort,
-            tools=tool_registry_to_openai_tools(
-                registry=tool_registry,
-                allowed_risk_levels={RiskLevel.LOW},
-            ),
+            tools=tool_registry_to_openai_tools(registry=tool_registry),
         )
 
 
@@ -84,29 +102,45 @@ class TaskManager:
         llm_client_factory: LLMClientFactory | None = None,
         event_store: InMemoryEventStore | None = None,
         event_bus: InMemoryEventBus | None = None,
+        permission_manager: InMemoryPermissionManager | None = None,
+        policy_store: InMemoryPermissionPolicyStore | None = None,
+        sequence_allocator: InMemorySequenceAllocator | None = None,
     ) -> None:
         self.repository = repository
         self._runtime_factory = runtime_factory or self._create_runtime
         self.llm_client_factory = llm_client_factory or LLMClientFactory()
         self.event_store = event_store or InMemoryEventStore()
         self.event_bus = event_bus or InMemoryEventBus()
+        self.sequence_allocator = sequence_allocator or InMemorySequenceAllocator()
+        self.permission_manager = permission_manager or InMemoryPermissionManager(
+            event_bus=self.event_bus,
+            sequence_allocator=self.sequence_allocator,
+        )
+        self.policy_store = policy_store or InMemoryPermissionPolicyStore()
+        self._suspended_runtimes: dict[str, RuntimeLike] = {}
 
     def _create_runtime(self, task: AgentTask) -> AgentRuntime:
         tool_registry = self._create_tool_registry(task)
         client = self.llm_client_factory.create_client(task, tool_registry)
+        tool_executor = ToolExecutor(
+            registry=tool_registry,
+            permission_manager=self.permission_manager,
+            policy_store=self.policy_store,
+        )
         runtime = AgentRuntime(
             llm_client=client,
             tool_registry=tool_registry,
+            tool_executor=tool_executor,
             max_steps=task.max_steps,
             max_tool_calls=task.max_tool_calls,
             event_bus=self.event_bus,
+            sequence_allocator=self.sequence_allocator,
             task_id=task.task_id,
+            workspace=task.workspace,
         )
         return runtime
 
     def _create_tool_registry(self, task: AgentTask) -> ToolRegistry:
-        if task.provider == "real":
-            return create_low_risk_registry()
         return create_builtin_registry()
 
     def create_task(
@@ -142,28 +176,94 @@ class TaskManager:
             runtime = self._runtime_factory(task)
             result: AgentRunResult = runtime.run(task.question)
         except Exception as exc:
-            self.event_store.append(
-                task_id,
-                AgentEvent(
-                    type=AgentEventType.ERROR,
-                    message=f"任务执行失败: {exc}",
-                ),
-            )
-            return self.repository.update_status(
-                task_id,
-                TaskStatus.FAILED,
-                error_message=f"任务执行失败: {exc}",
-            )
+            return self._fail_task(task_id, exc)
 
+        return self._apply_runtime_result(task_id, runtime, result)
+
+    def resume_task(self, permission_request_id: str) -> AgentTask:
+        """恢复一个已审批且处于 WAITING_PERMISSION 的 Agent 任务。"""
+        permission_request = self.permission_manager.get_request(
+            permission_request_id
+        )
+        if permission_request.task_id is None:
+            raise ValueError("权限请求没有关联 Agent 任务")
+        task_id = permission_request.task_id
+        task = self.repository.get(task_id)
+        if task.status != TaskStatus.WAITING_PERMISSION:
+            raise InvalidTaskTransitionError(
+                f"任务不在等待权限状态: {task.status.value}"
+            )
+        try:
+            runtime = self._suspended_runtimes[task_id]
+        except KeyError as exc:
+            raise RuntimeError("等待权限的 AgentRuntime 不存在") from exc
+
+        self.repository.update_status(task_id, TaskStatus.RUNNING)
+        try:
+            result = runtime.resume(permission_request_id)
+        except Exception as exc:
+            self._suspended_runtimes.pop(task_id, None)
+            return self._fail_task(task_id, exc)
+        return self._apply_runtime_result(task_id, runtime, result)
+
+    def can_resume_permission(self, permission_request_id: str) -> bool:
+        """判断权限请求是否对应当前进程中暂停的 Agent 工作流。"""
+        request = self.permission_manager.get_request(permission_request_id)
+        if request.task_id is None or request.task_id not in self._suspended_runtimes:
+            return False
+        try:
+            task = self.repository.get(request.task_id)
+        except KeyError:
+            return False
+        runtime = self._suspended_runtimes[request.task_id]
+        return (
+            task.status == TaskStatus.WAITING_PERMISSION
+            and getattr(runtime, "pending_permission_request_id", None)
+            == permission_request_id
+        )
+
+    def _apply_runtime_result(
+        self,
+        task_id: str,
+        runtime: RuntimeLike,
+        result: AgentRunResult,
+    ) -> AgentTask:
         self.event_store.append_many(task_id, result.events)
 
+        if result.status == AgentRunStatus.WAITING_PERMISSION:
+            if result.permission_request_id is None:
+                return self._fail_task(
+                    task_id,
+                    RuntimeError("等待权限结果缺少 permission_request_id"),
+                )
+            self._suspended_runtimes[task_id] = runtime
+            return self.repository.update_status(
+                task_id,
+                TaskStatus.WAITING_PERMISSION,
+            )
+
+        self._suspended_runtimes.pop(task_id, None)
         if result.success:
             return self.repository.update_status(task_id, TaskStatus.DONE)
-
         return self.repository.update_status(
             task_id,
             TaskStatus.FAILED,
             error_message=result.error_message or result.status.value,
+        )
+
+    def _fail_task(self, task_id: str, exc: Exception) -> AgentTask:
+        message = f"任务执行失败: {exc}"
+        self.event_store.append(
+            task_id,
+            AgentEvent(
+                type=AgentEventType.ERROR,
+                message=message,
+            ),
+        )
+        return self.repository.update_status(
+            task_id,
+            TaskStatus.FAILED,
+            error_message=message,
         )
 
     def cancel_task(self, task_id: str) -> AgentTask:

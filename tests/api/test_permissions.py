@@ -1,10 +1,35 @@
 from fastapi.testclient import TestClient
+import pytest
+from pydantic import BaseModel
 
+from devagent.agent import AgentRuntime
 from devagent.api.app import app
-from devagent.api.routes.permissions import permission_manager
+from devagent.api.routes.permissions import permission_manager, task_manager
+from devagent.event import EventType
+from devagent.llm import LLMResponse, MockLLMClient, ToolCall
 from devagent.permission import PermissionRequest, RiskLevel
+from devagent.task import AgentTask, TaskStatus
+from devagent.tools import BaseTool, ToolExecutor, ToolRegistry, ToolResult
 
 client = TestClient(app)
+
+
+class APIApprovalArgs(BaseModel):
+    value: str
+
+
+class APIApprovalTool(BaseTool[APIApprovalArgs]):
+    name = "api_approval"
+    description = "测试 Permission API 恢复 Agent。"
+    args_model = APIApprovalArgs
+    risk_level = RiskLevel.HIGH
+
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    def execute(self, args: APIApprovalArgs) -> ToolResult:
+        self.call_count += 1
+        return ToolResult.ok(f"api:{args.value}")
 
 
 def create_permission_request(
@@ -177,3 +202,92 @@ def test_openapi_schema_contains_permission_paths():
     assert "/api/v1/permissions/pending" in paths
     assert "/api/v1/permissions/{request_id}" in paths
     assert "/api/v1/permissions/{request_id}/resolve" in paths
+
+
+@pytest.mark.parametrize(
+    ("decision", "expected_tool_event", "expected_call_count"),
+    [
+        ("ALLOW", EventType.TOOL_CALL_FINISHED, 1),
+        ("DENY", EventType.TOOL_CALL_FAILED, 0),
+    ],
+)
+def test_resolve_runtime_permission_resumes_agent_and_completes_trace(
+    monkeypatch,
+    decision: str,
+    expected_tool_event: EventType,
+    expected_call_count: int,
+):
+    registry = ToolRegistry()
+    tool = APIApprovalTool()
+    registry.register(tool)
+    executor = ToolExecutor(
+        registry=registry,
+        permission_manager=permission_manager,
+        policy_store=task_manager.policy_store,
+    )
+    client_instance = MockLLMClient(
+        responses=[
+            LLMResponse.tool_calls_response(
+                [
+                    ToolCall(
+                        id="api-approval-call",
+                        name=tool.name,
+                        arguments={"value": "safe"},
+                    )
+                ]
+            ),
+            LLMResponse.final_answer("API 审批恢复完成"),
+        ]
+    )
+
+    def create_runtime(task: AgentTask) -> AgentRuntime:
+        return AgentRuntime(
+            llm_client=client_instance,
+            tool_registry=registry,
+            tool_executor=executor,
+            event_bus=task_manager.event_bus,
+            sequence_allocator=task_manager.sequence_allocator,
+            task_id=task.task_id,
+            workspace=task.workspace,
+        )
+
+    monkeypatch.setattr(task_manager, "_runtime_factory", create_runtime)
+
+    created = client.post(
+        "/api/v1/agent/tasks",
+        json={"question": "执行需要审批的工具", "provider": "mock"},
+    )
+    task_id = created.json()["task_id"]
+    waiting_task = client.get(f"/api/v1/agent/tasks/{task_id}")
+    pending = [
+        request
+        for request in permission_manager.list_pending()
+        if request.task_id == task_id
+    ]
+
+    assert waiting_task.json()["status"] == TaskStatus.WAITING_PERMISSION.value
+    assert len(pending) == 1
+    assert tool.call_count == 0
+
+    resolved = client.post(
+        f"/api/v1/permissions/{pending[0].request_id}/resolve",
+        json={"decision": decision, "decision_reason": "审批结论已确认"},
+    )
+    completed_task = client.get(f"/api/v1/agent/tasks/{task_id}")
+    trace = client.get(f"/api/v1/agent/tasks/{task_id}/trace").json()
+
+    assert resolved.status_code == 200
+    assert completed_task.json()["status"] == TaskStatus.DONE.value
+    assert tool.call_count == expected_call_count
+    assert [step["event_type"] for step in trace["steps"]] == [
+        EventType.AGENT_STARTED.value,
+        EventType.LLM_CALL_STARTED.value,
+        EventType.LLM_CALL_FINISHED.value,
+        EventType.TOOL_CALL_STARTED.value,
+        EventType.PERMISSION_REQUESTED.value,
+        EventType.PERMISSION_RESOLVED.value,
+        expected_tool_event.value,
+        EventType.LLM_CALL_STARTED.value,
+        EventType.LLM_CALL_FINISHED.value,
+        EventType.AGENT_FINISHED.value,
+    ]

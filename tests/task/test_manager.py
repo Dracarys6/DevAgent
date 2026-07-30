@@ -1,7 +1,16 @@
 import pytest
+from pydantic import BaseModel
 
-from devagent.agent import AgentEvent, AgentEventType, AgentRunResult, AgentRunStatus
-from devagent.llm import MockLLMClient
+from devagent.agent import (
+    AgentEvent,
+    AgentEventType,
+    AgentRunResult,
+    AgentRunStatus,
+    AgentRuntime,
+)
+from devagent.event import InMemoryEventBus, InMemorySequenceAllocator
+from devagent.llm import LLMResponse, MockLLMClient, ToolCall
+from devagent.permission import InMemoryPermissionManager, PermissionDecision, RiskLevel
 from devagent.task.manager import (
     LLMClientFactory,
     TaskManager,
@@ -9,6 +18,25 @@ from devagent.task.manager import (
 )
 from devagent.task.models import AgentTask, InvalidTaskTransitionError, TaskStatus
 from devagent.task.repository import InMemoryTaskRepository
+from devagent.tools import BaseTool, ToolExecutor, ToolRegistry, ToolResult
+
+
+class ManagedApprovalArgs(BaseModel):
+    value: str
+
+
+class ManagedApprovalTool(BaseTool[ManagedApprovalArgs]):
+    name = "managed_approval"
+    description = "测试 TaskManager 审批恢复。"
+    args_model = ManagedApprovalArgs
+    risk_level = RiskLevel.HIGH
+
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    def execute(self, args: ManagedApprovalArgs) -> ToolResult:
+        self.call_count += 1
+        return ToolResult.ok(f"managed:{args.value}")
 
 
 class SuccessRuntime:
@@ -192,7 +220,7 @@ def test_llm_client_factory_rejects_real_client_without_model(monkeypatch):
         factory.create_client(task, create_low_risk_registry())
 
 
-def test_default_runtime_uses_low_risk_tools_for_real_provider():
+def test_default_runtime_exposes_builtin_tools_through_permission_aware_executor():
     repository = InMemoryTaskRepository()
     llm_client_factory = RecordingLLMClientFactory()
     manager = TaskManager(
@@ -207,7 +235,16 @@ def test_default_runtime_uses_low_risk_tools_for_real_provider():
 
     manager._create_runtime(task)
 
-    assert llm_client_factory.tool_names == ["read_file", "search_code"]
+    assert llm_client_factory.tool_names == [
+        "get_ci_result",
+        "git_compare",
+        "git_diff",
+        "knowledge_retrieve",
+        "read_file",
+        "run_shell",
+        "search_code",
+        "search_log",
+    ]
 
 
 def test_run_task_success_marks_task_done():
@@ -261,6 +298,77 @@ def test_run_task_failed_result_saves_events():
         AgentEventType.RUN_START,
         AgentEventType.ERROR,
     ]
+
+
+def test_task_manager_resumes_suspended_runtime_after_approval():
+    repository = InMemoryTaskRepository()
+    event_bus = InMemoryEventBus()
+    allocator = InMemorySequenceAllocator()
+    permission_manager = InMemoryPermissionManager(
+        event_bus=event_bus,
+        sequence_allocator=allocator,
+    )
+    registry = ToolRegistry()
+    tool = ManagedApprovalTool()
+    registry.register(tool)
+    executor = ToolExecutor(
+        registry=registry,
+        permission_manager=permission_manager,
+    )
+    client = MockLLMClient(
+        responses=[
+            LLMResponse.tool_calls_response(
+                [
+                    ToolCall(
+                        id="managed-call-1",
+                        name=tool.name,
+                        arguments={"value": "safe"},
+                    )
+                ]
+            ),
+            LLMResponse.final_answer("任务完成"),
+        ]
+    )
+
+    def create_runtime(task: AgentTask) -> AgentRuntime:
+        return AgentRuntime(
+            llm_client=client,
+            tool_registry=registry,
+            tool_executor=executor,
+            event_bus=event_bus,
+            sequence_allocator=allocator,
+            task_id=task.task_id,
+            workspace=task.workspace,
+        )
+
+    manager = TaskManager(
+        repository,
+        runtime_factory=create_runtime,
+        event_bus=event_bus,
+        permission_manager=permission_manager,
+        sequence_allocator=allocator,
+    )
+    task = manager.create_task(question="执行受控工具")
+
+    waiting = manager.run_task(task.task_id)
+    pending_request = permission_manager.list_pending()[0]
+
+    assert waiting.status == TaskStatus.WAITING_PERMISSION
+    assert manager.can_resume_permission(pending_request.request_id) is True
+    assert tool.call_count == 0
+
+    permission_manager.resolve(
+        pending_request.request_id,
+        PermissionDecision.ALLOW,
+    )
+    completed = manager.resume_task(pending_request.request_id)
+
+    assert completed.status == TaskStatus.DONE
+    assert manager.can_resume_permission(pending_request.request_id) is False
+    assert tool.call_count == 1
+    assert [
+        event.type for event in manager.event_store.list(task.task_id)
+    ].count(AgentEventType.RUN_START) == 1
 
 
 def test_run_task_runtime_exception_marks_task_failed():

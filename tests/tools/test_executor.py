@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 
+import pytest
 from pydantic import BaseModel
 
 from devagent.llm import ToolCall
@@ -12,6 +13,7 @@ from devagent.permission import (
     RiskLevel,
 )
 from devagent.security import CommandGuard
+from devagent.tools.executor import PermissionResumeError
 from devagent.tools import (
     BaseTool,
     ErrorCode,
@@ -225,6 +227,92 @@ def test_run_shell_without_policy_returns_waiting_permission_and_does_not_execut
         result.permission_request.request_id
     ]
     assert shell_tool.call_count == 0
+
+
+def test_approved_permission_resumes_original_tool_once():
+    executor, permission_manager, _policy_store, shell_tool = create_executor()
+    context = event_context()
+
+    waiting = executor.execute(shell_call(), context)
+    assert waiting.permission_request is not None
+    permission_manager.resolve(
+        waiting.permission_request.request_id,
+        PermissionDecision.ALLOW,
+    )
+
+    resumed = executor.resume(waiting.permission_request.request_id, context)
+
+    assert resumed.status == ToolExecutionStatus.EXECUTED
+    assert resumed.tool_result is not None
+    assert resumed.tool_result.success is True
+    assert resumed.metadata["permission_decision"] == PermissionDecision.ALLOW.value
+    assert shell_tool.call_count == 1
+    assert [event.event_type for event in list_task_events(context)] == [
+        EventType.TOOL_CALL_STARTED,
+        EventType.PERMISSION_REQUESTED,
+        EventType.PERMISSION_RESOLVED,
+        EventType.TOOL_CALL_FINISHED,
+    ]
+
+
+def test_denied_permission_returns_tool_result_without_execution():
+    executor, permission_manager, _policy_store, shell_tool = create_executor()
+    context = event_context()
+
+    waiting = executor.execute(shell_call(), context)
+    assert waiting.permission_request is not None
+    permission_manager.resolve(
+        waiting.permission_request.request_id,
+        PermissionDecision.DENY,
+        decision_reason="测试拒绝",
+    )
+
+    resumed = executor.resume(waiting.permission_request.request_id, context)
+
+    assert resumed.status == ToolExecutionStatus.BLOCKED
+    assert resumed.tool_result is not None
+    assert resumed.tool_result.error_code == ErrorCode.PERMISSION_DENIED
+    assert resumed.tool_result.error_message == "测试拒绝"
+    assert shell_tool.call_count == 0
+    assert [event.event_type for event in list_task_events(context)][-1] == (
+        EventType.TOOL_CALL_FAILED
+    )
+
+
+def test_resume_rejects_cross_task_permission_request():
+    executor, permission_manager, _policy_store, shell_tool = create_executor()
+    context = event_context()
+    waiting = executor.execute(shell_call(), context)
+    assert waiting.permission_request is not None
+    permission_manager.resolve(
+        waiting.permission_request.request_id,
+        PermissionDecision.ALLOW,
+    )
+
+    with pytest.raises(PermissionResumeError, match="不属于当前任务"):
+        executor.resume(
+            waiting.permission_request.request_id,
+            ToolExecutionContext(task_id="other-task"),
+        )
+
+    assert shell_tool.call_count == 0
+
+
+def test_permission_request_cannot_resume_tool_twice():
+    executor, permission_manager, _policy_store, shell_tool = create_executor()
+    context = event_context()
+    waiting = executor.execute(shell_call(), context)
+    assert waiting.permission_request is not None
+    permission_manager.resolve(
+        waiting.permission_request.request_id,
+        PermissionDecision.ALLOW,
+    )
+
+    executor.resume(waiting.permission_request.request_id, context)
+
+    with pytest.raises(PermissionResumeError, match="已用于恢复"):
+        executor.resume(waiting.permission_request.request_id, context)
+    assert shell_tool.call_count == 1
 
 
 def test_waiting_permission_uses_tool_call_id_when_context_omits_it():
