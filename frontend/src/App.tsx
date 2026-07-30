@@ -1429,7 +1429,7 @@ function DiagnosisView({ onError }: { onError: (message: string) => void }) {
   const historyEntries = history.entries;
   const addHistory = history.add;
   const latest = historyEntries[0];
-  const [commitId, setCommitId] = useState(() => latest?.input.commit_id ?? "abc123");
+  const [commitId, setCommitId] = useState(() => latest?.input.commit_id ?? "7229c86");
   const [workspace, setWorkspace] = useState(
     () => latest?.input.workspace ?? "examples/sample_repo",
   );
@@ -1519,7 +1519,7 @@ function DiagnosisView({ onError }: { onError: (message: string) => void }) {
           <EmptyState
             icon={<FileSearch />}
             title="准备诊断 sample CI"
-            description="默认示例已指向 abc123。真实诊断需要服务端配置 LLM API Key 与模型。"
+            description="默认示例同时包含真实 Git diff 和受控 CI 失败。诊断会调用服务端配置的真实模型。"
           />
           <div className="pipeline">
             <span>CI Result</span><ChevronRight size={16} />

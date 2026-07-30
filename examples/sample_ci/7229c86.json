@@ -1,0 +1,50 @@
+{
+  "pipeline_id": "pipeline-live-7229c86",
+  "commit_id": "7229c86",
+  "status": "failed",
+  "started_at": "2026-07-11T09:00:00Z",
+  "finished_at": "2026-07-11T09:00:18Z",
+  "jobs": [
+    {
+      "name": "lint",
+      "status": "passed",
+      "duration_seconds": 3.2,
+      "tests": [],
+      "log_lines": [
+        "ruff check completed",
+        "All checks passed"
+      ]
+    },
+    {
+      "name": "unit-tests",
+      "status": "failed",
+      "duration_seconds": 14.8,
+      "tests": [
+        {
+          "name": "tests/test_uploader.py::test_small_upload_uses_min_timeout",
+          "status": "passed",
+          "duration_seconds": 0.01
+        },
+        {
+          "name": "tests/test_uploader.py::test_large_upload_uses_dynamic_timeout",
+          "status": "failed",
+          "duration_seconds": 0.02,
+          "error_type": "AssertionError",
+          "error_message": "assert 3 >= 12",
+          "location": "tests/test_uploader.py:17",
+          "log_excerpt": [
+            "timeout = manager.build_upload_timeout(size_mb=80, bandwidth_mb_s=10)",
+            "> assert timeout >= 12",
+            "E assert 3 >= 12"
+          ]
+        }
+      ],
+      "log_lines": [
+        "collecting ... collected 2 items",
+        "tests/test_uploader.py .F",
+        "FAILED tests/test_uploader.py::test_large_upload_uses_dynamic_timeout",
+        "AssertionError: assert 3 >= 12"
+      ]
+    }
+  ]
+}

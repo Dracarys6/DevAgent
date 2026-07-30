@@ -18,6 +18,7 @@ from devagent.tools.git_tools import GitDiffError, git_diff
 from .models import (
     DiagnosisInput,
     DiagnosisReport,
+    DiagnosisReportDraft,
     DiagnosisScenario,
     Evidence,
     EvidenceKind,
@@ -28,6 +29,7 @@ MAX_EVIDENCE_EXCERPT_CHARS = 4_000
 ReportIdFactory = Callable[[], str]
 CIResultReader = Callable[[str], str]
 GitDiffReader = Callable[[str, str], str]
+CI_GIT_PATHS = ("*.py",)
 
 
 class DiagnosisServiceErrorCode(str, Enum):
@@ -66,6 +68,23 @@ class CIEvidenceCollector(Protocol):
     ) -> DiagnosisInput: ...
 
 
+def read_ci_git_diff(commit_id: str, workspace: str) -> str:
+    """读取代码和测试变更，并移除可能直接泄露答案的纯注释行。"""
+    patch = git_diff(commit_id, workspace, pathspecs=CI_GIT_PATHS)
+    return _strip_comment_only_diff_lines(patch)
+
+
+def _strip_comment_only_diff_lines(patch: str) -> str:
+    lines: list[str] = []
+    for line in patch.splitlines(keepends=True):
+        is_file_marker = line.startswith(("+++", "---"))
+        is_diff_content = line.startswith(("+", "-", " "))
+        if is_diff_content and not is_file_marker and line[1:].lstrip().startswith("#"):
+            continue
+        lines.append(line)
+    return "".join(lines)
+
+
 class LocalCIEvidenceCollector:
     """使用本地 CI 数据和 Git 仓库收集 CI 诊断证据。"""
 
@@ -73,7 +92,7 @@ class LocalCIEvidenceCollector:
         self,
         *,
         ci_result_reader: CIResultReader = get_ci_result,
-        git_diff_reader: GitDiffReader = git_diff,
+        git_diff_reader: GitDiffReader = read_ci_git_diff,
     ) -> None:
         self._ci_result_reader = ci_result_reader
         self._git_diff_reader = git_diff_reader
@@ -229,15 +248,14 @@ class DiagnosisService:
                 message="调用诊断模型失败",
             ) from exc
 
-        report = self._parse_report(response)
-        self._validate_ci_report(
-            report=report,
+        draft = self._parse_report(response)
+        return self._bind_ci_report(
+            draft=draft,
             diagnosis_input=diagnosis_input,
         )
-        return report
 
     @staticmethod
-    def _parse_report(response: LLMResponse) -> DiagnosisReport:
+    def _parse_report(response: LLMResponse) -> DiagnosisReportDraft:
         if response.response_type != LLMResponseType.FINAL_ANSWER:
             raise DiagnosisServiceError(
                 code=DiagnosisServiceErrorCode.UNEXPECTED_LLM_RESPONSE,
@@ -249,7 +267,7 @@ class DiagnosisService:
                 message="诊断模型返回的内容为空",
             )
         try:
-            return DiagnosisReport.model_validate_json(response.content)
+            return DiagnosisReportDraft.model_validate_json(response.content)
         except ValidationError as exc:
             raise DiagnosisServiceError(
                 code=DiagnosisServiceErrorCode.INVALID_REPORT,
@@ -257,20 +275,23 @@ class DiagnosisService:
             ) from exc
 
     @staticmethod
-    def _validate_ci_report(
+    def _bind_ci_report(
         *,
-        report: DiagnosisReport,
+        draft: DiagnosisReportDraft,
         diagnosis_input: DiagnosisInput,
-    ) -> None:
-        expected_fields = {
-            "report_id": (report.report_id, diagnosis_input.report_id),
-            "scenario": (report.scenario, DiagnosisScenario.CI_FAILURE),
-            "target": (report.target, diagnosis_input.commit_id),
-            "evidence": (report.evidence, diagnosis_input.evidence),
-        }
-        for field, (actual, expected) in expected_fields.items():
-            if actual != expected:
-                raise DiagnosisServiceError(
-                    code=DiagnosisServiceErrorCode.REPORT_MISMATCH,
-                    message=f"诊断报告的 {field} 字段与输入不匹配",
-                )
+    ) -> DiagnosisReport:
+        try:
+            return DiagnosisReport.model_validate(
+                {
+                    **draft.model_dump(),
+                    "report_id": diagnosis_input.report_id,
+                    "scenario": DiagnosisScenario.CI_FAILURE,
+                    "target": diagnosis_input.commit_id,
+                    "evidence": diagnosis_input.evidence,
+                }
+            )
+        except ValidationError as exc:
+            raise DiagnosisServiceError(
+                code=DiagnosisServiceErrorCode.INVALID_REPORT,
+                message="模型返回的诊断内容无法绑定到输入证据",
+            ) from exc

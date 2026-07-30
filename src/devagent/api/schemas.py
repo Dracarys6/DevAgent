@@ -114,7 +114,7 @@ class CIDiagnosisRequest(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "commit_id": "abc123",
+                    "commit_id": "7229c86",
                     "workspace": "examples/sample_repo",
                 }
             ]

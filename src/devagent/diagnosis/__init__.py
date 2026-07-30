@@ -9,9 +9,11 @@ from .models import (
     DiagnosisScenario,
     DiagnosisStatus,
     DiagnosisReport,
+    DiagnosisReportDraft,
     DiagnosisInput,
     LogDiagnosisInput,
 )
+
 __all__ = [
     "EvidenceKind",
     "Evidence",
@@ -23,6 +25,7 @@ __all__ = [
     "DiagnosisScenario",
     "DiagnosisStatus",
     "DiagnosisReport",
+    "DiagnosisReportDraft",
     "DiagnosisInput",
     "LogDiagnosisInput",
     "DiagnosisService",

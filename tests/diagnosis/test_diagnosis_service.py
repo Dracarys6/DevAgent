@@ -137,6 +137,28 @@ def test_local_ci_evidence_collector_converts_ci_result_and_missing_diff():
     assert result.missing_evidence[0].suggested_tool == "git_diff"
 
 
+def test_local_ci_evidence_collector_reads_complete_real_sample_evidence():
+    collector = LocalCIEvidenceCollector()
+
+    result = collector.collect(
+        report_id="report-live-sample",
+        commit_id="7229c86",
+        workspace="examples/sample_repo",
+    )
+
+    assert [item.kind for item in result.evidence] == [
+        EvidenceKind.CI_RESULT,
+        EvidenceKind.GIT_DIFF,
+    ]
+    assert "test_large_upload_uses_dynamic_timeout" in result.evidence[0].excerpt
+    assert "build_upload_timeout" in result.evidence[1].excerpt
+    assert "README.md" not in result.evidence[1].excerpt
+    assert "ci_failure_notes.md" not in result.evidence[1].excerpt
+    assert "故意保留一个回归" not in result.evidence[1].excerpt
+    assert "根因" not in result.evidence[1].excerpt
+    assert result.missing_evidence == []
+
+
 def test_local_ci_evidence_collector_rejects_malformed_tool_json():
     collector = LocalCIEvidenceCollector(
         ci_result_reader=lambda commit_id: "not-json",
@@ -150,17 +172,12 @@ def test_local_ci_evidence_collector_rejects_malformed_tool_json():
             workspace="examples/sample_repo",
         )
 
-    assert (
-        exc_info.value.code
-        == DiagnosisServiceErrorCode.EVIDENCE_COLLECTION_FAILED
-    )
+    assert exc_info.value.code == DiagnosisServiceErrorCode.EVIDENCE_COLLECTION_FAILED
 
 
 def test_diagnosis_service_returns_validated_report_and_builds_messages():
     report = make_report()
-    service, client = make_service(
-        LLMResponse.final_answer(report.model_dump_json())
-    )
+    service, client = make_service(LLMResponse.final_answer(report.model_dump_json()))
 
     result = service.diagnose_ci(
         commit_id="abc123",
@@ -185,10 +202,7 @@ def test_diagnosis_service_rejects_tool_call_response():
     with pytest.raises(DiagnosisServiceError) as exc_info:
         service.diagnose_ci(commit_id="abc123")
 
-    assert (
-        exc_info.value.code
-        == DiagnosisServiceErrorCode.UNEXPECTED_LLM_RESPONSE
-    )
+    assert exc_info.value.code == DiagnosisServiceErrorCode.UNEXPECTED_LLM_RESPONSE
 
 
 def test_diagnosis_service_rejects_invalid_report_json():
@@ -209,31 +223,25 @@ def test_diagnosis_service_rejects_empty_report_content():
     assert exc_info.value.code == DiagnosisServiceErrorCode.EMPTY_LLM_RESPONSE
 
 
-def test_diagnosis_service_rejects_report_for_another_target():
+def test_diagnosis_service_binds_authoritative_target():
     service, _ = make_service(
-        LLMResponse.final_answer(
-            make_report(target="deadbeef").model_dump_json()
-        )
+        LLMResponse.final_answer(make_report(target="deadbeef").model_dump_json())
     )
 
-    with pytest.raises(DiagnosisServiceError) as exc_info:
-        service.diagnose_ci(commit_id="abc123")
+    report = service.diagnose_ci(commit_id="abc123")
 
-    assert exc_info.value.code == DiagnosisServiceErrorCode.REPORT_MISMATCH
+    assert report.target == "abc123"
 
 
-def test_diagnosis_service_rejects_rewritten_evidence():
+def test_diagnosis_service_binds_authoritative_evidence():
     report_data = make_report().model_dump()
     report_data["evidence"][0]["excerpt"] = "模型改写后的证据"
     report = DiagnosisReport.model_validate(report_data)
-    service, _ = make_service(
-        LLMResponse.final_answer(report.model_dump_json())
-    )
+    service, _ = make_service(LLMResponse.final_answer(report.model_dump_json()))
 
-    with pytest.raises(DiagnosisServiceError) as exc_info:
-        service.diagnose_ci(commit_id="abc123")
+    result = service.diagnose_ci(commit_id="abc123")
 
-    assert exc_info.value.code == DiagnosisServiceErrorCode.REPORT_MISMATCH
+    assert result.evidence == [make_evidence()]
 
 
 def test_diagnosis_service_wraps_llm_exception_without_leaking_message():

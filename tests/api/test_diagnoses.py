@@ -156,10 +156,7 @@ def test_create_diagnosis_llm_client_rejects_missing_api_key(monkeypatch):
     with pytest.raises(DiagnosisServiceError) as exc_info:
         create_diagnosis_llm_client()
 
-    assert (
-        exc_info.value.code
-        == DiagnosisServiceErrorCode.CONFIGURATION_ERROR
-    )
+    assert exc_info.value.code == DiagnosisServiceErrorCode.CONFIGURATION_ERROR
 
 
 def test_create_diagnosis_llm_client_rejects_invalid_api_mode(monkeypatch):
@@ -185,6 +182,6 @@ def test_openapi_ci_diagnosis_example_uses_valid_commit_id():
     example = schema["examples"][0]
 
     assert example == {
-        "commit_id": "abc123",
+        "commit_id": "7229c86",
         "workspace": "examples/sample_repo",
     }

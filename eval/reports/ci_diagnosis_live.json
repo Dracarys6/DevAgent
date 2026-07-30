@@ -1,0 +1,93 @@
+{
+  "provider": "openai-compatible-live",
+  "model": "gpt-5.6-terra",
+  "api_mode": "responses",
+  "target": "7229c86",
+  "workspace_label": "examples/sample_repo",
+  "expected_keywords": [
+    "build_upload_timeout",
+    "min_timeout_seconds"
+  ],
+  "latency_ms": 57009.11145901773,
+  "attempt_count": 1,
+  "attempt_errors": [],
+  "report": {
+    "report_id": "861e58f6-f8b6-4dda-813a-d9791f668787",
+    "scenario": "ci_failure",
+    "target": "7229c86",
+    "status": "diagnosed",
+    "summary": "CI 中的 unit-tests 失败于 tests/test_uploader.py::test_large_upload_uses_dynamic_timeout：在 size_mb=80、bandwidth_mb_s=10 时，build_upload_timeout 返回 3，而测试要求结果至少为 12。提交中的实现显示该方法当前始终返回 min_timeout_seconds，未使用 size_mb、bandwidth_mb_s 或 safety_factor；这与失败测试所验证的动态超时行为不一致。",
+    "findings": [
+      {
+        "kind": "symptom",
+        "statement": "unit-tests 失败，失败测试为 tests/test_uploader.py::test_large_upload_uses_dynamic_timeout；断言显示 timeout 的实际值为 3，但要求至少为 12。",
+        "confidence": "confirmed",
+        "evidence_ids": [
+          "E1"
+        ]
+      },
+      {
+        "kind": "root_cause",
+        "statement": "build_upload_timeout 当前直接返回 self.config.min_timeout_seconds。对于默认配置和失败测试输入，这会返回 3；该实现未使用 size_mb、bandwidth_mb_s 或 safety_factor，因此很可能导致动态超时测试失败。",
+        "confidence": "likely",
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ]
+      },
+      {
+        "kind": "related_change",
+        "statement": "本次提交新增了 UploadConfig、estimate_upload_timeout 和 UploadManager；其中 estimate_upload_timeout 会根据 size_mb / bandwidth_mb_s 计算值，但 build_upload_timeout 未调用该函数。",
+        "confidence": "confirmed",
+        "evidence_ids": [
+          "E2"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "E1",
+        "kind": "ci_result",
+        "tool_name": "get_ci_result",
+        "source": "pipeline-live-7229c86",
+        "locator": "commit_id=7229c86",
+        "excerpt": "{\"status\":\"failed\",\"failed_jobs\":[{\"name\":\"unit-tests\",\"status\":\"failed\",\"duration_seconds\":14.8,\"failed_tests\":[{\"name\":\"tests/test_uploader.py::test_large_upload_uses_dynamic_timeout\",\"error_type\":\"AssertionError\",\"error_message\":\"assert 3 >= 12\",\"location\":\"tests/test_uploader.py:17\",\"log_excerpt\":[\"timeout = manager.build_upload_timeout(size_mb=80, bandwidth_mb_s=10)\",\"> assert timeout >= 12\",\"E assert 3 >= 12\"]}]}],\"core_log\":\"timeout = manager.build_upload_timeout(size_mb=80, bandwidth_mb_s=10)\\n> assert timeout >= 12\\nE assert 3 >= 12\\ncollecting ... collected 2 items\\ntests/test_uploader.py .F\\nFAILED tests/test_uploader.py::test_large_upload_uses_dynamic_timeout\\nAssertionError: assert 3 >= 12\"}"
+      },
+      {
+        "evidence_id": "E2",
+        "kind": "git_diff",
+        "tool_name": "git_diff",
+        "source": "7229c86",
+        "locator": "commit patch",
+        "excerpt": "diff --git a/examples/sample_repo/src/sample_app/__init__.py b/examples/sample_repo/src/sample_app/__init__.py\nnew file mode 100644\nindex 0000000..9931a1c\n--- /dev/null\n+++ b/examples/sample_repo/src/sample_app/__init__.py\n@@ -0,0 +1,3 @@\n+from .uploader import UploadManager, UploadConfig\n+\n+__all__ = [\"UploadManager\", \"UploadConfig\"]\ndiff --git a/examples/sample_repo/src/sample_app/uploader.py b/examples/sample_repo/src/sample_app/uploader.py\nnew file mode 100644\nindex 0000000..dca283b\n--- /dev/null\n+++ b/examples/sample_repo/src/sample_app/uploader.py\n@@ -0,0 +1,24 @@\n+from dataclasses import dataclass\n+\n+\n+@dataclass(frozen=True)\n+class UploadConfig:\n+    min_timeout_seconds: int = 3\n+    safety_factor: float = 1.5\n+\n+\n+def estimate_upload_timeout(size_mb: float, bandwidth_mb_s: float) -> float:\n+    if size_mb <= 0:\n+        raise ValueError(\"size_mb must be greater than 0\")\n+    if bandwidth_mb_s <= 0:\n+        raise ValueError(\"bandwidth_mb_s must be greater than 0\")\n+    return size_mb / bandwidth_mb_s\n+\n+\n+class UploadManager:\n+    def __init__(self, config: UploadConfig | None = None) -> None:\n+        self.config = config or UploadConfig()\n+\n+    def build_upload_timeout(self, size_mb: float, bandwidth_mb_s: float) -> float:\n+        return self.config.min_timeout_seconds\ndiff --git a/examples/sample_repo/tests/conftest.py b/examples/sample_repo/tests/conftest.py\nnew file mode 100644\nindex 0000000..35de06e\n--- /dev/null\n+++ b/examples/sample_repo/tests/conftest.py\n@@ -0,0 +1,7 @@\n+from pathlib import Path\n+import sys\n+\n+\n+ROOT = Path(__file__).resolve().parents[1]\n+SRC = ROOT / \"src\"\n+sys.path.insert(0, str(SRC))\ndiff --git a/examples/sample_repo/tests/test_uploader.py b/examples/sample_repo/tests/test_uploader.py\nnew file mode 100644\nindex 0000000..630703e\n--- /dev/null\n+++ b/examples/sample_repo/tests/test_uploader.py\n@@ -0,0 +1,17 @@\n+from sample_app import UploadConfig, UploadManager\n+\n+\n+def test_small_upload_uses_min_timeout():\n+    manager = UploadManager(UploadConfig(min_timeout_seconds=3))\n+\n+    timeout = manager.build_upload_timeout(size_mb=4, bandwidth_mb_s=10)\n+\n+    assert timeout == 3\n+\n+\n+def test_large_upload_uses_dynamic_timeout():\n+    manager = UploadManager()\n+\n+    timeout = manager.build_upload_timeout(size_mb=80, bandwidth_mb_s=10)\n+\n+    assert timeout >= 12\n"
+      }
+    ],
+    "recommendations": [
+      {
+        "action": "修改 build_upload_timeout，使其依据 size_mb 和 bandwidth_mb_s 计算上传耗时，并结合 safety_factor 与 min_timeout_seconds 返回满足最小超时约束的结果。",
+        "rationale": "失败测试要求大文件上传使用动态超时，而当前实现始终返回 min_timeout_seconds。现有 estimate_upload_timeout 已提供基于输入参数的耗时计算，UploadConfig 也定义了 safety_factor。",
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "verification_steps": [
+          "运行 tests/test_uploader.py，确认 test_small_upload_uses_min_timeout 和 test_large_upload_uses_dynamic_timeout 均通过。",
+          "使用 size_mb=80、bandwidth_mb_s=10 调用 build_upload_timeout，确认返回值至少为 12。",
+          "重新运行 unit-tests CI job，确认其状态为通过。"
+        ]
+      }
+    ],
+    "missing_evidence": []
+  },
+  "metrics": {
+    "diagnosed": true,
+    "required_evidence_covered": true,
+    "evidence_references_grounded": true,
+    "root_cause_finding_count": 1,
+    "recommendation_count": 1,
+    "expected_keyword_hit_count": 2,
+    "expected_keyword_count": 2,
+    "expected_keyword_hit_rate": 1.0,
+    "passed": true
+  }
+}

@@ -247,6 +247,71 @@ live report：证明真实模型、Runtime、工具和最终答案链路能够�
 
 没有 live report 的用户业务能力只能写“已实现，真实验收待完成”，不能写成完整闭环。
 
+## Live CI Diagnosis Evaluation
+
+固定 CI case 经过以下真实链路：
+
+```text
+examples/sample_ci/7229c86.json
+  -> get_ci_result
+  -> code-only git_diff
+  -> DiagnosisInput
+  -> DiagnosisReportDraft Prompt
+  -> gpt-5.6-terra / Responses
+  -> DiagnosisService 绑定权威字段
+  -> DiagnosisReport Pydantic 校验
+  -> 确定性验收指标
+```
+
+报告：
+
+```text
+eval/reports/ci_diagnosis_live_summary.md
+eval/reports/ci_diagnosis_live_run3.md/json
+eval/reports/ci_diagnosis_live_run4.md/json
+eval/reports/ci_diagnosis_live_run5.md/json
+```
+
+修复后连续三次结果：
+
+| Metric | Result |
+| --- | ---: |
+| End-to-End Pass Rate | 100.0% (3 / 3) |
+| CI + Git Evidence Coverage | 100.0% |
+| Grounded Evidence References | 100.0% |
+| Expected Keyword Hit Rate | 100.0% |
+| Retry-free Runs | 100.0% |
+| Average Latency | 17.18 s |
+| p95 Latency | 20.97 s |
+
+评测证据只保留 Python 源码和测试 diff，并移除纯注释答案。README 和人工诊断笔记不会进入
+Prompt，避免模型直接读取 fixture 的根因说明。
+
+真实 Run 2 曾连续两次返回 `report_mismatch`。这揭示了原契约的职责错误：模型被要求复制
+`report_id`、`target`、`scenario` 和完整 `evidence`，服务端再逐字比较。修复后：
+
+```text
+模型生成：
+status、summary、findings、recommendations、missing_evidence
+
+服务端绑定：
+report_id、scenario、target、原始 evidence
+```
+
+最终 `DiagnosisReport` 仍会验证所有 evidence 引用。模型引用不存在的 ID 时会得到
+`invalid_report`，因此服务端绑定消除的是复制漂移，不是证据约束。
+
+运行一次真实验收：
+
+```bash
+DEVAGENT_ENABLE_LIVE_EVAL=1 \
+  .venv/bin/python scripts/run_live_ci_diagnosis.py \
+  --output eval/reports/ci_diagnosis_live_manual.md
+```
+
+该命令可能产生模型费用，不进入默认 pytest。固定单 case 的连续成功也不能代表任意仓库上的诊断
+准确率；后续应扩充不同失败类型，并记录 token 与成本。
+
 ## ContextManager Baseline
 
 Day55 的 ContextManager 指标和 RAG Context Reduction 是两个不同口径。

@@ -85,6 +85,14 @@ def test_get_ci_result_returns_only_failed_evidence():
     assert "All checks passed" not in result["core_log"]
 
 
+def test_get_ci_result_has_fixture_for_real_sample_commit():
+    result = json.loads(get_ci_result("7229c86"))
+
+    assert result["pipeline_id"] == "pipeline-live-7229c86"
+    assert result["commit_id"] == "7229c86"
+    assert result["summary"]["failed_test_count"] == 1
+
+
 def test_get_ci_result_returns_compact_json_and_reduces_context():
     raw = (DEFAULT_CI_DATA_DIR / "abc123.json").read_text(encoding="utf-8")
 

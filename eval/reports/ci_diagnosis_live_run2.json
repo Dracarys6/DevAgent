@@ -1,0 +1,29 @@
+{
+  "provider": "openai-compatible-live",
+  "model": "gpt-5.6-terra",
+  "api_mode": "responses",
+  "target": "7229c86",
+  "workspace_label": "examples/sample_repo",
+  "expected_keywords": [
+    "build_upload_timeout",
+    "min_timeout_seconds"
+  ],
+  "latency_ms": 146308.90733399428,
+  "attempt_count": 2,
+  "attempt_errors": [
+    "report_mismatch",
+    "report_mismatch"
+  ],
+  "report": null,
+  "metrics": {
+    "diagnosed": false,
+    "required_evidence_covered": false,
+    "evidence_references_grounded": false,
+    "root_cause_finding_count": 0,
+    "recommendation_count": 0,
+    "expected_keyword_hit_count": 0,
+    "expected_keyword_count": 2,
+    "expected_keyword_hit_rate": 0.0,
+    "passed": false
+  }
+}

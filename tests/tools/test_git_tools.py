@@ -50,6 +50,48 @@ def test_git_diff_returns_commit_patch(
     assert "+value = 2" in result
 
 
+def test_git_diff_filters_patch_with_safe_pathspecs(
+    git_repo_with_commit: tuple[Path, str],
+):
+    repo, _ = git_repo_with_commit
+    (repo / "app.py").write_text("value = 3\n", encoding="utf-8")
+    (repo / "README.md").write_text("the expected answer\n", encoding="utf-8")
+    subprocess.run(["git", "add", "app.py", "README.md"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "--quiet", "-m", "change code and docs"],
+        cwd=repo,
+        check=True,
+    )
+
+    result = git_diff("HEAD", repo, pathspecs=["*.py"])
+
+    assert "app.py" in result
+    assert "README.md" not in result
+    assert "the expected answer" not in result
+
+
+@pytest.mark.parametrize(
+    "pathspecs",
+    [
+        [],
+        ["../secret.py"],
+        [":(exclude)*.md"],
+        ["-p"],
+        ["/absolute.py"],
+        [" src/*.py"],
+        ["src\\*.py"],
+    ],
+)
+def test_git_diff_rejects_unsafe_pathspecs(
+    git_repo_with_commit: tuple[Path, str],
+    pathspecs: list[str],
+):
+    repo, commit_id = git_repo_with_commit
+
+    with pytest.raises(GitDiffError, match="pathspec"):
+        git_diff(commit_id, repo, pathspecs=pathspecs)
+
+
 def test_git_diff_accepts_workspace_inside_git_tree(
     git_repo_with_commit: tuple[Path, str],
 ):
@@ -393,19 +435,29 @@ def test_git_compare_is_read_only_and_uses_safe_commands(
         "diff",
     }
     assert all(not kwargs.get("shell", False) for _, kwargs in calls)
-    assert all("--no-ext-diff" in command for command, _ in calls if command[1] == "diff")
-    assert all("--no-textconv" in command for command, _ in calls if command[1] == "diff")
-    assert subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=repo,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout == head_before
-    assert subprocess.run(
-        ["git", "status", "--porcelain=v1"],
-        cwd=repo,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout == status_before
+    assert all(
+        "--no-ext-diff" in command for command, _ in calls if command[1] == "diff"
+    )
+    assert all(
+        "--no-textconv" in command for command, _ in calls if command[1] == "diff"
+    )
+    assert (
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        == head_before
+    )
+    assert (
+        subprocess.run(
+            ["git", "status", "--porcelain=v1"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        == status_before
+    )

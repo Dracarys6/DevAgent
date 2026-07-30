@@ -50,6 +50,7 @@ def git_diff(
     workspace: str | Path,
     max_chars: int = MAX_GIT_DIFF_CHARS,
     timeout: float = DEFAULT_GIT_TIMEOUT,
+    pathspecs: list[str] | tuple[str, ...] | None = None,
 ) -> str:
     """返回指定 commit 引入的 patch，并限制执行时间和输出大小。"""
     if not commit_id.strip():
@@ -58,6 +59,7 @@ def git_diff(
         raise GitDiffError("max_chars 必须大于或等于 1")
     if timeout <= 0:
         raise GitDiffError("timeout 必须大于 0")
+    validated_pathspecs = _validate_diff_pathspecs(pathspecs)
 
     root = _resolve_workspace(workspace)
     command = [
@@ -70,6 +72,7 @@ def git_diff(
         "--end-of-options",
         commit_id,
         "--",
+        *validated_pathspecs,
     ]
     try:
         result = subprocess.run(
@@ -97,6 +100,33 @@ def git_diff(
         raise GitDiffError(f"无法读取 Git commit: {commit_id}")
 
     return _truncate_output(result.stdout, max_chars)
+
+
+def _validate_diff_pathspecs(
+    pathspecs: list[str] | tuple[str, ...] | None,
+) -> tuple[str, ...]:
+    if pathspecs is None:
+        return ()
+    if not pathspecs:
+        raise GitDiffError("pathspecs 不能为空")
+    if len(pathspecs) > 20:
+        raise GitDiffError("pathspecs 数量不能超过 20")
+
+    validated: list[str] = []
+    for pathspec in pathspecs:
+        if (
+            not isinstance(pathspec, str)
+            or not pathspec.strip()
+            or pathspec != pathspec.strip()
+            or len(pathspec) > 200
+            or "\x00" in pathspec
+            or pathspec.startswith(("-", ":", "/"))
+            or "\\" in pathspec
+            or ".." in Path(pathspec).parts
+        ):
+            raise GitDiffError("pathspec 必须是安全的仓库内相对模式")
+        validated.append(pathspec)
+    return tuple(validated)
 
 
 def get_git_commit_summary(

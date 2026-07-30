@@ -112,6 +112,19 @@ class DiagnosisReport(DiagnosisModel):
         return self
 
 
+class DiagnosisReportDraft(DiagnosisModel):
+    """模型负责生成的分析字段；服务端权威字段由 DiagnosisService 绑定。"""
+
+    # * 兼容旧版完整报告响应，但 report_id、target 和 evidence 不会被信任。
+    model_config = ConfigDict(extra="ignore")
+
+    status: DiagnosisStatus
+    summary: str = Field(min_length=1, max_length=2_000)
+    findings: list[Finding] = Field(default_factory=list)
+    recommendations: list[Recommendation] = Field(default_factory=list)
+    missing_evidence: list[MissingEvidence] = Field(default_factory=list)
+
+
 class DiagnosisInput(DiagnosisModel):
     report_id: str = Field(min_length=1)
     commit_id: str = Field(min_length=1)
@@ -121,9 +134,7 @@ class DiagnosisInput(DiagnosisModel):
 
     @model_validator(mode="after")
     def validate_unique_evidence_ids(self) -> "DiagnosisInput":
-        _validate_unique_evidence_ids(
-            [item.evidence_id for item in self.evidence]
-        )
+        _validate_unique_evidence_ids([item.evidence_id for item in self.evidence])
         return self
 
 
@@ -136,9 +147,7 @@ class LogDiagnosisInput(DiagnosisModel):
 
     @model_validator(mode="after")
     def validate_unique_evidence_ids(self) -> "LogDiagnosisInput":
-        _validate_unique_evidence_ids(
-            [item.evidence_id for item in self.evidence]
-        )
+        _validate_unique_evidence_ids([item.evidence_id for item in self.evidence])
         return self
 
 

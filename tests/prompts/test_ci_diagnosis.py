@@ -35,7 +35,7 @@ def make_diagnosis_input() -> DiagnosisInput:
 
 def extract_prompt_payload(prompt: str) -> str:
     prefix = "CI 诊断输入：\n"
-    suffix = "\nDiagnosisReport JSON Schema：\n"
+    suffix = "\nDiagnosisReportDraft JSON Schema：\n"
     assert prompt.startswith(prefix)
     return prompt.removeprefix(prefix).split(suffix, maxsplit=1)[0]
 
@@ -46,7 +46,7 @@ def test_ci_diagnosis_system_prompt_requires_evidence_contract():
     assert "insufficient_evidence" in CI_DIAGNOSIS_SYSTEM_PROMPT
     assert "首个异常" in CI_DIAGNOSIS_SYSTEM_PROMPT
     assert "不要 Markdown 围栏" in CI_DIAGNOSIS_SYSTEM_PROMPT
-    assert "evidence 必须原样复制" in CI_DIAGNOSIS_SYSTEM_PROMPT
+    assert "权威字段由服务端绑定" in CI_DIAGNOSIS_SYSTEM_PROMPT
     assert "必须使用简体中文" in CI_DIAGNOSIS_SYSTEM_PROMPT
     assert "代码标识" in CI_DIAGNOSIS_SYSTEM_PROMPT
     assert "保持原文" in CI_DIAGNOSIS_SYSTEM_PROMPT
@@ -73,11 +73,12 @@ def test_build_ci_diagnosis_prompt_includes_missing_evidence():
     assert '"suggested_tool":"git_diff"' in prompt
 
 
-def test_build_ci_diagnosis_prompt_includes_report_json_schema():
+def test_build_ci_diagnosis_prompt_includes_report_draft_json_schema():
     prompt = build_ci_diagnosis_prompt(make_diagnosis_input())
 
-    assert "DiagnosisReport JSON Schema：" in prompt
-    assert '"report_id"' in prompt
+    assert "DiagnosisReportDraft JSON Schema：" in prompt
+    assert '"report_id"' not in prompt.split("DiagnosisReportDraft JSON Schema：")[1]
+    assert '"evidence"' not in prompt.split("DiagnosisReportDraft JSON Schema：")[1]
     assert '"findings"' in prompt
     assert '"recommendations"' in prompt
 

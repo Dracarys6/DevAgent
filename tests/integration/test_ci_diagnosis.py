@@ -15,9 +15,7 @@ from devagent.diagnosis import (
 from devagent.llm import LLMResponse
 from devagent.tools.git_tools import GitDiffError
 
-FIXTURE_DIR = (
-    Path(__file__).parents[1] / "fixtures" / "diagnosis_cases"
-)
+FIXTURE_DIR = Path(__file__).parents[1] / "fixtures" / "diagnosis_cases"
 CI_RESULT = json.dumps(
     {
         "pipeline_id": "pipeline-1001",
@@ -28,8 +26,7 @@ CI_RESULT = json.dumps(
     ensure_ascii=False,
 )
 GIT_DIFF = (
-    "diff --git a/uploader.py b/uploader.py\n"
-    "+return self.config.min_timeout_seconds"
+    "diff --git a/uploader.py b/uploader.py\n+return self.config.min_timeout_seconds"
 )
 
 
@@ -77,15 +74,11 @@ def test_ci_diagnosis_runs_three_times_without_state_pollution():
     ]
 
     assert len(reports) == 3
-    assert all(
-        report.status == DiagnosisStatus.DIAGNOSED
-        for report in reports
-    )
+    assert all(report.status == DiagnosisStatus.DIAGNOSED for report in reports)
     assert all(report == reports[0] for report in reports)
     assert len(client.requests) == 3
     assert all(
-        '"evidence_id":"E2"' in messages[1]["content"]
-        for messages in client.requests
+        '"evidence_id":"E2"' in messages[1]["content"] for messages in client.requests
     )
 
 
@@ -127,9 +120,7 @@ def test_ci_diagnosis_rejects_invalid_fixed_report(
 
 
 def test_diagnosis_fixture_files_have_expected_contract():
-    diagnosed = DiagnosisReport.model_validate_json(
-        load_case("ci_diagnosed.json")
-    )
+    diagnosed = DiagnosisReport.model_validate_json(load_case("ci_diagnosed.json"))
     insufficient = DiagnosisReport.model_validate_json(
         load_case("ci_insufficient_evidence.json")
     )
