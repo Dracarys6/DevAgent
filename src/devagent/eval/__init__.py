@@ -24,9 +24,22 @@ from .rag_report import (
     evaluate_rag_context,
     render_rag_baseline_report,
 )
+from .live_rag import (
+    LiveRAGEvalRun,
+    LiveRAGMetrics,
+    LiveRAGPrediction,
+    RAGAgentAnswer,
+    evaluate_live_rag_predictions,
+    render_live_rag_report,
+    run_live_rag_agent_eval,
+)
 
 __all__ = [
     "ExpectedReviewFinding",
+    "LiveRAGEvalRun",
+    "LiveRAGMetrics",
+    "LiveRAGPrediction",
+    "RAGAgentAnswer",
     "RAGEvalCase",
     "RAGEvalConfigurationError",
     "RAGEvalMetrics",
@@ -38,12 +51,15 @@ __all__ = [
     "ReviewEvalConfigurationError",
     "ReviewEvalDiffLine",
     "ReviewEvalMetrics",
+    "evaluate_live_rag_predictions",
     "evaluate_rag_predictions",
     "evaluate_rag_context",
     "evaluate_review_cases",
     "load_rag_eval_cases",
     "load_review_eval_cases",
     "render_review_baseline_report",
+    "render_live_rag_report",
     "render_rag_baseline_report",
+    "run_live_rag_agent_eval",
     "run_rag_eval",
 ]

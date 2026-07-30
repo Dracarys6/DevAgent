@@ -153,9 +153,9 @@ Context Reduction          = 78.9%
 这些切片证明固定业务问题能找回预期证据，并显著减少 evidence 正文。它们不等于完整 DiagnosisService
 或 CodeReviewService 的最终任务成功率。
 
-### Answer Keyword 的边界
+### 离线 Answer Keyword 的边界
 
-第 8 周不调用在线模型：
+第 8 周确定性 BM25 baseline 不调用在线模型：
 
 ```text
 answer_text = 按 rank 拼接 EvidenceSnippet.excerpt
@@ -169,6 +169,83 @@ answer_text = 按 rank 拼接 EvidenceSnippet.excerpt
 
 它不表示真实 LLM 一定正确理解并使用这些证据。真实 provider 的最终回答质量必须通过独立 smoke 或
 端到端 Evaluation 记录。
+
+## Live RAG Agent Evaluation
+
+离线检索指标通过后，使用真实 provider 运行：
+
+```text
+真实问题
+  -> AgentRuntime
+  -> gpt-5.6-terra / Responses
+  -> 模型自主调用 knowledge_retrieve
+  -> ToolExecutor / KnowledgeRetrieveTool / BM25
+  -> RetrievalResult
+  -> 模型生成 RAGAgentAnswer JSON
+  -> Pydantic 校验与确定性评分
+```
+
+报告：
+
+```text
+eval/reports/rag_live_provider.md
+eval/reports/rag_live_provider.json
+```
+
+8 条代表性 case 覆盖 EventBus、CI、日志、Diagnosis、Review、BM25 和两个负样本。实测：
+
+| Metric | Result |
+| --- | ---: |
+| Valid Answer Rate | 100.0% |
+| knowledge_retrieve Tool Call Rate | 100.0% |
+| Tool Success Rate | 100.0% |
+| Evidence Hit Rate | 100.0% |
+| Answer Keyword Hit Rate | 91.7% |
+| Expected Path Citation Rate | 100.0% |
+| Grounded Citation Rate | 100.0% |
+| Abstention Accuracy | 100.0% |
+| Strict End-to-End Success Rate | 87.5% |
+| End-to-End p95 | 24.55 s |
+
+唯一严格失败 case 是 `log-upload-timeout`：模型正确说明了“上传在 3 秒后超时”，也引用了
+`logs/task.log`，但没有逐字输出标注字段 `elapsed_seconds`，因此精确字符串评分将它判为失败。
+报告保留 `missing_answer_keyword=elapsed_seconds`，不修改模型输出或临时放宽 case 来制造 100%。
+
+这个结果同时说明：
+
+```text
+离线 Retrieval p95 约 7 ms
+真实 Agent 端到端 p95 约 24.55 s
+```
+
+模型规划、两轮网络调用和生成才是当前端到端延迟主体。精确关键词也只是可重复代理指标；第 9 周需要
+增加同义表达标注、人工抽检或独立 Judge，区分真正错误与评分假阴性。
+
+运行真实评测：
+
+```bash
+DEVAGENT_ENABLE_LIVE_EVAL=1 \
+  .venv/bin/python scripts/run_live_rag_eval.py
+```
+
+重新评分已有真实输出，不产生新的 API 调用：
+
+```bash
+.venv/bin/python scripts/run_live_rag_eval.py \
+  --input-json eval/reports/rag_live_provider.json
+```
+
+### 为什么真实评测仍不进入默认 pytest
+
+真实调用存在费用、网络波动、provider 限流和模型随机性。默认 pytest 继续使用固定客户端验证 runner
+本身，但项目验收必须额外生成真实报告。二者职责不同：
+
+```text
+deterministic tests：证明代码契约和评分器稳定
+live report：证明真实模型、Runtime、工具和最终答案链路能够工作
+```
+
+没有 live report 的用户业务能力只能写“已实现，真实验收待完成”，不能写成完整闭环。
 
 ## ContextManager Baseline
 
@@ -231,6 +308,13 @@ installation token 和评论回写属于单独的显式 smoke test。
 
 ```bash
 .venv/bin/pytest tests/eval/test_runner.py tests/eval/test_rag_report.py -q
+```
+
+运行真实 RAG Agent Evaluation：
+
+```bash
+DEVAGENT_ENABLE_LIVE_EVAL=1 \
+  .venv/bin/python scripts/run_live_rag_eval.py
 ```
 
 生成 RAG baseline：

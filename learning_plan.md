@@ -21,6 +21,7 @@ DevOps 平台后端工程师
 不要只堆功能，要能解释设计取舍。
 不要只做 Demo，要写测试、写文档、写面试话术。
 不要一开始追求大而全，先跑通命令行 Agent，再扩展后端和可观测性。
+Mock 只负责可重复测试；每条核心 Agent 业务链必须完成真实模型和真实工具的端到端验收。
 ```
 
 ---
@@ -52,6 +53,7 @@ Day 7 内容已在 Day 6 与 Day 8 开发中覆盖，并已按完成状态维护
 3. 项目功能完成后，必须补原理、测试和面试表达
 4. 如果某天任务超过 5 小时，可以拆成两天，不追求机械赶进度
 5. 如果提前完成，可以做扩展任务，但不能跳过测试和复盘
+6. “代码已实现”与“真实链路已验收”分开记录；缺少真实运行报告时不能标记业务闭环完成
 ```
 
 完成状态标记：
@@ -728,8 +730,8 @@ Day 42：接通诊断执行服务与 API 闭环 [x]
 产出：src/devagent/diagnosis/service.py、src/devagent/api/routes/diagnoses.py、tests/integration/test_ci_diagnosis.py、tests/api/test_diagnoses.py、tests/fixtures/diagnosis_cases/
 执行链：工具输出标准化为 Evidence -> 构造 DiagnosisInput -> 调用注入的 LLMClient.chat() -> DiagnosisReport.model_validate_json() -> API 返回结构化报告
 接口：POST /api/v1/diagnoses/ci；日志诊断先复用同一 service，并为后续 POST /api/v1/diagnoses/log 保留清晰边界
-测试策略：自动化测试使用 MockLLMClient 或固定 LLMClient，不访问真实网络；真实 provider 仅做显式手动 smoke test
-验收：CI 诊断连续运行 3 次；模型返回非法 JSON 或悬空 evidence_id 时得到结构化失败；工具失败时降级为 insufficient_evidence 并说明缺失证据；API 能返回通过 Pydantic 校验的 DiagnosisReport
+测试策略：自动化测试使用 MockLLMClient 或固定 LLMClient，不访问真实网络；另用显式 live runner 调用真实 provider
+验收：自动化验证非法 JSON、悬空 evidence_id 和工具失败降级；真实 provider 对固定 CI case 连续运行 3 次，API 返回通过 Pydantic 校验且引用真实 Evidence 的 DiagnosisReport，并保存脱敏结果、模型、延迟和失败信息
 ```
 
 ### 第 6 周额外收尾
@@ -737,8 +739,8 @@ Day 42：接通诊断执行服务与 API 闭环 [x]
 ```text
 录制 CI 诊断和日志诊断演示
 检查所有诊断结论是否引用证据
-通过诊断 API 完成一次本地 mock 端到端演示
-可选使用本地 .env 配置的真实 provider 完成一次手动 smoke test，不纳入自动化测试
+通过诊断 API 完成一次确定性本地回归
+使用本地 .env 配置的真实 provider 完成 CI 诊断 live acceptance，并保存脱敏报告
 整理根因、症状、推测三者区别
 更新 README 的业务 Demo 部分
 更新本周 daily 文档
@@ -943,9 +945,11 @@ Day 55：实现上下文压缩基础版 [x]
 验收：长任务上下文字符数相比直接注入完整文件 / 日志降低 40% 以上
 
 Day 56：RAG 对业务 Demo 的指标对比 [x]
-产出：docs/evaluation.md、eval/reports/rag_baseline.md
-指标：Top-5 Evidence Hit Rate、Context Reduction Rate、Retrieval p95 Latency
-验收：能说明 RAG 对 CI / 日志诊断和代码合入审查质量、上下文效率的提升
+产出：docs/evaluation.md、eval/reports/rag_baseline.md、真实 RAG Agent runner 与脱敏 live report
+离线指标：Top-5 Evidence Hit Rate、Context Reduction Rate、Retrieval p95 Latency
+真实指标：Tool Call Rate、Answer Keyword Hit Rate、Grounded Citation Rate、Abstention Accuracy、端到端 p95
+验收：真实 provider 必须通过 AgentRuntime 自主调用 knowledge_retrieve 并生成结构化答案；报告同时保存成功和失败 case，能区分检索质量与最终回答质量
+实测：gpt-5.6-terra / Responses 对 8 条代表性 case 完成真实运行，Tool Call、Evidence Hit、Grounded Citation、Abstention 均为 100%，严格端到端成功率 87.5%，p95 24.55 秒
 ```
 
 ### 第 8 周额外收尾
@@ -1018,9 +1022,9 @@ Day 62：接入业务链路并优化上下文
 验收：业务报告能引用混合检索 evidence；相比整文件或日志注入，平均上下文字符数降低 40% 以上
 
 Day 63：RAG 增强对比与第 9 周验收
-产出：docs/evaluation.md、eval/reports/rag_optimization.md
+产出：docs/evaluation.md、eval/reports/rag_optimization.md、eval/reports/rag_live_provider.md
 对比：BM25、向量、混合召回、混合召回 + rerank
-验收：根据固定数据集的质量、延迟和上下文成本选择默认策略，并记录失败样例与后续优化项
+验收：先根据固定数据集的质量、延迟和上下文成本选择候选策略；再让真实 provider 通过 AgentRuntime 在代表性正负样本上运行至少 2 次，比较答案关键词、证据引用、拒答、端到端延迟和失败率后决定默认策略
 ```
 
 ### 第 9 周额外收尾
@@ -1029,6 +1033,7 @@ Day 63：RAG 增强对比与第 9 周验收
 运行完整 RAG Evaluation 和相关业务回归
 核对所有检索策略使用同一数据集、top_k 和统计口径
 记录质量提升、延迟代价、失败分类和默认策略选择依据
+运行真实 RAG Agent Evaluation，保存 provider/model、每条 case 的工具调用、最终答案、引用、耗时和失败原因
 整理 RAG 检索、混合召回和 rerank 项目问答
 每周收尾同步 README.md 和 plan.md
 ```
@@ -1042,6 +1047,10 @@ MRR@5 相比第 8 周 BM25 基线提升 >= 10%
 平均上下文输入字符数相比整文件 / 日志注入降低 >= 40%
 本地样例库完整检索链路 p95 延迟 < 800ms
 证据引用完整率 >= 95%
+真实 Agent knowledge_retrieve Tool Call Rate = 100%
+真实 Agent Grounded Citation Rate >= 90%
+真实 Agent 负样本 Abstention Accuracy = 100%
+真实 Agent 端到端成功率 >= 80%
 ```
 
 ---

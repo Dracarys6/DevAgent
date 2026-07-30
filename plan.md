@@ -1458,7 +1458,7 @@ pytest tests/
 
 周期：约 1 到 2 周。
 
-当前状态：第 6 周诊断闭环和第 7 周代码合入审查自动化闭环已完成；Review Evaluation 已形成固定基线，GitHub App 真实 PR smoke 等待专用测试仓库和外部配置验收。
+当前状态：第 6 周诊断和第 7 周代码合入审查的确定性自动化链路已完成；真实 provider 的 CI 诊断已有人工调用记录但缺少标准化 live report，GitHub App 真实 PR 仍等待专用测试仓库验收。未完成真实运行证据的链路不得描述为完整业务闭环。
 
 ### 任务清单
 
@@ -1473,7 +1473,8 @@ pytest tests/
 * [x] 定义 DiagnosisReport、Evidence、Finding、Recommendation 等结构化诊断契约。
 * [x] 实现 provider 无关的 DiagnosisService，负责证据标准化、Prompt 构造、LLMClient 调用和报告校验。
 * [x] 实现 `POST /api/v1/diagnoses/ci`，返回通过 Pydantic 校验的 DiagnosisReport 或结构化错误。
-* [x] 使用 MockLLMClient / 固定 LLMClient 完成可重复集成测试；真实 provider 只用于显式 smoke test。
+* [x] 使用 MockLLMClient / 固定 LLMClient 完成可重复集成测试。
+* [ ] 使用真实 provider 对固定 CI / 日志 case 运行端到端诊断，保存脱敏后的输入标识、模型、结构化报告、引用、延迟和失败记录。
 * [x] 实现 `git_compare(base_ref, head_ref, workspace)`，安全读取合入范围和 diff hunk。
 * [x] 定义 `CodeReviewReport`、`ReviewFinding`、`ReviewSeverity`、`ReviewCategory` 等结构化审查契约。
 * [x] 实现 provider 无关的 `CodeReviewService`，负责变更证据采集、Prompt 构造、LLMClient 调用和报告校验。
@@ -1500,6 +1501,10 @@ get_ci_result / git_diff / search_code / search_log
 ```
 
 `DiagnosisService` 不直接创建特定厂商 SDK 客户端，而是依赖已有 `LLMClient` 接口。自动化测试必须注入 Mock 或固定响应，不能访问真实模型网络。模型返回非法 JSON、未知 evidence_id 或不满足报告状态约束时，服务应返回结构化诊断错误，不把原始异常泄漏到 API 或 AgentRuntime。
+
+自动化测试不联网是测试隔离要求，不是业务验收边界。诊断能力只有在真实 provider 经过同一
+`DiagnosisService`、工具证据和 Pydantic 校验链路运行，并生成可审查的脱敏 live report 后，
+才能标记为真实闭环完成。
 
 代码合入审查复用 Evidence、LLMClient、ToolRegistry 和 Evaluation 基础设施，但不复用 `DiagnosisReport`：诊断回答“为什么失败”，审查回答“这次变更引入了什么可行动风险”。审查链路必须显式串联：
 
@@ -1601,6 +1606,8 @@ Agent 应该能够：
 * [x] 实现 ContextManager，在不覆盖完整历史的前提下构造 LLM 请求压缩视图。
 * [x] 建立 20 条本地 RAG eval cases，标注 expected_paths 和 expected_keywords。
 * [x] 输出 RAG baseline，统一统计 Evidence Hit、Context Reduction 和 Retrieval p95。
+* [x] 通过真实 provider 和 AgentRuntime 执行代表性 RAG 正负样本，验证模型自主工具调用、最终答案、证据引用和拒答。
+* [x] 保存真实 RAG Agent report，记录 provider/model、case、工具调用、结构化答案、端到端延迟和失败原因。
 
 第 8 周固定基线：
 
@@ -1610,6 +1617,23 @@ Evidence Location Completeness：100.0%
 Context Reduction Rate：78.9%
 本地 Retrieval p95：约 10 ms
 ContextManager 固定长历史压缩率：87.36%
+真实 RAG Agent Tool Call Rate：100.0%
+真实 RAG Agent Grounded Citation Rate：100.0%
+真实 RAG Agent Abstention Accuracy：100.0%
+真实 RAG Agent 严格端到端成功率：87.5%（7 / 8）
+真实 RAG Agent 端到端 p95：24.55 秒
+```
+
+第 8 周离线 baseline 只证明检索器和上下文策略，不证明 Agent 最终回答质量。真实 RAG 验收必须走：
+
+```text
+真实用户问题
+  -> AgentRuntime
+  -> 真实 LLM provider
+  -> knowledge_retrieve tool call
+  -> RetrievalResult evidence
+  -> 真实 LLM 最终结构化回答
+  -> 引用、关键词、拒答和端到端延迟评分
 ```
 
 第 9 周增强：
@@ -1688,21 +1712,22 @@ Agent 应该能够：
 
 ## 9.6 第六阶段：评测系统
 
-目标：构建 Agent 的最小 Evaluation 能力。
+目标：同时构建可重复的离线 Evaluation 和真实 provider 端到端 Evaluation。
 
 周期：约 1 周。
 
 ### 任务清单
 
-* [ ] 设计 eval_cases 表。
-* [ ] 准备 20 条测试问题。
-* [ ] 每条问题标注 expected_tools。
-* [ ] 每条问题标注 expected_keywords。
-* [ ] 实现 eval runner。
-* [ ] 统计工具调用命中率。
-* [ ] 统计回答关键词命中率。
-* [ ] 统计平均耗时和 token 成本。
-* [ ] 生成评测报告。
+* [x] 准备 20 条固定 RAG 测试问题，并标注 expected_tools、expected_paths 和 expected_keywords。
+* [x] 实现离线 RAG eval runner，统计检索质量、上下文和延迟。
+* [x] 建立固定 Code Review Evaluation 与报告。
+* [x] 实现真实 RAG Agent runner，经过 AgentRuntime、真实 provider 和真实 knowledge tool。
+* [x] 统计真实工具调用、答案关键词、证据引用、拒答、失败 case 和端到端延迟。
+* [x] 生成离线与真实 RAG 评测报告。
+* [ ] 为同义表达、语义正确性和证据忠实度增加人工抽检或独立 Judge。
+* [ ] 完成 CI Diagnosis、Code Review 和 GitHub PR 的标准化 live report。
+* [ ] 将 eval cases、run metadata、prediction 和 metrics 持久化。
+* [ ] 从真实 provider metadata 统计 token 与调用成本。
 
 ### 示例评测用例
 
@@ -1716,20 +1741,17 @@ Agent 应该能够：
 
 ### 验收标准
 
-可以运行：
+离线评测可以运行：
 
 ```bash
-python -m devagent.eval.run
+.venv/bin/python scripts/generate_rag_baseline.py
 ```
 
-输出：
+真实 Agent 评测可以显式运行：
 
-```text
-Total cases: 20
-Tool hit rate: 85%
-Keyword hit rate: 80%
-Average latency: 12.5s
-Average tool calls: 3.2
+```bash
+DEVAGENT_ENABLE_LIVE_EVAL=1 \
+  .venv/bin/python scripts/run_live_rag_eval.py
 ```
 
 量化目标：
@@ -1738,8 +1760,12 @@ Average tool calls: 3.2
 1. Tool Hit Rate 达到 85% 以上。
 2. Evidence Hit Rate 达到 80% 以上。
 3. Answer Keyword Hit Rate 达到 80% 以上。
-4. 平均本地 mock 任务延迟低于 10 秒。
-5. 每次 Prompt、工具描述或 RAG 策略调整后，都能输出前后指标对比。
+4. 真实 RAG Agent Tool Call Rate 达到 100%。
+5. 真实 RAG Agent Grounded Citation Rate 达到 90% 以上。
+6. 真实 RAG Agent 负样本拒答准确率达到 100%。
+7. 真实 RAG Agent 严格端到端成功率达到 80% 以上。
+8. 分开报告本地检索延迟与真实 provider 端到端延迟。
+9. 每次 Prompt、工具描述或 RAG 策略调整后，都能输出前后指标对比。
 ```
 
 ---
@@ -2694,7 +2720,9 @@ Trace
 
 ### 18.6 第 5 阶段：研发效能业务 Demo
 
-这一阶段不要追求真实接入 GitHub Actions 或企业日志系统，先用 mock 数据做出完整业务闭环。
+这一阶段先用受控 fixture 建立可重复的证据和故障场景，不依赖企业生产权限；随后必须通过真实
+provider 执行诊断，并在专用测试仓库完成真实 GitHub App / PR 验收。Fixture 证明回归稳定，
+真实运行证明业务链路成立，二者缺一不可。
 
 需要掌握：
 

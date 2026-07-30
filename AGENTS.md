@@ -67,6 +67,33 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 - Prefer small deterministic tests over large integration tests.
 - For RAG and Evaluation, use fixed local fixtures so metrics are repeatable.
 
+## Real Integration Acceptance Rules
+
+- Mocks, fixed responses, fake HTTP clients, and local fixtures are test doubles. They
+  verify contracts, failures, retries, and deterministic metrics, but they are never
+  sufficient evidence that a user-facing Agent workflow is complete.
+- Every user-facing LLM workflow must have two separate acceptance layers:
+  deterministic automated tests and an explicit live-provider end-to-end run through
+  the real service, runtime, tools, and output validation path.
+- A live-provider run must save a sanitized report containing the provider/model,
+  timestamp, input case IDs or target identifiers, latency, tool calls, schema
+  validation result, business metrics, and failed cases. Never save API keys, tokens,
+  private repository contents, or unredacted secrets.
+- Real network runs stay outside default pytest and require an explicit enable flag so
+  routine development cannot spend money or mutate external systems accidentally.
+  The runner and its configuration/error handling must still have deterministic tests.
+- Do not mark an external integration complete until its real platform path has been
+  exercised. For example, GitHub review completion requires a real test repository,
+  webhook, installation token, model analysis, and comment publication; a fake client
+  proves only the adapter contract.
+- Evaluation must distinguish retrieval quality from generated-answer quality.
+  RAG completion requires both deterministic retrieval metrics and live-provider answer
+  metrics such as correctness proxies, grounded citations, abstention, latency, and
+  context cost.
+- If credentials, a test repository, budget, or network access prevent a live run,
+  mark the capability as implemented but live acceptance pending. Never replace the
+  missing evidence with a mock result or describe it as an optional nice-to-have.
+
 ## Daily Documentation Rules
 
 - Keep files matched by the `docs/learning/` ignore rule as local learning records.
