@@ -14,6 +14,7 @@ from .builtin import (
 )
 from .models import ErrorCode, RiskLevel, ToolResult
 from .git_tools import GitCommitSummary, GitCommitSummaryError, get_git_commit_summary
+from .knowledge_tools import load_workspace_documents
 from .registry import ToolRegistry
 from .executor import (
     ToolExecutor,
@@ -33,6 +34,7 @@ __all__ = [
     "SearchCodeTool",
     "SearchLogTool",
     "KnowledgeRetrieveTool",
+    "load_workspace_documents",
     "ToolRegistry",
     "ToolResult",
     "create_builtin_registry",

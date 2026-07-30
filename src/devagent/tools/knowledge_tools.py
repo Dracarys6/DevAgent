@@ -162,12 +162,16 @@ class KnowledgeRetrieveArgs(BaseModel):
     )
 
 
+def load_workspace_documents(workspace: str | Path) -> list[Document]:
+    """按知识检索的安全边界加载工作区文档。"""
+    root = _resolve_workspace(workspace)
+    return _load_documents(root, _discover_knowledge_files(root))
+
+
 def knowledge_retrieve(
     query: str, workspace: str | Path, top_k: int = 5
 ) -> RetrievalResult:
-    root = _resolve_workspace(workspace)
-    paths = _discover_knowledge_files(root)
-    documents = _load_documents(root, paths)
+    documents = load_workspace_documents(workspace)
     try:
         chunks = [chunk for document in documents for chunk in chunk_document(document)]
         return KeywordRetriever(chunks).retrieve(query, top_k=top_k)

@@ -908,12 +908,12 @@ ContextManager 用于管理 Agent 的上下文长度。
 
 主要功能：
 
-1. 统计当前 messages 的 token 数。
-2. 判断是否需要压缩。
-3. 保留用户原始任务。
-4. 保留最近几轮对话。
-5. 对历史工具结果进行结构化摘要。
-6. 保留关键结论和下一步计划。
+1. 以字符预算统计当前 messages 的近似上下文成本。
+2. 超过预算时为本轮 LLM 调用构造压缩视图。
+3. 保留 System Prompt、用户原始任务和最近消息块。
+4. 将 assistant tool_calls 与对应 tool message 作为原子块处理。
+5. 优先保留 evidence、失败结果和带定位信息的关键观察。
+6. 保留完整 canonical messages，用于 Debug、Trace、审计、回放和重新压缩。
 
 ### 6.5.2 为什么需要上下文压缩
 
@@ -936,43 +936,34 @@ Agent 长任务会不断产生：
 
 ### 6.5.3 压缩策略
 
-当 token 数超过阈值时触发压缩。
+基础版在消息序列化字符数超过预算时触发压缩。字符预算无需绑定具体 provider tokenizer，
+适合建立确定性离线基线；后续可替换为 provider tokenizer，但不能改变消息保留语义。
 
 压缩后保留：
 
 ```text
 1. System Prompt
 2. 用户原始任务
-3. 当前任务目标
-4. 已完成步骤
-5. 关键观察
-6. 已调用工具及结果摘要
-7. 当前结论
-8. 下一步计划
-9. 最近 N 轮完整消息
+3. 最近 N 个消息块
+4. assistant tool_calls 与对应 ToolResult 原子块
+5. evidence source、path、line_range 和 excerpt
+6. 工具失败、错误码和关键定位信息
+7. 预算允许时的中间历史块
 ```
 
-### 6.5.4 压缩结果示例
+压缩视图只传给当前 LLM 请求，不覆盖 AgentRuntime 中的完整历史。这样既降低模型输入成本，
+又保留问题定位所需的原始执行记录。
+
+### 6.5.4 基线结果
 
 ```text
-任务目标：
-分析 commit abc123 的 CI 失败原因。
-
-已完成步骤：
-1. 查询 CI 日志，发现 test_upload_timeout 失败。
-2. 搜索 UploadManager 相关代码。
-3. 查看 git diff，发现新增分片上传逻辑。
-
-关键观察：
-1. 日志显示上传任务在 3s 后超时。
-2. UploadManager 中 timeout 默认值为 3000ms。
-3. 本次 commit 增加了大文件上传路径，但没有调整 timeout。
-
-当前结论：
-CI 失败很可能是大文件上传耗时超过默认 timeout 导致。
-
-下一步：
-检查配置文件是否允许动态调整 timeout。
+固定长历史：28,345 -> 3,584 characters
+Context Reduction Rate：87.36%
+System Prompt 保留率：100%
+原始用户任务保留率：100%
+最新消息块保留率：100%
+assistant / tool 配对完整率：100%
+knowledge evidence 定位完整率：100%
 ```
 
 ---
@@ -1607,8 +1598,19 @@ Agent 应该能够：
 * [x] 实现本地文档 / 代码 / 日志切片器，记录 source、path、line_range、chunk_type。
 * [x] 实现第一版 BM25 retriever，并保留稳定排序和定位元数据。
 * [x] 实现 `knowledge_retrieve` 工具，并接入 ToolRegistry。
-* [ ] 实现 context_compress，将检索结果压缩为 evidence snippets。
-* [ ] 建立 20 条本地 RAG eval cases，标注 expected_sources 和 expected_keywords。
+* [x] 实现 ContextManager，在不覆盖完整历史的前提下构造 LLM 请求压缩视图。
+* [x] 建立 20 条本地 RAG eval cases，标注 expected_paths 和 expected_keywords。
+* [x] 输出 RAG baseline，统一统计 Evidence Hit、Context Reduction 和 Retrieval p95。
+
+第 8 周固定基线：
+
+```text
+Top-5 Evidence Hit Rate：100.0%
+Evidence Location Completeness：100.0%
+Context Reduction Rate：78.9%
+本地 Retrieval p95：约 10 ms
+ContextManager 固定长历史压缩率：87.36%
+```
 
 第 9 周增强：
 

@@ -11,6 +11,7 @@ from devagent.tools.knowledge_tools import (
     _discover_knowledge_files,
     _load_documents,
     knowledge_retrieve,
+    load_workspace_documents,
 )
 
 
@@ -87,6 +88,19 @@ def test_load_documents_accepts_valid_file(tmp_path: Path) -> None:
     assert len(documents) == 1
     assert documents[0].path == valid_file.relative_to(tmp_path).as_posix()
     assert documents[0].content == "This is a valid file."
+
+
+def test_load_workspace_documents_reuses_discovery_and_loading(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "b.md").write_text("markdown", encoding="utf-8")
+    (tmp_path / "a.py").write_text("python", encoding="utf-8")
+    (tmp_path / "ignored.bin").write_bytes(b"binary")
+
+    documents = load_workspace_documents(tmp_path)
+
+    assert [document.path for document in documents] == ["a.py", "b.md"]
+    assert [document.content for document in documents] == ["python", "markdown"]
 
 
 def test_load_documents_preserves_document_metadata(tmp_path: Path) -> None:

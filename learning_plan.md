@@ -30,16 +30,18 @@ DevOps 平台后端工程师
 当前进度：
 
 ```text
-已完成并验收 Day 1 到 Day 40
+已完成并验收 Day 1 到 Day 56
 Day 7 内容已在 Day 6 与 Day 8 开发中覆盖，并已按完成状态维护
-Day 41 日志根因分析契约正在开发
 已完成正式模块：
 - 文件、代码搜索、Shell、Git diff、CI 结果和结构化日志工具
 - BaseTool、ToolRegistry、ToolResult、参数 Schema 与 ToolExecutor
 - PermissionManager、PolicyStore、CommandGuard 与 Permission API
 - AgentRuntime、LLMClient、TaskManager 与任务状态机
 - EventBus、EventStore、SSE / WebSocket、Trace 查询与回放
-- CI / 日志可复现 fixture、证据模型和 CI 诊断输出契约
+- CI / 日志可复现 fixture、证据模型、DiagnosisService 与结构化诊断 API
+- CodeReviewService、GitHub PR Adapter 与 Review Evaluation 基线
+- Document / Chunk / EvidenceSnippet、BM25 Retriever 与 knowledge_retrieve 工具
+- 20 条固定 RAG eval cases、RAG baseline 报告与 Agent ContextManager
 ```
 
 计划不是固定不变的课程表。后续每次验收时，根据实际完成情况更新：
@@ -930,17 +932,17 @@ Day 53：实现 knowledge_retrieve 工具 [x]
 工具接口：knowledge_retrieve(query, workspace, top_k) -> ToolResult
 验收：ToolResult 返回压缩后的 evidence snippets，而不是整文件内容
 
-Day 54：实现 Evaluation 基线
+Day 54：实现 Evaluation 基线 [x]
 产出：eval/cases/、src/devagent/eval/runner.py、tests/eval/
 指标：Tool Hit Rate、Evidence Hit Rate、Answer Keyword Hit Rate、Latency
 验收：固定 20 条本地 eval cases 可以重复运行
 
-Day 55：实现上下文压缩基础版
+Day 55：实现上下文压缩基础版 [x]
 产出：src/devagent/agent/context_manager.py
 策略：保留原始任务、关键观察、最近 N 轮消息和 evidence snippets
 验收：长任务上下文字符数相比直接注入完整文件 / 日志降低 40% 以上
 
-Day 56：RAG 对业务 Demo 的指标对比
+Day 56：RAG 对业务 Demo 的指标对比 [x]
 产出：docs/evaluation.md、eval/reports/rag_baseline.md
 指标：Top-5 Evidence Hit Rate、Context Reduction Rate、Retrieval p95 Latency
 验收：能说明 RAG 对 CI / 日志诊断和代码合入审查质量、上下文效率的提升
