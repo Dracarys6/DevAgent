@@ -78,11 +78,11 @@ Day 41 日志根因分析契约正在开发
 9. 一套能讲 3 分钟、10 分钟、30 分钟的项目表达
 ```
 
-第 10 到第 13 周用于把核心版本补成完整工程作品。只有 RAG、Multi-Agent、Trace / Evaluation、持久化和安全增强等关键扩展完成后，项目才算真正完成：
+第 9 到第 13 周用于把核心版本补成完整工程作品。只有 RAG、Multi-Agent、Trace / Evaluation、持久化和安全增强等关键扩展完成后，项目才算真正完成：
 
 ```text
-1. 持久化完善：SQLite / PostgreSQL、事件落库、工具调用记录、权限策略持久化
-2. RAG 增强：embedding、hybrid search、rerank、检索质量对比
+1. RAG 增强：embedding、hybrid search、rerank、检索质量对比
+2. 持久化完善：SQLite / PostgreSQL、事件落库、工具调用记录、权限策略持久化
 3. Multi-Agent 完整化：父子 Trace、预算、取消传播、部分失败降级
 4. 安全增强：更完整的 CommandGuard、敏感字段脱敏、可选 Docker Sandbox
 5. 交付材料：架构图、安全设计、Evaluation 报告、Demo 脚本、简历表达
@@ -147,10 +147,10 @@ daily 文档
 第 5 周：EventBus + SSE/WebSocket + Trace
 第 6 周：研发效能业务 Demo + CI / 日志诊断
 第 7 周：代码合入审查 + 结构化修改建议 + Review Evaluation
-第 8 周：RAG / Memory + Evaluation + 上下文压缩
-第 9 周：Multi-Agent / 持久化扩展打底
+第 8 周：RAG / Memory 基线 + Evaluation + 上下文压缩
+第 9 周：RAG 增强 + 检索质量优化
 第 10 周：持久化深化 + Trace / Evaluation 数据闭环
-第 11 周：RAG 增强 + 质量优化
+第 11 周：Multi-Agent 基础闭环 + 父子 Trace
 第 12 周：Multi-Agent 完整化 + 安全增强
 第 13 周：最终交付 + 简历面试材料 + Demo 稳定性打磨
 ```
@@ -159,8 +159,8 @@ daily 文档
 
 ```text
 完成第 1 到第 5 周，就已经有一个能演示、能评测的 AI Agent 后端项目。
-第 6 周到第 9 周用于把项目从“能跑”提升到“具备核心业务和扩展雏形”。
-第 10 周到第 13 周用于完善 RAG、Multi-Agent、持久化、安全和指标报告；第 13 周完成后才进入最终交付状态。
+第 6 周到第 9 周用于把项目从“能跑”提升到“具备核心业务和可量化的 RAG 质量优化”。
+第 10 周到第 13 周用于完善持久化、Multi-Agent、安全和指标报告；第 13 周完成后才进入最终交付状态。
 ```
 
 六条长期主线：
@@ -891,9 +891,9 @@ Finding 证据引用完整率 = 100%
 
 ---
 
-## 11. 第 8 周：RAG / Memory + Evaluation + 上下文压缩
+## 11. 第 8 周：RAG / Memory 基线 + Evaluation + 上下文压缩
 
-目标：把第 6 到第 7 周的 CI 诊断、日志根因分析、代码合入审查和代码问答从“能跑”提升到“证据可检索、质量可评测、上下文可控”。
+目标：把第 6 到第 7 周的 CI 诊断、日志根因分析、代码合入审查和代码问答从“能跑”提升到“证据可检索、质量可评测、上下文可控”，并建立第 9 周检索优化可复用的 BM25 基线。
 
 本周重点原理：
 
@@ -922,7 +922,7 @@ Day 51：实现本地切片器 [x]
 
 Day 52：实现关键词检索器 [x]
 产出：src/devagent/memory/retriever.py、tests/memory/test_retriever.py
-策略：先用关键词 / BM25 / ripgrep-backed 检索，不急着接向量库
+策略：以 BM25 作为可复现基线，第 9 周在同一评测集上比较向量检索、混合召回和重排
 验收：Top-5 能找回预期文件或日志片段
 
 Day 53：实现 knowledge_retrieve 工具 [x]
@@ -968,72 +968,85 @@ Top-5 Evidence Hit Rate >= 80%
 
 ---
 
-## 12. 第 9 周：Multi-Agent / 持久化扩展打底
+## 12. 第 9 周：RAG 增强 + 检索质量优化
 
-目标：在已有单 Agent、权限、Trace、业务 Demo、代码合入审查、RAG 和 Evaluation 基线稳定后，启动 Multi-Agent 与持久化扩展的最小闭环。第 9 周不作为项目交付周，只做扩展能力打底，为第 10 到第 13 周的完善期留出空间。
+目标：紧接第 8 周的 BM25、Evaluation 和上下文压缩基线，引入向量检索、混合召回与可替换重排，并在同一固定评测集上用质量、延迟和上下文成本决定默认检索策略。
 
 本周重点：
 
 ```text
-受控 Multi-Agent
-父子 Trace
-预算与取消传播
-SQLite / PostgreSQL 取舍
-事件落库
-核心扩展 backlog
-扩展能力风险清单
+EmbeddingProvider 与 VectorRetriever 边界
+向量检索
+BM25 + 向量混合召回
+分数归一化或 Reciprocal Rank Fusion
+可替换 rerank
+检索失败分类
+同数据集前后指标对比
 ```
 
 每日任务与验收：
 
 ```text
-Day 57：定义 Multi-Agent 最小协议
-产出：src/devagent/multi_agent/models.py
-类型：SubAgentTask、SubAgentResult、AgentBudget
-验收：子任务包含 parent_task_id、目标、允许工具、max_steps、timeout
+Day 57：固化 RAG 增强评测集与 BM25 基准
+产出：eval/cases/rag/、eval/reports/rag_bm25_baseline.md
+范围：将第 8 周 20 条用例扩充到 30 到 50 条，覆盖代码、Markdown、日志和 CI JSON，并标注 expected_sources
+验收：固定数据集可重复输出 Top-5 Evidence Hit Rate、MRR@5、p95 延迟和失败类型
 
-Day 58：实现 SpawnAgentTool 或 Coordinator 最小版
-产出：src/devagent/multi_agent/spawn_tool.py 或 coordinator.py
-验收：父 Agent 只能创建受限子任务；禁止无限递归
+Day 58：定义向量检索抽象
+产出：src/devagent/memory/embeddings.py、src/devagent/memory/vector_retriever.py
+接口：EmbeddingProvider、VectorRetriever，provider 适配与检索流程解耦
+验收：固定向量 fixture 可确定性验证相似度排序、空语料和 provider 失败
 
-Day 59：父子 Trace 和结果汇总
-产出：src/devagent/multi_agent/event_bridge.py、summarizer.py
-验收：父任务能汇总日志、代码、CI 子任务证据；子任务失败可降级
+Day 59：实现向量检索基线
+产出：向量索引构建、查询和元数据映射实现及 tests/memory/
+验收：向量结果保留 source、path、line_range、score 和稳定 chunk_id，并输出与 BM25 的质量和延迟差异
 
-Day 60：持久化取舍与最小落库
-产出：docs/database-design.md 或 src/devagent/storage/
-范围：优先 events、tool_calls、permission_policies
-验收：只落最能支撑 Trace / Evaluation / 权限审计的数据
+Day 60：实现 BM25 + 向量混合召回
+产出：src/devagent/memory/hybrid_retriever.py、tests/memory/test_hybrid_retriever.py
+策略：使用可解释的分数归一化或 Reciprocal Rank Fusion，保留稳定 tie-break
+验收：同一查询可追踪关键词与向量候选来源，融合结果可确定性复现
 
-Day 61：Evaluation 阶段报告
-产出：docs/evaluation.md、eval/reports/week9_baseline.md
-指标：Tool Hit Rate、Evidence Hit Rate、Permission Trigger Rate、平均耗时、失败率
-验收：报告能支撑简历中的可量化成果
+Day 61：实现可替换 rerank
+产出：src/devagent/memory/reranker.py、tests/memory/test_reranker.py
+范围：只重排 Top-N 候选，记录召回分数、重排分数与耗时
+验收：reranker 失败可降级到混合召回，EvidenceSnippet 定位信息不丢失
 
-Day 62：整理扩展能力 backlog 和风险清单
-产出：docs/backlog.md 或 docs/roadmap.md
-验收：明确 RAG、Multi-Agent、持久化、安全增强在第 10 到第 13 周的剩余任务和验收指标
+Day 62：接入业务链路并优化上下文
+产出：knowledge_retrieve、CI / 日志诊断、代码合入审查的检索策略接入
+验收：业务报告能引用混合检索 evidence；相比整文件或日志注入，平均上下文字符数降低 40% 以上
 
-Day 63：扩展打底验收
-产出：第 9 周验收记录、阶段 Evaluation、扩展 backlog
-验收：可稳定演示单 Agent、权限审批、Trace、RAG 证据检索；Multi-Agent 和持久化至少完成最小设计或最小闭环；项目不标记为最终完成
+Day 63：RAG 增强对比与第 9 周验收
+产出：docs/evaluation.md、eval/reports/rag_optimization.md
+对比：BM25、向量、混合召回、混合召回 + rerank
+验收：根据固定数据集的质量、延迟和上下文成本选择默认策略，并记录失败样例与后续优化项
 ```
 
 ### 第 9 周额外收尾
 
 ```text
-运行完整测试和 Evaluation
-确认第 10 到第 13 周扩展 backlog 可执行
-整理关键扩展的技术风险和验收指标
-保留 3 分钟与 10 分钟项目讲法草稿
+运行完整 RAG Evaluation 和相关业务回归
+核对所有检索策略使用同一数据集、top_k 和统计口径
+记录质量提升、延迟代价、失败分类和默认策略选择依据
+整理 RAG 检索、混合召回和 rerank 项目问答
 每周收尾同步 README.md 和 plan.md
+```
+
+量化验收：
+
+```text
+固定 RAG eval cases 数量达到 30 到 50 条
+混合召回 + rerank 的 Top-5 Evidence Hit Rate >= 85%，且相比第 8 周 BM25 基线提升 >= 5 个百分点
+MRR@5 相比第 8 周 BM25 基线提升 >= 10%
+平均上下文输入字符数相比整文件 / 日志注入降低 >= 40%
+本地样例库完整检索链路 p95 延迟 < 800ms
+证据引用完整率 >= 95%
 ```
 
 ---
 
 ## 13. 第 10 到第 13 周：关键扩展完善与最终交付
 
-目标：不为了赶时间牺牲功能完整性。第 10 到第 13 周用于把 RAG、Multi-Agent、持久化、Trace / Evaluation 和安全增强补扎实，形成有指标、有文档、有 Demo、有工程说服力的最终版本。
+目标：不为了赶时间牺牲功能完整性。第 10 到第 13 周用于把持久化、Multi-Agent、Trace / Evaluation 和安全增强补扎实，并让第 9 周选定的 RAG 策略进入稳定业务闭环，形成有指标、有文档、有 Demo、有工程说服力的最终版本。
 
 ### 第 10 周：持久化深化 + Trace / Evaluation 数据闭环
 
@@ -1054,22 +1067,23 @@ Day 63：扩展打底验收
 6. GitHub webhook delivery 和 PR review 发布状态可持久化，服务重启后仍能避免重复审查与重复评论。
 ```
 
-### 第 11 周：RAG 增强 + 质量优化
+### 第 11 周：Multi-Agent 基础闭环 + 父子 Trace
 
 ```text
-重点：提升证据检索质量，而不是只做“能检索”。
-产出：RAG 指标报告、hybrid search 或 rerank 实验、上下文压缩对比。
-验收：Top-5 Evidence Hit Rate、上下文压缩率、检索延迟都有前后对比。
+重点：让父 Agent 能把 CI、日志和代码分析拆成受控子任务，并保留完整父子 Trace。
+产出：Multi-Agent 数据模型、Coordinator 或 SpawnAgentTool、父子 Trace、结果汇总器。
+验收：父 Agent 能创建受限子任务、汇总证据并处理单个子任务失败，所有子任务均可追溯到父任务。
 ```
 
 优先任务：
 
 ```text
-1. 对比关键词检索、BM25、embedding 或 hybrid search。
-2. 增加 rerank 接口，先做可替换设计。
-3. 优化 evidence snippet 格式，让最终回答更容易引用证据。
-4. 扩充 RAG eval cases 到 30 到 50 条。
-5. 输出 RAG 优化报告，避免只凭主观感觉说“效果更好”。
+1. 定义 SubAgentTask、SubAgentResult、AgentBudget。
+2. 实现 Coordinator 或 SpawnAgentTool，并限制递归深度和子任务数量。
+3. 建立 parent_task_id、child_task_id 和父子事件关联。
+4. 汇总日志、代码、CI 子任务 evidence，保留来源与定位信息。
+5. 实现部分失败降级，单个子任务失败不丢弃其他有效结果。
+6. 用固定 CI / 日志诊断场景统计任务完成率、证据汇总完整率和额外耗时。
 ```
 
 ### 第 12 周：Multi-Agent 完整化 + 安全增强
@@ -1083,10 +1097,10 @@ Day 63：扩展打底验收
 优先任务：
 
 ```text
-1. 完成 SubAgentTask、SubAgentResult、AgentBudget。
-2. 实现 max_depth、max_children、max_concurrency 和共享预算。
-3. 子 Agent 只获得 allowed_tools。
-4. 父任务取消时传播到运行中子任务。
+1. 实现 max_depth、max_children、max_concurrency 和共享预算。
+2. 子 Agent 只获得 allowed_tools。
+3. 父任务取消时传播到运行中子任务。
+4. 增加超时、预算耗尽和部分失败的结构化结果与 Evaluation。
 5. 强化 CommandGuard、敏感字段脱敏和 Prompt Injection 防护文档。
 ```
 
@@ -1318,10 +1332,10 @@ Agent 会先调用 get_ci_result 获取失败 job、测试用例和错误日志�
 第 5 周交付：EventBus、SSE/WebSocket、Trace 查询与回放
 第 6 周交付：CI 诊断 Demo、Git diff、日志分析、诊断执行闭环
 第 7 周交付：代码合入审查、GitHub PR 建议模式、结构化修改建议、Review Evaluation 基线与指标报告
-第 8 周交付：RAG / Memory、Evaluation 基线、上下文压缩、RAG 指标报告
-第 9 周阶段产出：Multi-Agent / 持久化扩展打底、阶段 Evaluation、扩展 backlog 和风险清单
+第 8 周交付：RAG / Memory BM25 基线、Evaluation 基线、上下文压缩、RAG 基线报告
+第 9 周交付：向量检索、混合召回、可替换 rerank、RAG 质量与延迟对比报告
 第 10 周交付：持久化 Repository、事件 / 工具调用 / 权限策略落库、Trace 数据闭环
-第 11 周交付：RAG 增强、检索质量对比、上下文压缩优化、RAG Evaluation 报告
+第 11 周交付：Multi-Agent 基础闭环、父子 Trace、证据汇总、部分失败降级
 第 12 周交付：Multi-Agent 完整化、父子 Trace、预算控制、取消传播、安全增强
 第 13 周交付：最终 README、架构图、安全设计、Evaluation 报告、Demo 脚本、简历与面试材料
 ```
