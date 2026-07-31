@@ -1,18 +1,19 @@
 import os
 from pathlib import Path
+from typing import Annotated
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from devagent.api.schemas import CIDiagnosisRequest
+from devagent.api.schemas import CIDiagnosisRequest, LogDiagnosisRequest
 from devagent.diagnosis.models import DiagnosisReport
 from devagent.diagnosis.service import (
     DiagnosisService,
     DiagnosisServiceError,
     DiagnosisServiceErrorCode,
     LocalCIEvidenceCollector,
+    LocalLogEvidenceCollector,
 )
-
 from devagent.llm import LLMClient, create_openai_llm_client
 
 router = APIRouter(prefix="/api/v1/diagnoses", tags=["diagnoses"])
@@ -66,18 +67,36 @@ def get_diagnosis_service() -> DiagnosisService:
     return DiagnosisService(
         llm_client=llm_client,
         ci_evidence_collector=LocalCIEvidenceCollector(),
+        log_evidence_collector=LocalLogEvidenceCollector(),
     )
 
 
 @router.post("/ci", response_model=DiagnosisReport)
 def diagnose_ci(
     request: CIDiagnosisRequest,
-    service: DiagnosisService = Depends(get_diagnosis_service),
+    service: Annotated[DiagnosisService, Depends(get_diagnosis_service)],
 ) -> DiagnosisReport:
     try:
         return service.diagnose_ci(
             commit_id=request.commit_id,
             workspace=request.workspace,
+        )
+    except DiagnosisServiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"code": exc.code.value, "message": exc.message},
+        ) from exc
+
+
+@router.post("/log", response_model=DiagnosisReport)
+def diagnose_log(
+    request: LogDiagnosisRequest,
+    service: Annotated[DiagnosisService, Depends(get_diagnosis_service)],
+) -> DiagnosisReport:
+    try:
+        return service.diagnose_log(
+            task_id=request.task_id,
+            data_dir=request.data_dir,
         )
     except DiagnosisServiceError as exc:
         raise HTTPException(

@@ -1458,7 +1458,7 @@ uv run --locked pytest tests/
 
 周期：约 1 到 2 周。
 
-当前状态：第 6 周诊断和第 7 周代码合入审查的确定性自动化链路已完成；真实 provider 的 CI 诊断在修复模型复制权威字段的问题后连续 3 次通过，Local Code Review 也已通过固定本地变更完成真实 provider 验收并保存标准化报告。日志诊断和 GitHub App 真实 PR 仍等待对应 live 验收。未完成真实运行证据的链路不得描述为完整业务闭环。
+当前状态：第 6 周诊断和第 7 周代码合入审查的确定性自动化链路已完成；真实 provider 的 CI Diagnosis、Log Diagnosis 和 Local Code Review 均已通过固定证据验收并保存标准化报告。GitHub App 真实 PR 仍等待对应平台 live 验收。未完成真实运行证据的链路不得描述为完整业务闭环。
 
 ### 任务清单
 
@@ -1475,7 +1475,8 @@ uv run --locked pytest tests/
 * [x] 实现 `POST /api/v1/diagnoses/ci`，返回通过 Pydantic 校验的 DiagnosisReport 或结构化错误。
 * [x] 使用 MockLLMClient / 固定 LLMClient 完成可重复集成测试。
 * [x] 使用真实 provider 对固定 CI case 运行端到端诊断，保存脱敏后的输入标识、模型、结构化报告、引用、延迟和失败记录。
-* [ ] 使用真实 provider 对固定日志 case 运行端到端诊断，保存同口径的结构化报告和失败记录。
+* [x] 实现 `POST /api/v1/diagnoses/log`，通过结构化时间线区分首个异常、连锁错误和最终症状。
+* [x] 使用真实 provider 对固定日志 case 运行端到端诊断，保存同口径的结构化报告和失败记录。
 * [x] 实现 `git_compare(base_ref, head_ref, workspace)`，安全读取合入范围和 diff hunk。
 * [x] 定义 `CodeReviewReport`、`ReviewFinding`、`ReviewSeverity`、`ReviewCategory` 等结构化审查契约。
 * [x] 实现 provider 无关的 `CodeReviewService`，负责变更证据采集、Prompt 构造、LLMClient 调用和报告校验。
@@ -1733,6 +1734,7 @@ Agent 应该能够：
 * [x] 生成离线与真实 RAG 评测报告。
 * [ ] 为同义表达、语义正确性和证据忠实度增加人工抽检或独立 Judge。
 * [x] 完成 CI Diagnosis 标准化 live report。
+* [x] 完成 Log Diagnosis 标准化 live report。
 * [x] 完成 Local Code Review 标准化 live report。
 * [ ] 完成 GitHub PR 标准化 live report。
 * [ ] 将 eval cases、run metadata、prediction 和 metrics 持久化。

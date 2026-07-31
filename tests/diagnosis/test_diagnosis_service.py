@@ -17,9 +17,13 @@ from devagent.diagnosis import (
     Finding,
     FindingKind,
     LocalCIEvidenceCollector,
+    LocalLogEvidenceCollector,
+    LogDiagnosisInput,
+    MissingEvidence,
 )
 from devagent.llm import LLMResponse, ToolCall
 from devagent.tools.git_tools import GitDiffError
+from devagent.tools.log_tools import SearchLogError
 
 
 def make_evidence() -> Evidence:
@@ -88,6 +92,28 @@ class FixedCollector:
         return self.diagnosis_input
 
 
+class FixedLogCollector:
+    def __init__(self, diagnosis_input: LogDiagnosisInput) -> None:
+        self.diagnosis_input = diagnosis_input
+        self.calls: list[dict[str, str]] = []
+
+    def collect(
+        self,
+        *,
+        report_id: str,
+        task_id: str,
+        data_dir: str,
+    ) -> LogDiagnosisInput:
+        self.calls.append(
+            {
+                "report_id": report_id,
+                "task_id": task_id,
+                "data_dir": data_dir,
+            }
+        )
+        return self.diagnosis_input
+
+
 class FixedLLMClient:
     def __init__(self, response: LLMResponse) -> None:
         self.response = response
@@ -106,6 +132,66 @@ def make_service(response: LLMResponse) -> tuple[DiagnosisService, FixedLLMClien
         report_id_factory=lambda: "report-ci-001",
     )
     return service, client
+
+
+def make_log_input() -> LogDiagnosisInput:
+    return LogDiagnosisInput(
+        report_id="report-log-001",
+        task_id="task_001",
+        workspace="examples/sample_logs",
+        evidence=[
+            Evidence(
+                evidence_id="E1",
+                kind=EvidenceKind.LOG,
+                tool_name="search_log",
+                source="task_001",
+                locator="task_id=task_001;first_anomaly_sequence_id=3;entries=6",
+                excerpt='{"first_anomaly":{"message":"UploadTimeoutError"}}',
+            )
+        ],
+        missing_evidence=[
+            MissingEvidence(
+                needed="首个异常对应的代码证据",
+                reason="日志不能单独证明代码根因",
+                suggested_tool="read_file",
+            )
+        ],
+    )
+
+
+def make_log_report(*, target: str = "task_001") -> DiagnosisReport:
+    diagnosis_input = make_log_input()
+    return DiagnosisReport(
+        report_id="model-report-id",
+        scenario=DiagnosisScenario.LOG_FAILURE,
+        target=target,
+        status=DiagnosisStatus.DIAGNOSED,
+        summary="首个异常是 UploadTimeoutError，后续重试失败。",
+        findings=[
+            Finding(
+                kind=FindingKind.SYMPTOM,
+                statement="sequence_id=3 首先出现 UploadTimeoutError。",
+                confidence=Confidence.CONFIRMED,
+                evidence_ids=["E1"],
+            )
+        ],
+        evidence=diagnosis_input.evidence,
+        missing_evidence=diagnosis_input.missing_evidence,
+    )
+
+
+def make_log_service(
+    response: LLMResponse,
+) -> tuple[DiagnosisService, FixedLLMClient, FixedLogCollector]:
+    client = FixedLLMClient(response)
+    collector = FixedLogCollector(make_log_input())
+    service = DiagnosisService(
+        llm_client=client,
+        ci_evidence_collector=FixedCollector(make_diagnosis_input()),
+        log_evidence_collector=collector,
+        report_id_factory=lambda: "report-log-001",
+    )
+    return service, client, collector
 
 
 def test_local_ci_evidence_collector_converts_ci_result_and_missing_diff():
@@ -170,6 +256,54 @@ def test_local_ci_evidence_collector_rejects_malformed_tool_json():
             report_id="report-ci-001",
             commit_id="abc123",
             workspace="examples/sample_repo",
+        )
+
+    assert exc_info.value.code == DiagnosisServiceErrorCode.EVIDENCE_COLLECTION_FAILED
+
+
+def test_local_log_evidence_collector_reads_timeline_and_marks_root_cause_gap():
+    collector = LocalLogEvidenceCollector()
+
+    result = collector.collect(
+        report_id="report-log-001",
+        task_id="task_001",
+        data_dir="examples/sample_logs",
+    )
+
+    assert [item.evidence_id for item in result.evidence] == ["E1"]
+    assert result.evidence[0].kind == EvidenceKind.LOG
+    assert "first_anomaly_sequence_id=3" in result.evidence[0].locator
+    assert "UploadTimeoutError" in result.evidence[0].excerpt
+    assert "RetryExhaustedError" in result.evidence[0].excerpt
+    assert result.missing_evidence[0].suggested_tool == "read_file"
+
+
+def test_local_log_evidence_collector_converts_missing_log_to_missing_evidence():
+    def missing_log(task_id: str, data_dir: str) -> str:
+        raise SearchLogError(f"missing {task_id} in {data_dir}")
+
+    collector = LocalLogEvidenceCollector(log_result_reader=missing_log)
+
+    result = collector.collect(
+        report_id="report-log-001",
+        task_id="task_missing",
+        data_dir="examples/sample_logs",
+    )
+
+    assert result.evidence == []
+    assert result.missing_evidence[0].suggested_tool == "search_log"
+
+
+def test_local_log_evidence_collector_rejects_malformed_tool_json():
+    collector = LocalLogEvidenceCollector(
+        log_result_reader=lambda task_id, data_dir: "not-json"
+    )
+
+    with pytest.raises(DiagnosisServiceError) as exc_info:
+        collector.collect(
+            report_id="report-log-001",
+            task_id="task_001",
+            data_dir="examples/sample_logs",
         )
 
     assert exc_info.value.code == DiagnosisServiceErrorCode.EVIDENCE_COLLECTION_FAILED
@@ -242,6 +376,48 @@ def test_diagnosis_service_binds_authoritative_evidence():
     result = service.diagnose_ci(commit_id="abc123")
 
     assert result.evidence == [make_evidence()]
+
+
+def test_diagnosis_service_diagnoses_log_and_binds_authoritative_fields():
+    response = LLMResponse.final_answer(
+        make_log_report(target="model-target").model_dump_json()
+    )
+    service, client, collector = make_log_service(response)
+
+    result = service.diagnose_log(
+        task_id="task_001",
+        data_dir="examples/sample_logs",
+    )
+
+    assert result.report_id == "report-log-001"
+    assert result.scenario == DiagnosisScenario.LOG_FAILURE
+    assert result.target == "task_001"
+    assert result.evidence == make_log_input().evidence
+    assert collector.calls[0]["task_id"] == "task_001"
+    assert client.requests[0][0]["content"].startswith("你是一个日志根因分析 Agent")
+    assert '"task_id":"task_001"' in client.requests[0][1]["content"]
+
+
+def test_diagnosis_service_rejects_dangling_log_evidence_reference():
+    report_data = make_log_report().model_dump()
+    report_data["findings"][0]["evidence_ids"] = ["E9"]
+    service, _, _ = make_log_service(
+        LLMResponse.final_answer(json.dumps(report_data, ensure_ascii=False))
+    )
+
+    with pytest.raises(DiagnosisServiceError) as exc_info:
+        service.diagnose_log(task_id="task_001")
+
+    assert exc_info.value.code == DiagnosisServiceErrorCode.INVALID_REPORT
+
+
+def test_diagnosis_service_requires_log_collector_configuration():
+    service, _ = make_service(LLMResponse.final_answer(make_report().model_dump_json()))
+
+    with pytest.raises(DiagnosisServiceError) as exc_info:
+        service.diagnose_log(task_id="task_001")
+
+    assert exc_info.value.code == DiagnosisServiceErrorCode.CONFIGURATION_ERROR
 
 
 def test_diagnosis_service_wraps_llm_exception_without_leaking_message():

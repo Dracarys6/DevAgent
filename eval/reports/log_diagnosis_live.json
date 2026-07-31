@@ -1,0 +1,86 @@
+{
+  "provider": "openai-compatible-live",
+  "model": "gpt-5.6-terra",
+  "api_mode": "responses",
+  "target": "task_001",
+  "data_dir_label": "examples/sample_logs",
+  "expected_keywords": [
+    "UploadTimeoutError",
+    "RetryExhaustedError",
+    "3 秒"
+  ],
+  "latency_ms": 34188.901417015586,
+  "attempt_count": 1,
+  "attempt_errors": [],
+  "report": {
+    "report_id": "bc786a87-86fd-4fea-adf9-f1dae450dde3",
+    "scenario": "log_failure",
+    "target": "task_001",
+    "status": "diagnosed",
+    "summary": "日志显示，uploader 在 2026-07-13T09:00:04Z 首先发生 UploadTimeoutError：配置的 timeout_seconds 为 3，而上下文中的 expected_seconds 为 12。随后 retry 出现 RetryExhaustedError，最终 task 以 failed 状态结束。现有证据支持超时设置与预期上传耗时不匹配是根因候选，但缺少代码、配置或依赖证据，无法确认其为确定根因。",
+    "findings": [
+      {
+        "kind": "root_cause",
+        "statement": "uploader 构建的 timeout_seconds 为 3 秒，而日志上下文显示 expected_seconds 为 12 秒；该超时设置与预期上传耗时不匹配，可能导致首个 UploadTimeoutError。",
+        "confidence": "likely",
+        "evidence_ids": [
+          "E1"
+        ]
+      },
+      {
+        "kind": "symptom",
+        "statement": "uploader 于 2026-07-13T09:00:04Z 在 src/sample_app/uploader.py:42 首先报告 UploadTimeoutError，随后 retry 于 2026-07-13T09:00:09Z 报告 RetryExhaustedError，最终 task 于 2026-07-13T09:00:10Z 以 failed 状态结束。",
+        "confidence": "confirmed",
+        "evidence_ids": [
+          "E1"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "E1",
+        "kind": "log",
+        "tool_name": "search_log",
+        "source": "task_001",
+        "locator": "task_id=task_001;first_anomaly_sequence_id=3;entries=6",
+        "excerpt": "{\"task_id\":\"task_001\",\"filters\":{\"level\":null,\"keyword\":null},\"summary\":{\"total_entry_count\":6,\"matched_entry_count\":6,\"returned_entry_count\":6,\"truncated\":false},\"first_anomaly\":{\"timestamp\":\"2026-07-13T09:00:04Z\",\"sequence_id\":3,\"level\":\"ERROR\",\"service\":\"uploader\",\"message\":\"UploadTimeoutError: 上传在 3 秒后超时\",\"source\":\"src/sample_app/uploader.py:42\",\"context\":{\"timeout_seconds\":3,\"expected_seconds\":12}},\"entries\":[{\"timestamp\":\"2026-07-13T09:00:00Z\",\"sequence_id\":1,\"level\":\"INFO\",\"service\":\"api\",\"message\":\"收到大文件上传请求\",\"source\":\"src/sample_app/api.py:20\",\"context\":{\"size_mb\":100,\"bandwidth_mb_s\":10}},{\"timestamp\":\"2026-07-13T09:00:01Z\",\"sequence_id\":2,\"level\":\"DEBUG\",\"service\":\"uploader\",\"message\":\"构建上传 timeout\",\"source\":\"src/sample_app/uploader.py:30\",\"context\":{\"timeout_seconds\":3}},{\"timestamp\":\"2026-07-13T09:00:04Z\",\"sequence_id\":3,\"level\":\"ERROR\",\"service\":\"uploader\",\"message\":\"UploadTimeoutError: 上传在 3 秒后超时\",\"source\":\"src/sample_app/uploader.py:42\",\"context\":{\"timeout_seconds\":3,\"expected_seconds\":12}},{\"timestamp\":\"2026-07-13T09:00:05Z\",\"sequence_id\":4,\"level\":\"WARNING\",\"service\":\"retry\",\"message\":\"上传失败，准备第一次重试\",\"source\":\"src/sample_app/retry.py:18\",\"context\":{\"attempt\":1}},{\"timestamp\":\"2026-07-13T09:00:09Z\",\"sequence_id\":5,\"level\":\"ERROR\",\"service\":\"retry\",\"message\":\"RetryExhaustedError: 上传重试仍然失败\",\"source\":\"src/sample_app/retry.py:31\",\"context\":{\"attempt\":1}},{\"timestamp\":\"2026-07-13T09:00:10Z\",\"sequence_id\":6,\"level\":\"CRITICAL\",\"service\":\"task\",\"message\":\"上传任务失败结束\",\"source\":\"src/sample_app/task.py:55\",\"context\":{\"status\":\"failed\"}}]}"
+      }
+    ],
+    "recommendations": [
+      {
+        "action": "检查并调整 uploader 的 timeout 配置或计算逻辑，使其覆盖 expected_seconds 为 12 秒的上传耗时，并结合实际网络条件设置合理余量。",
+        "rationale": "日志表明 timeout_seconds 为 3 秒且小于 expected_seconds 为 12 秒，首个超时发生后触发了重试耗尽并导致任务失败。",
+        "evidence_ids": [
+          "E1"
+        ],
+        "verification_steps": [
+          "读取 src/sample_app/uploader.py:30 和 src/sample_app/uploader.py:42，确认 timeout 的来源和计算逻辑。",
+          "检查相关配置，确认实际生效的 timeout_seconds 不低于预期上传耗时并包含合理余量。",
+          "使用与日志中相近的 100 MB 文件和 10 MB/s 带宽条件执行上传测试。",
+          "确认上传不再出现 UploadTimeoutError，且 task 最终 status 不为 failed。"
+        ]
+      }
+    ],
+    "missing_evidence": [
+      {
+        "needed": "首个异常对应的代码、配置或依赖证据",
+        "reason": "日志只能证明 timeout_seconds 为 3 秒及其时间顺序，不能确认该值为何产生、是否为错误配置，或是否存在依赖层面的超时限制。",
+        "suggested_tool": "read_file"
+      }
+    ]
+  },
+  "metrics": {
+    "diagnosed": true,
+    "log_evidence_covered": true,
+    "evidence_references_grounded": true,
+    "first_anomaly_identified": true,
+    "cascade_error_identified": true,
+    "confirmed_root_cause_count": 0,
+    "code_evidence_gap_recorded": true,
+    "recommendation_count": 1,
+    "expected_keyword_hit_count": 3,
+    "expected_keyword_count": 3,
+    "expected_keyword_hit_rate": 1.0,
+    "passed": true
+  }
+}

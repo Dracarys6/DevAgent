@@ -722,17 +722,17 @@ Day 40：设计证据驱动的 CI 诊断流程 [x]
 验收：每个结论引用具体工具证据；缺少证据时明确说明；非法 evidence 引用无法通过 Pydantic 校验
 
 Day 41：设计日志根因分析流程 [x]
-产出：src/devagent/prompts/log_diagnosis.py、tests/prompts/test_log_diagnosis.py
-边界：复用 DiagnosisReport 契约，先完成日志诊断 Prompt 和固定报告测试
-验收：区分根因、后续连锁错误和推测；首个异常只能作为根因候选
+产出：src/devagent/prompts/log_diagnosis.py、src/devagent/eval/live_log_diagnosis.py、tests/prompts/test_log_diagnosis.py、tests/eval/test_live_log_diagnosis.py
+边界：复用 DiagnosisReportDraft 契约，模型生成分析字段，Service 绑定身份和原始日志 Evidence
+验收：区分根因、后续连锁错误和推测；首个异常只能作为根因候选；日志单独支持的 root cause 不得标为 confirmed
 
 Day 42：接通诊断执行服务与 API 闭环 [x]
 产出：src/devagent/diagnosis/service.py、src/devagent/api/routes/diagnoses.py、tests/integration/test_ci_diagnosis.py、tests/api/test_diagnoses.py、tests/fixtures/diagnosis_cases/
 执行链：工具输出标准化为 Evidence -> 构造 DiagnosisInput -> 调用注入的 LLMClient.chat() -> 校验 DiagnosisReportDraft -> 服务端绑定 report_id、target 和原始 evidence -> DiagnosisReport.model_validate() -> API 返回结构化报告
-接口：POST /api/v1/diagnoses/ci；日志诊断先复用同一 service，并为后续 POST /api/v1/diagnoses/log 保留清晰边界
+接口：POST /api/v1/diagnoses/ci、POST /api/v1/diagnoses/log
 测试策略：自动化测试使用 MockLLMClient 或固定 LLMClient，不访问真实网络；另用显式 live runner 调用真实 provider
-验收：自动化验证非法 JSON、悬空 evidence_id 和工具失败降级；真实 provider 对固定 CI case 在修复权威字段复制漂移后连续运行 3 次，全部返回通过 Pydantic 校验且引用真实 Evidence 的 DiagnosisReport，并保存脱敏结果、模型、延迟和失败信息
-实测：gpt-5.6-terra / Responses 修复后连续 3 次通过，平均延迟 17.18 秒、p95 20.97 秒；保留一次 `report_mismatch` 失败运行用于说明问题发现与信任边界修复
+验收：自动化验证非法 JSON、悬空 evidence_id 和工具失败降级；真实 provider 分别通过固定 CI 和日志 case，返回通过 Pydantic 校验且引用真实 Evidence 的 DiagnosisReport，并保存脱敏结果、模型、延迟和失败信息
+实测：CI 修复后连续 3 次通过，平均延迟 17.18 秒、p95 20.97 秒；日志诊断一次调用通过，首异常/连锁错误识别与证据引用均为 100%，延迟 34.19 秒
 ```
 
 ### 第 6 周额外收尾

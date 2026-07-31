@@ -312,6 +312,45 @@ DEVAGENT_ENABLE_LIVE_EVAL=1 \
 该命令可能产生模型费用，不进入默认 pytest。固定单 case 的连续成功也不能代表任意仓库上的诊断
 准确率；后续应扩充不同失败类型，并记录 token 与成本。
 
+## Live Log Diagnosis Evaluation
+
+固定日志 case 经过以下真实链路：
+
+```text
+examples/sample_logs/task_001.jsonl
+  -> search_log
+  -> Log Evidence + first_anomaly locator
+  -> LogDiagnosisInput
+  -> DiagnosisReportDraft Prompt
+  -> 真实 provider
+  -> DiagnosisService 绑定 report_id / scenario / target / evidence
+  -> DiagnosisReport Pydantic 校验
+  -> 时间线与置信边界 metrics
+```
+
+日志评测不把“出现 ERROR”直接当作“确认根因”。固定 case 要求识别 `UploadTimeoutError` 是首个异常，
+`RetryExhaustedError` 是后续连锁错误；只依赖日志时，root cause 不得使用 `confirmed`，并且必须记录
+仍缺代码、配置或依赖证据。报告：
+
+```text
+eval/reports/log_diagnosis_live_summary.md
+eval/reports/log_diagnosis_live.md
+eval/reports/log_diagnosis_live.json
+```
+
+真实结果：Evidence coverage、引用闭合、首异常识别、连锁错误识别和代码证据缺口记录均为 100%，
+confirmed root cause 为 0，关键词命中 3/3；一次模型调用通过，端到端延迟 34.19 秒。
+
+运行真实验收：
+
+```bash
+DEVAGENT_ENABLE_LIVE_EVAL=1 \
+  uv run --locked python scripts/run_live_log_diagnosis.py
+```
+
+该命令需要显式开关并可能产生模型费用。固定日志只证明该时间线上的行为，不代表所有日志格式、
+跨服务 trace 或缺少 sequence_id 场景的普遍准确率。
+
 ## ContextManager Baseline
 
 Day55 的 ContextManager 指标和 RAG Context Reduction 是两个不同口径。

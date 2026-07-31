@@ -10,10 +10,13 @@ from pydantic import ValidationError
 from devagent.llm import LLMClient, LLMResponse, LLMResponseType
 from devagent.prompts import (
     CI_DIAGNOSIS_SYSTEM_PROMPT,
+    LOG_DIAGNOSIS_SYSTEM_PROMPT,
     build_ci_diagnosis_prompt,
+    build_log_diagnosis_prompt,
 )
 from devagent.tools.ci_tools import CIResultError, get_ci_result
 from devagent.tools.git_tools import GitDiffError, git_diff
+from devagent.tools.log_tools import SearchLogError, search_log
 
 from .models import (
     DiagnosisInput,
@@ -22,6 +25,7 @@ from .models import (
     DiagnosisScenario,
     Evidence,
     EvidenceKind,
+    LogDiagnosisInput,
     MissingEvidence,
 )
 
@@ -29,6 +33,7 @@ MAX_EVIDENCE_EXCERPT_CHARS = 4_000
 ReportIdFactory = Callable[[], str]
 CIResultReader = Callable[[str], str]
 GitDiffReader = Callable[[str, str], str]
+LogResultReader = Callable[[str, str], str]
 CI_GIT_PATHS = ("*.py",)
 
 
@@ -66,6 +71,18 @@ class CIEvidenceCollector(Protocol):
         commit_id: str,
         workspace: str,
     ) -> DiagnosisInput: ...
+
+
+class LogEvidenceCollector(Protocol):
+    """把结构化日志工具结果标准化为诊断输入。"""
+
+    def collect(
+        self,
+        *,
+        report_id: str,
+        task_id: str,
+        data_dir: str,
+    ) -> LogDiagnosisInput: ...
 
 
 def read_ci_git_diff(commit_id: str, workspace: str) -> str:
@@ -169,6 +186,90 @@ class LocalCIEvidenceCollector:
         )
 
 
+def read_log_result(task_id: str, data_dir: str) -> str:
+    """读取指定数据目录中的完整任务日志证据。"""
+    return search_log(task_id, data_dir=data_dir)
+
+
+class LocalLogEvidenceCollector:
+    """使用本地结构化日志收集日志诊断证据。"""
+
+    def __init__(
+        self,
+        *,
+        log_result_reader: LogResultReader = read_log_result,
+    ) -> None:
+        self._log_result_reader = log_result_reader
+
+    def collect(
+        self,
+        *,
+        report_id: str,
+        task_id: str,
+        data_dir: str,
+    ) -> LogDiagnosisInput:
+        evidence: list[Evidence] = []
+        missing_evidence: list[MissingEvidence] = []
+        try:
+            raw_result = self._log_result_reader(task_id, data_dir)
+            payload = json.loads(raw_result)
+            if payload["task_id"] != task_id:
+                raise ValueError("日志结果中的 task_id 与请求不匹配")
+            evidence.append(
+                Evidence(
+                    evidence_id="E1",
+                    kind=EvidenceKind.LOG,
+                    tool_name="search_log",
+                    source=task_id,
+                    locator=_build_log_locator(payload),
+                    excerpt=_truncate_excerpt(raw_result),
+                )
+            )
+            if payload.get("first_anomaly") is not None:
+                # * 日志可以确认时间线，但没有代码或配置证据时不能把根因标为 confirmed。
+                missing_evidence.append(
+                    MissingEvidence(
+                        needed="首个异常对应的代码、配置或依赖证据",
+                        reason="日志只能证明异常时间线，不能单独确认代码根因",
+                        suggested_tool="read_file",
+                    )
+                )
+        except SearchLogError as exc:
+            missing_evidence.append(
+                MissingEvidence(
+                    needed="该 task_id 对应的结构化日志",
+                    reason=str(exc),
+                    suggested_tool="search_log",
+                )
+            )
+        except (JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            raise DiagnosisServiceError(
+                code=DiagnosisServiceErrorCode.EVIDENCE_COLLECTION_FAILED,
+                message="日志工具返回了无法标准化的数据",
+            ) from exc
+
+        return LogDiagnosisInput(
+            report_id=report_id,
+            task_id=task_id,
+            workspace=data_dir,
+            evidence=evidence,
+            missing_evidence=missing_evidence,
+        )
+
+
+def _build_log_locator(payload: dict) -> str:
+    summary = payload["summary"]
+    first_anomaly = payload.get("first_anomaly")
+    first_sequence = (
+        first_anomaly.get("sequence_id") if isinstance(first_anomaly, dict) else None
+    )
+    return (
+        f"task_id={payload['task_id']};"
+        f"first_anomaly_sequence_id={first_sequence or 'none'};"
+        f"entries={summary['total_entry_count']}"
+    )
+
+
 def _build_ci_result_evidence(
     *,
     commit_id: str,
@@ -211,10 +312,12 @@ class DiagnosisService:
         *,
         llm_client: LLMClient,
         ci_evidence_collector: CIEvidenceCollector,
+        log_evidence_collector: LogEvidenceCollector | None = None,
         report_id_factory: ReportIdFactory | None = None,
     ) -> None:
         self._llm_client = llm_client
         self._ci_evidence_collector = ci_evidence_collector
+        self._log_evidence_collector = log_evidence_collector
         self._report_id_factory = report_id_factory or (lambda: str(uuid4()))
 
     def diagnose_ci(
@@ -229,14 +332,61 @@ class DiagnosisService:
             commit_id=commit_id,
             workspace=workspace,
         )
+        draft = self._generate_draft(
+            system_prompt=CI_DIAGNOSIS_SYSTEM_PROMPT,
+            user_prompt=build_ci_diagnosis_prompt(diagnosis_input),
+        )
+        return self._bind_report(
+            draft=draft,
+            report_id=diagnosis_input.report_id,
+            scenario=DiagnosisScenario.CI_FAILURE,
+            target=diagnosis_input.commit_id,
+            evidence=diagnosis_input.evidence,
+        )
+
+    def diagnose_log(
+        self,
+        *,
+        task_id: str,
+        data_dir: str = "examples/sample_logs",
+    ) -> DiagnosisReport:
+        if self._log_evidence_collector is None:
+            raise DiagnosisServiceError(
+                code=DiagnosisServiceErrorCode.CONFIGURATION_ERROR,
+                message="日志诊断证据采集器未配置",
+            )
+        report_id = self._report_id_factory()
+        diagnosis_input = self._log_evidence_collector.collect(
+            report_id=report_id,
+            task_id=task_id,
+            data_dir=data_dir,
+        )
+        draft = self._generate_draft(
+            system_prompt=LOG_DIAGNOSIS_SYSTEM_PROMPT,
+            user_prompt=build_log_diagnosis_prompt(diagnosis_input),
+        )
+        return self._bind_report(
+            draft=draft,
+            report_id=diagnosis_input.report_id,
+            scenario=DiagnosisScenario.LOG_FAILURE,
+            target=diagnosis_input.task_id,
+            evidence=diagnosis_input.evidence,
+        )
+
+    def _generate_draft(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> DiagnosisReportDraft:
         messages = [
             {
                 "role": "system",
-                "content": CI_DIAGNOSIS_SYSTEM_PROMPT,
+                "content": system_prompt,
             },
             {
                 "role": "user",
-                "content": build_ci_diagnosis_prompt(diagnosis_input),
+                "content": user_prompt,
             },
         ]
 
@@ -248,11 +398,7 @@ class DiagnosisService:
                 message="调用诊断模型失败",
             ) from exc
 
-        draft = self._parse_report(response)
-        return self._bind_ci_report(
-            draft=draft,
-            diagnosis_input=diagnosis_input,
-        )
+        return self._parse_report(response)
 
     @staticmethod
     def _parse_report(response: LLMResponse) -> DiagnosisReportDraft:
@@ -275,19 +421,22 @@ class DiagnosisService:
             ) from exc
 
     @staticmethod
-    def _bind_ci_report(
+    def _bind_report(
         *,
         draft: DiagnosisReportDraft,
-        diagnosis_input: DiagnosisInput,
+        report_id: str,
+        scenario: DiagnosisScenario,
+        target: str,
+        evidence: list[Evidence],
     ) -> DiagnosisReport:
         try:
             return DiagnosisReport.model_validate(
                 {
                     **draft.model_dump(),
-                    "report_id": diagnosis_input.report_id,
-                    "scenario": DiagnosisScenario.CI_FAILURE,
-                    "target": diagnosis_input.commit_id,
-                    "evidence": diagnosis_input.evidence,
+                    "report_id": report_id,
+                    "scenario": scenario,
+                    "target": target,
+                    "evidence": evidence,
                 }
             )
         except ValidationError as exc:

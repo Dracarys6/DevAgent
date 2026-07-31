@@ -1,3 +1,41 @@
+from .live_diagnosis import (
+    LiveCIDiagnosisMetrics,
+    LiveCIDiagnosisRun,
+    evaluate_live_ci_diagnosis,
+    render_live_ci_diagnosis_report,
+    run_live_ci_diagnosis,
+)
+from .live_log_diagnosis import (
+    LiveLogDiagnosisMetrics,
+    LiveLogDiagnosisRun,
+    evaluate_live_log_diagnosis,
+    render_live_log_diagnosis_report,
+    run_live_log_diagnosis,
+)
+from .live_rag import (
+    LiveRAGEvalRun,
+    LiveRAGMetrics,
+    LiveRAGPrediction,
+    RAGAgentAnswer,
+    evaluate_live_rag_predictions,
+    render_live_rag_report,
+    run_live_rag_agent_eval,
+)
+from .live_review import (
+    LiveCodeReviewMetrics,
+    LiveCodeReviewRun,
+    LiveReviewExpectedFinding,
+    create_live_review_collector,
+    evaluate_live_code_review,
+    render_live_code_review_report,
+    run_live_code_review,
+)
+from .rag_report import (
+    RAGContextCategoryMetrics,
+    RAGContextMetrics,
+    evaluate_rag_context,
+    render_rag_baseline_report,
+)
 from .review_metrics import (
     ExpectedReviewFinding,
     ReviewEvalCase,
@@ -18,37 +56,6 @@ from .runner import (
     load_rag_eval_cases,
     run_rag_eval,
 )
-from .rag_report import (
-    RAGContextCategoryMetrics,
-    RAGContextMetrics,
-    evaluate_rag_context,
-    render_rag_baseline_report,
-)
-from .live_rag import (
-    LiveRAGEvalRun,
-    LiveRAGMetrics,
-    LiveRAGPrediction,
-    RAGAgentAnswer,
-    evaluate_live_rag_predictions,
-    render_live_rag_report,
-    run_live_rag_agent_eval,
-)
-from .live_diagnosis import (
-    LiveCIDiagnosisMetrics,
-    LiveCIDiagnosisRun,
-    evaluate_live_ci_diagnosis,
-    render_live_ci_diagnosis_report,
-    run_live_ci_diagnosis,
-)
-from .live_review import (
-    LiveCodeReviewMetrics,
-    LiveCodeReviewRun,
-    LiveReviewExpectedFinding,
-    create_live_review_collector,
-    evaluate_live_code_review,
-    render_live_code_review_report,
-    run_live_code_review,
-)
 
 __all__ = [
     "ExpectedReviewFinding",
@@ -56,38 +63,43 @@ __all__ = [
     "LiveCIDiagnosisRun",
     "LiveCodeReviewMetrics",
     "LiveCodeReviewRun",
-    "LiveReviewExpectedFinding",
+    "LiveLogDiagnosisMetrics",
+    "LiveLogDiagnosisRun",
     "LiveRAGEvalRun",
     "LiveRAGMetrics",
     "LiveRAGPrediction",
+    "LiveReviewExpectedFinding",
     "RAGAgentAnswer",
+    "RAGContextCategoryMetrics",
+    "RAGContextMetrics",
     "RAGEvalCase",
     "RAGEvalConfigurationError",
     "RAGEvalMetrics",
     "RAGEvalPrediction",
     "RAGEvalRun",
-    "RAGContextCategoryMetrics",
-    "RAGContextMetrics",
     "ReviewEvalCase",
     "ReviewEvalConfigurationError",
     "ReviewEvalDiffLine",
     "ReviewEvalMetrics",
-    "evaluate_live_rag_predictions",
+    "create_live_review_collector",
     "evaluate_live_ci_diagnosis",
     "evaluate_live_code_review",
-    "evaluate_rag_predictions",
+    "evaluate_live_log_diagnosis",
+    "evaluate_live_rag_predictions",
     "evaluate_rag_context",
+    "evaluate_rag_predictions",
     "evaluate_review_cases",
     "load_rag_eval_cases",
     "load_review_eval_cases",
-    "render_review_baseline_report",
-    "render_live_rag_report",
     "render_live_ci_diagnosis_report",
     "render_live_code_review_report",
+    "render_live_log_diagnosis_report",
+    "render_live_rag_report",
     "render_rag_baseline_report",
-    "run_live_rag_agent_eval",
+    "render_review_baseline_report",
     "run_live_ci_diagnosis",
     "run_live_code_review",
-    "create_live_review_collector",
+    "run_live_log_diagnosis",
+    "run_live_rag_agent_eval",
     "run_rag_eval",
 ]

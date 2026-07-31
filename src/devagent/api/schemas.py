@@ -5,8 +5,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from devagent.agent import AgentEventType
-from devagent.task.models import TaskStatus
 from devagent.permission import PermissionDecision, PermissionStatus
+from devagent.task.models import TaskStatus
 from devagent.tools.models import RiskLevel
 
 
@@ -127,6 +127,27 @@ class CIDiagnosisRequest(BaseModel):
         pattern=r"^[0-9a-fA-F]+$",
     )
     workspace: str = Field(default=".", min_length=1)
+
+
+class LogDiagnosisRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "examples": [
+                {
+                    "task_id": "task_001",
+                    "data_dir": "examples/sample_logs",
+                }
+            ]
+        },
+    )
+
+    task_id: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
+    )
+    data_dir: str = Field(default="examples/sample_logs", min_length=1, max_length=2000)
 
 
 class CodeReviewRequest(BaseModel):
