@@ -622,6 +622,10 @@ UNEXPECTED_LLM_RESPONSE -> 502
 EMPTY_LLM_RESPONSE -> 502
 INVALID_REPORT -> 502
 REPORT_MISMATCH -> 502
+
+> 2026-07-31 契约更新：`REPORT_MISMATCH` 保留为兼容错误码和既有 API 映射，但当前
+> `CodeReviewService` 不再信任或比较模型复制的权威字段。模型生成 Draft，Service 绑定
+> `review_id`、refs 和 evidence 后再完成最终校验。
 ```
 
 响应 detail 只包含稳定 `code` 和脱敏 `message`。

@@ -4,7 +4,7 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具、证据驱动诊断、代码合入审查，以及 BM25 研发知识检索与上下文压缩基线。RAG 链路已使用真实 provider 通过 AgentRuntime 完成 8 条正负样本验收；CI Diagnosis 也已通过固定 CI 与代码证据完成连续 3 次真实 provider 验收。其余业务链路的真实验收状态单独列出，不用 Mock 结果代替。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求、诊断报告和 GitHub PR 建议状态。
+当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具、证据驱动诊断、代码合入审查，以及 BM25 研发知识检索与上下文压缩基线。RAG 链路已使用真实 provider 通过 AgentRuntime 完成 8 条正负样本验收；CI Diagnosis 已通过固定 CI 与代码证据完成连续 3 次真实 provider 验收，Local Code Review 也已通过固定本地变更完成真实 provider 验收。其余业务链路的真实验收状态单独列出，不用 Mock 结果代替。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求、诊断报告和 GitHub PR 建议状态。
 
 ```text
 当前进度：Agent Runtime + Tool/Permission/Event/Trace + Diagnosis/Review + BM25 RAG + ContextManager + 离线/真实 RAG Evaluation + React Console
@@ -53,7 +53,7 @@ Python 要求：3.11+
 | Trace 查询 | 将事件流聚合为任务摘要和可回放步骤 | 已完成基础版 |
 | 诊断执行服务 | 证据标准化、LLM 调用、Pydantic 报告校验和失败降级 | 已完成基础版 |
 | CI 诊断 API | 代码化证据采集、服务端权威字段绑定、结构化报告和真实 provider 验收 | 已完成真实验收 |
-| 代码审查服务与 API | merge-base diff、证据驱动 finding、结构化重试与 `POST /api/v1/reviews/code` | 已完成基础版 |
+| 代码审查服务与 API | merge-base diff、证据驱动 finding、结构化重试与 `POST /api/v1/reviews/code` | 已完成真实验收 |
 | GitHub PR 建议模式 | 签名校验、delivery 幂等、installation token、摘要 upsert 与 inline comment | 自动化闭环完成，真实 smoke 待验收 |
 | Review Evaluation | 固定 case、风险召回率、可行动准确率、误报率、证据与 diff 定位指标 | 已完成基线 |
 | BM25 RAG / Memory | 稳定切片、证据定位、关键词检索和 `knowledge_retrieve` 工具 | 已完成基线 |
@@ -80,7 +80,7 @@ Mock、固定响应和 Fake HTTP Client 只用于可重复测试。下面单独�
 | RAG Agent | 已完成 | 已完成 8 条代表性 case | `rag_live_provider.md/json` |
 | CI Diagnosis API | 已完成 | 修复后连续 3 次通过 | `ci_diagnosis_live_summary.md` + 单次 MD/JSON |
 | Log Diagnosis | Prompt / 契约已完成 | API 与 live report 待补 | 未完成 |
-| Local Code Review | 已完成 | 真实 provider report 待补 | 未标记完整验收 |
+| Local Code Review | 已完成 | 固定本地变更真实 provider 验收通过 | `code_review_live_summary.md` + 单次 MD/JSON |
 | GitHub PR Review | Fake adapter 闭环已完成 | 真实 App、PR、webhook 和评论待补 | 未完成 |
 
 本次真实 RAG Agent 基线：
@@ -107,6 +107,19 @@ Grounded Evidence References：100%
 Expected Keyword Hit Rate：100%
 平均延迟：17.18 秒
 p95：20.97 秒
+```
+
+本次真实 Local Code Review 验收：
+
+```text
+Model / API：gpt-5.6-terra / Responses
+Case：7229c86^...7229c86 的上传超时回归
+Git + Code Evidence Coverage：100%
+Grounded Evidence References：100%
+Expected Finding Match：100%
+Expected Keyword Hit Rate：100%（2 / 2）
+额外 Finding：0
+端到端延迟：15.79 秒
 ```
 
 ---
@@ -397,6 +410,8 @@ DevAgent/
 ├── tests/                     # 单元与集成测试
 ├── docs/evaluation.md         # Evaluation 口径、结果与边界
 ├── docs/learning/             # 每日学习与验收记录
+├── pyproject.toml             # 项目元数据与直接依赖
+├── uv.lock                    # uv 可复现依赖锁文件
 ├── plan.md                    # 项目设计文档
 └── learning_plan.md           # 八周开发学习计划
 ```
@@ -410,8 +425,6 @@ flowchart TD
     A[Agent Runtime]
     A --> B[ToolRegistry / Agent Skills]
     B --> C[FastAPI / ToolExecutor]
-├── pyproject.toml             # 项目元数据与直接依赖
-├── uv.lock                    # uv 可复现依赖锁文件
     C --> D[PermissionManager / EventBus / Trace]
     D --> E[CI / 日志诊断闭环]
     E --> F[代码合入审查 + Review Evaluation]
@@ -438,6 +451,7 @@ flowchart TD
 - [RAG Evaluation Baseline](eval/reports/rag_baseline.md)
 - [真实 RAG Agent Evaluation](eval/reports/rag_live_provider.md)
 - [真实 CI Diagnosis 验收汇总](eval/reports/ci_diagnosis_live_summary.md)
+- [真实 Local Code Review 验收汇总](eval/reports/code_review_live_summary.md)
 - [学习与验收记录](docs/learning/README.md)
 
 ---

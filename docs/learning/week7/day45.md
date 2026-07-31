@@ -676,6 +676,10 @@ def test_fixed_response_rejects_dangling_evidence_id(): ...
 [x] Prompt builder 接受 CodeReviewInput 并返回字符串
 [x] 输入 JSON 可解析且 refs、workspace、evidence 不丢失
 [x] CodeReviewReport JSON Schema 已进入 Prompt
+
+> 2026-07-31 契约更新：模型输出已收窄为 `CodeReviewReportDraft`，只包含分析字段；
+> `review_id`、base/head refs 和原始 evidence 改由 `CodeReviewService` 绑定。本文较早章节中要求
+> 模型复制完整 `CodeReviewReport` 的内容用于理解初版设计，不再代表当前实现。
 [x] Prompt 公共接口已从 devagent.prompts 导出
 ```
 

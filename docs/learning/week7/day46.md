@@ -877,5 +877,9 @@ Service 本地编排 p95：0.30 ms（固定 Collector/LLMClient，1,000 次）
 4. diagnosis 与 review 包的 Service 公共导出改为惰性加载，修复 models、prompts、service
    之间的循环导入，同时保持原有 from devagent.<package> import <Service> 用法不变。
 5. CodeReviewReport JSON Schema 在 Prompt 模块预序列化，Service 本地编排 p95 从 17.20 ms
+
+> 2026-07-31 契约更新：当前 Service 先校验 `CodeReviewReportDraft`，再绑定输入中的身份字段与
+> 原始 evidence，最后通过 `CodeReviewReport` 校验引用关系。因此模型复制字段不一致不再触发
+> `REPORT_MISMATCH`；非法 Draft 和悬空 evidence_id 仍通过 `INVALID_REPORT` 进入有界修复重试。
    降至 0.30 ms，Prompt 内容与公共接口不变。
 ```

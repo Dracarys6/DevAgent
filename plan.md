@@ -1458,7 +1458,7 @@ uv run --locked pytest tests/
 
 周期：约 1 到 2 周。
 
-当前状态：第 6 周诊断和第 7 周代码合入审查的确定性自动化链路已完成；真实 provider 的 CI 诊断在修复模型复制权威字段的问题后连续 3 次通过，并保存标准化报告。日志诊断、Local Code Review 和 GitHub App 真实 PR 仍等待对应 live 验收。未完成真实运行证据的链路不得描述为完整业务闭环。
+当前状态：第 6 周诊断和第 7 周代码合入审查的确定性自动化链路已完成；真实 provider 的 CI 诊断在修复模型复制权威字段的问题后连续 3 次通过，Local Code Review 也已通过固定本地变更完成真实 provider 验收并保存标准化报告。日志诊断和 GitHub App 真实 PR 仍等待对应 live 验收。未完成真实运行证据的链路不得描述为完整业务闭环。
 
 ### 任务清单
 
@@ -1480,6 +1480,7 @@ uv run --locked pytest tests/
 * [x] 定义 `CodeReviewReport`、`ReviewFinding`、`ReviewSeverity`、`ReviewCategory` 等结构化审查契约。
 * [x] 实现 provider 无关的 `CodeReviewService`，负责变更证据采集、Prompt 构造、LLMClient 调用和报告校验。
 * [x] 实现 `POST /api/v1/reviews/code`，输入 `base_ref`、`head_ref` 和 workspace，返回结构化审查报告或证据不足状态。
+* [x] 使用真实 provider 审查固定本地变更，验证 Git + Code 证据覆盖、服务端权威字段绑定、finding 定位、额外误报和脱敏报告。
 * [x] 定义 `PullRequestSource`、`ReviewPublisher` 和 `WebhookDeliveryStore` 协议，让核心审查服务不依赖 GitHub SDK 或内存存储。
 * [x] 实现 GitHub App adapter：校验 webhook 签名、解析 PR base/head SHA、读取变更、触发审查并回写建议。
 * [x] 实现 `POST /api/v1/integrations/github/webhooks`；首版用有界内存 DeliveryStore 保证 delivery ID 幂等，并更新同一条带标记的摘要评论，避免重复刷屏。
@@ -1732,7 +1733,8 @@ Agent 应该能够：
 * [x] 生成离线与真实 RAG 评测报告。
 * [ ] 为同义表达、语义正确性和证据忠实度增加人工抽检或独立 Judge。
 * [x] 完成 CI Diagnosis 标准化 live report。
-* [ ] 完成 Local Code Review 和 GitHub PR 的标准化 live report。
+* [x] 完成 Local Code Review 标准化 live report。
+* [ ] 完成 GitHub PR 标准化 live report。
 * [ ] 将 eval cases、run metadata、prediction 和 metrics 持久化。
 * [ ] 从真实 provider metadata 统计 token 与调用成本。
 

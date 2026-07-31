@@ -367,6 +367,51 @@ eval/reports/code_review_baseline.md
 Review baseline 使用固定结构化报告验证评分流程，不调用真实 provider。GitHub App 的真实 PR webhook、
 installation token 和评论回写属于单独的显式 smoke test。
 
+## Local Code Review Live Evaluation
+
+固定真实验收链路：
+
+```text
+git_compare(base_ref, head_ref, workspace, pathspecs=("src", "tests"))
+  -> read_file 补充变更文件上下文
+  -> CodeReviewInput
+  -> 真实 LLM 生成 CodeReviewReportDraft
+  -> CodeReviewService 绑定 review_id / refs / 原始 evidence
+  -> CodeReviewReport 完整引用校验
+  -> 确定性 metrics 与脱敏 MD/JSON
+```
+
+模型只负责 status、summary、findings 和 missing_evidence。`review_id`、base/head refs 与 evidence
+属于服务端权威数据，不要求模型复制，也不接受模型覆盖。这样既减少结构化输出负担，也避免模型伪造身份
+或改写原始证据。嵌套 workspace 的 Git compare 使用 `--relative` 返回相对于 workspace 的路径，使
+`read_file` 不会重复拼接仓库前缀。
+
+固定 case 只采集 `src/` 和 `tests/`，并移除纯注释答案行，避免 README 或人工说明泄漏标准答案。
+最终指标同时要求 Git + Code 证据覆盖、evidence 引用闭合、category/severity/文件/行号匹配、关键词命中
+以及额外 finding 为 0。真实运行与一次 severity 标签校准记录见：
+
+```text
+eval/reports/code_review_live_summary.md
+eval/reports/code_review_live.md
+eval/reports/code_review_live.json
+eval/reports/code_review_live_initial_score.md
+eval/reports/code_review_live_initial_score.json
+```
+
+显式调用真实 provider：
+
+```bash
+DEVAGENT_ENABLE_LIVE_EVAL=1 \
+  uv run --locked python scripts/run_live_code_review.py
+```
+
+使用已有脱敏输出重新评分，不产生 API 调用：
+
+```bash
+uv run --locked python scripts/run_live_code_review.py \
+  --input-json eval/reports/code_review_live.json
+```
+
 ## 运行方法
 
 运行 RAG Evaluation：
