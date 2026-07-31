@@ -1,6 +1,6 @@
 import json
 
-from devagent.review.models import CodeReviewInput, CodeReviewReport
+from devagent.review.models import CodeReviewInput, CodeReviewReportDraft
 
 CODE_REVIEW_SYSTEM_PROMPT = """你是一个代码合入审查 Agent。请严格遵循以下规则：
 1. 只审查 INPUT 中 base_ref...head_ref 的待合入变化及其受影响上下文。
@@ -23,31 +23,26 @@ CODE_REVIEW_SYSTEM_PROMPT = """你是一个代码合入审查 Agent。请严格�
 9. evidence_ids 只能引用 INPUT evidence 中已有 ID。
 10. file_path、line_start、line_end 和 side 必须能由对应 diff / code evidence 定位，
     不得猜测路径或行号。
-11. review_id、base_ref、head_ref 必须与 INPUT 完全一致；evidence 必须原样复制，
-    不能增加、删除或改写。
+11. 不要输出 review_id、base_ref、head_ref 或 evidence；这些权威字段由服务端绑定。
 12. 证据充分且没有可行动问题时，status=reviewed 且 findings=[]。
 13. 证据不足以完成审查时，status=insufficient_evidence、findings=[]，并填写
     missing_evidence。
 14. summary、title、description、suggestion、verification_steps 和 missing_evidence
     的解释性文本使用简体中文；代码标识、路径、Evidence 原文、JSON 字段与枚举保留原文。
-15. 只输出与 CodeReviewReport JSON Schema 匹配的 JSON 对象，不要 Markdown 围栏。"""
+15. 只输出与 CodeReviewReportDraft JSON Schema 匹配的 JSON 对象，不要 Markdown 围栏。"""
 
 # * 报告 Schema 在进程生命周期内保持不变，预序列化可避免每次审查重复生成。
 _SERIALIZED_REPORT_SCHEMA = json.dumps(
-    CodeReviewReport.model_json_schema(),
+    CodeReviewReportDraft.model_json_schema(),
     ensure_ascii=False,
     separators=(",", ":"),
 )
 
 _REPORT_SHAPE_EXAMPLE = json.dumps(
     {
-        "review_id": "从 INPUT.review_id 原样复制",
-        "base_ref": "从 INPUT.base_ref 原样复制",
-        "head_ref": "从 INPUT.head_ref 原样复制",
         "status": "reviewed",
         "summary": "使用简体中文填写审查结论",
         "findings": [],
-        "evidence": [],
         "missing_evidence": [],
     },
     ensure_ascii=False,
@@ -69,11 +64,10 @@ def build_code_review_prompt(review_input: CodeReviewInput) -> str:
     return (
         "代码审查输入：\n"
         f"{serialized_input}\n"
-        "CodeReviewReport JSON Schema：\n"
+        "CodeReviewReportDraft JSON Schema：\n"
         f"{_SERIALIZED_REPORT_SCHEMA}\n"
-        "仅返回 CodeReviewReport JSON 对象；解释性文本使用简体中文。\n"
-        "字段结构示例（只参考字段和类型，不得复制占位值；实际 evidence 必须原样复制 "
-        "INPUT.evidence）：\n"
+        "仅返回 CodeReviewReportDraft JSON 对象；解释性文本使用简体中文。\n"
+        "字段结构示例（只参考字段和类型，不得复制占位值）：\n"
         f"{_REPORT_SHAPE_EXAMPLE}"
     )
 
@@ -97,8 +91,8 @@ def build_code_review_repair_prompt(
         separators=(",", ":"),
     )
     return (
-        "上一次输出未通过校验，请重新生成完整的 CodeReviewReport JSON 对象。\n"
+        "上一次输出未通过校验，请重新生成完整的 CodeReviewReportDraft JSON 对象。\n"
         f"校验反馈：{serialized_feedback}\n"
         f"当前是第 {next_attempt} 次生成尝试。不要解释错误，不要输出 Markdown；"
-        "重新检查所有必填字段、枚举、引用关系，并原样复制 INPUT 中的身份字段与 evidence。"
+        "重新检查所有必填字段、枚举和 evidence_ids 引用关系。"
     )

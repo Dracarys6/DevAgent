@@ -220,9 +220,14 @@ def git_compare(
     workspace: str | Path,
     max_chars: int = MAX_GIT_COMPARE_CHARS,
     timeout: float = DEFAULT_GIT_TIMEOUT,
+    pathspecs: list[str] | tuple[str, ...] | None = None,
 ) -> GitCompareResult:
     """返回 base/head 合入范围的结构化变更证据。"""
     _validate_compare_parameters(base_ref, head_ref, max_chars, timeout)
+    try:
+        validated_pathspecs = _validate_diff_pathspecs(pathspecs)
+    except GitDiffError as exc:
+        raise GitCompareError(str(exc)) from exc
 
     try:
         root = _resolve_workspace(workspace)
@@ -255,6 +260,7 @@ def git_compare(
         [
             "git",
             "diff",
+            "--relative",
             "--name-status",
             "-z",
             "--no-ext-diff",
@@ -264,6 +270,7 @@ def git_compare(
             merge_base,
             head_sha,
             "--",
+            *validated_pathspecs,
         ],
         root,
         timeout=_remaining_timeout(deadline, timeout),
@@ -273,6 +280,7 @@ def git_compare(
         [
             "git",
             "diff",
+            "--relative",
             "--no-color",
             "--no-ext-diff",
             "--no-textconv",
@@ -282,6 +290,7 @@ def git_compare(
             merge_base,
             head_sha,
             "--",
+            *validated_pathspecs,
         ],
         root,
         timeout=_remaining_timeout(deadline, timeout),

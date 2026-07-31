@@ -20,7 +20,12 @@ from devagent.tools.git_tools import (
 )
 from devagent.tools.read_file_tools import ReadFileError, read_file
 
-from .models import CodeReviewInput, CodeReviewReport, ReviewStatus
+from .models import (
+    CodeReviewInput,
+    CodeReviewReport,
+    CodeReviewReportDraft,
+    ReviewStatus,
+)
 
 MAX_REVIEW_EVIDENCE_CHARS = 4_000
 MAX_CONTEXT_FILES = 5
@@ -313,7 +318,6 @@ class CodeReviewService:
         retryable_errors = {
             CodeReviewServiceErrorCode.EMPTY_LLM_RESPONSE,
             CodeReviewServiceErrorCode.INVALID_REPORT,
-            CodeReviewServiceErrorCode.REPORT_MISMATCH,
         }
         for attempt in range(1, self._max_report_attempts + 1):
             try:
@@ -325,11 +329,13 @@ class CodeReviewService:
                 ) from exc
 
             try:
-                report = self._parse_report(response)
-                self._validate_report(report=report, review_input=review_input)
-                return report
+                draft = self._parse_report(response)
+                return self._bind_report(draft=draft, review_input=review_input)
             except CodeReviewServiceError as exc:
-                if exc.code not in retryable_errors or attempt >= self._max_report_attempts:
+                if (
+                    exc.code not in retryable_errors
+                    or attempt >= self._max_report_attempts
+                ):
                     raise
                 # * 只反馈脱敏后的校验位置，不回传可能很长或包含敏感内容的原始输出。
                 messages.append(
@@ -346,7 +352,7 @@ class CodeReviewService:
         raise AssertionError("代码审查报告重试循环不应执行到这里")
 
     @staticmethod
-    def _parse_report(response: LLMResponse) -> CodeReviewReport:
+    def _parse_report(response: LLMResponse) -> CodeReviewReportDraft:
         if response.response_type != LLMResponseType.FINAL_ANSWER:
             raise CodeReviewServiceError(
                 code=CodeReviewServiceErrorCode.UNEXPECTED_LLM_RESPONSE,
@@ -362,7 +368,7 @@ class CodeReviewService:
                 details=details,
             )
         try:
-            return CodeReviewReport.model_validate_json(response.content)
+            return CodeReviewReportDraft.model_validate_json(response.content)
         except ValidationError as exc:
             details = _summarize_report_validation_errors(exc)
             if response.metadata.get("finish_reason") == "length":
@@ -401,24 +407,27 @@ class CodeReviewService:
                 )
 
     @staticmethod
-    def _validate_report(
+    def _bind_report(
         *,
-        report: CodeReviewReport,
+        draft: CodeReviewReportDraft,
         review_input: CodeReviewInput,
-    ) -> None:
-        expected_fields = {
-            "review_id": (report.review_id, review_input.review_id),
-            "base_ref": (report.base_ref, review_input.base_ref),
-            "head_ref": (report.head_ref, review_input.head_ref),
-            "evidence": (report.evidence, review_input.evidence),
-        }
-        for field, (actual, expected) in expected_fields.items():
-            if actual != expected:
-                raise CodeReviewServiceError(
-                    code=CodeReviewServiceErrorCode.REPORT_MISMATCH,
-                    message=f"代码审查报告的 {field} 字段与输入不匹配",
-                    details=[f"{field} 必须与 INPUT.{field} 完全一致"],
-                )
+    ) -> CodeReviewReport:
+        try:
+            return CodeReviewReport.model_validate(
+                {
+                    **draft.model_dump(),
+                    "review_id": review_input.review_id,
+                    "base_ref": review_input.base_ref,
+                    "head_ref": review_input.head_ref,
+                    "evidence": review_input.evidence,
+                }
+            )
+        except ValidationError as exc:
+            raise CodeReviewServiceError(
+                code=CodeReviewServiceErrorCode.INVALID_REPORT,
+                message="模型返回的代码审查内容无法绑定到输入证据",
+                details=_summarize_report_validation_errors(exc),
+            ) from exc
 
 
 def _summarize_report_validation_errors(exc: ValidationError) -> list[str]:

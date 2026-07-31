@@ -46,8 +46,8 @@ def make_review_input(
 
 def extract_prompt_sections(prompt: str) -> tuple[dict, dict]:
     input_prefix = "代码审查输入：\n"
-    schema_marker = "\nCodeReviewReport JSON Schema：\n"
-    output_marker = "\n仅返回 CodeReviewReport JSON 对象"
+    schema_marker = "\nCodeReviewReportDraft JSON Schema：\n"
+    output_marker = "\n仅返回 CodeReviewReportDraft JSON 对象"
     assert prompt.startswith(input_prefix)
     serialized_input, remainder = prompt.removeprefix(input_prefix).split(
         schema_marker,
@@ -134,8 +134,7 @@ def test_code_review_system_prompt_distinguishes_review_states() -> None:
 
 
 def test_code_review_system_prompt_requires_evidence_and_location() -> None:
-    assert "evidence 必须原样复制" in CODE_REVIEW_SYSTEM_PROMPT
-    assert "不能增加、删除或改写" in CODE_REVIEW_SYSTEM_PROMPT
+    assert "权威字段由服务端绑定" in CODE_REVIEW_SYSTEM_PROMPT
     for field_name in ["file_path", "line_start", "line_end", "side", "evidence_ids"]:
         assert field_name in CODE_REVIEW_SYSTEM_PROMPT
 
@@ -190,14 +189,16 @@ def test_build_code_review_prompt_includes_report_schema() -> None:
         "evidence_ids",
     ]:
         assert field_name in schema_text
+    assert "review_id" not in schema_text
+    assert '"evidence"' not in schema_text
 
 
 def test_build_code_review_prompt_includes_compact_json_shape_example() -> None:
     prompt = build_code_review_prompt(make_review_input())
 
     assert "字段结构示例" in prompt
-    assert '"review_id":"从 INPUT.review_id 原样复制"' in prompt
     assert '"status":"reviewed"' in prompt
+    assert "从 INPUT.review_id 原样复制" not in prompt
 
 
 def test_build_code_review_repair_prompt_contains_only_bounded_feedback() -> None:
@@ -212,7 +213,7 @@ def test_build_code_review_repair_prompt_contains_only_bounded_feedback() -> Non
     assert "field_7" in prompt
     assert "field_8" not in prompt
     assert "第 2 次生成尝试" in prompt
-    assert "重新生成完整的 CodeReviewReport JSON 对象" in prompt
+    assert "重新生成完整的 CodeReviewReportDraft JSON 对象" in prompt
 
 
 def test_build_code_review_prompt_does_not_mutate_input() -> None:

@@ -146,7 +146,8 @@ def make_service(
 ) -> tuple[CodeReviewService, FixedCollector, FixedLLMClient]:
     collector = FixedCollector(review_input)
     client = FixedLLMClient(
-        response or LLMResponse.final_answer(make_report(review_input).model_dump_json())
+        response
+        or LLMResponse.final_answer(make_report(review_input).model_dump_json())
     )
     service = CodeReviewService(
         llm_client=client,
@@ -249,7 +250,9 @@ def test_local_collector_keeps_diff_when_file_read_fails(tmp_path: Path) -> None
     assert str(tmp_path) not in review_input.missing_evidence[0].reason
 
 
-def test_local_collector_skips_deleted_duplicate_and_excess_files(tmp_path: Path) -> None:
+def test_local_collector_skips_deleted_duplicate_and_excess_files(
+    tmp_path: Path,
+) -> None:
     changed_files = [
         GitChangedFile(status="D", old_path="deleted.py", new_path=None),
         GitChangedFile(status="M", old_path="one.py", new_path="one.py"),
@@ -326,7 +329,9 @@ def test_local_collector_rejects_mismatched_compare_refs(tmp_path: Path) -> None
     assert exc_info.value.code == CodeReviewServiceErrorCode.EVIDENCE_COLLECTION_FAILED
 
 
-def test_code_review_service_returns_validated_report_and_messages(tmp_path: Path) -> None:
+def test_code_review_service_returns_validated_report_and_messages(
+    tmp_path: Path,
+) -> None:
     review_input = make_review_input(tmp_path)
     service, collector, client = make_service(review_input=review_input)
 
@@ -369,7 +374,9 @@ def test_code_review_service_short_circuits_without_evidence(tmp_path: Path) -> 
     assert client.messages == []
 
 
-def test_code_review_service_adds_missing_reason_for_empty_collector(tmp_path: Path) -> None:
+def test_code_review_service_adds_missing_reason_for_empty_collector(
+    tmp_path: Path,
+) -> None:
     review_input = make_review_input(tmp_path, evidence=[], missing_evidence=[])
     service, _, client = make_service(review_input=review_input)
 
@@ -572,7 +579,7 @@ def test_code_review_service_rejects_invalid_report(
         ("evidence", [make_evidence(excerpt="modified evidence")]),
     ],
 )
-def test_code_review_service_rejects_report_mismatch(
+def test_code_review_service_binds_authoritative_report_fields(
     tmp_path: Path,
     field: str,
     value: object,
@@ -584,10 +591,12 @@ def test_code_review_service_rejects_report_mismatch(
         response=LLMResponse.final_answer(report.model_dump_json()),
     )
 
-    with pytest.raises(CodeReviewServiceError) as exc_info:
-        service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
+    result = service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
 
-    assert exc_info.value.code == CodeReviewServiceErrorCode.REPORT_MISMATCH
+    assert result.review_id == review_input.review_id
+    assert result.base_ref == review_input.base_ref
+    assert result.head_ref == review_input.head_ref
+    assert result.evidence == review_input.evidence
 
 
 def test_code_review_service_wraps_llm_error_without_leaking_details(
@@ -630,7 +639,7 @@ def test_code_review_service_retries_invalid_report_with_validation_feedback(
     assert len(client.messages[0]) == 2
     repair_prompt = client.messages[1][-1]["content"]
     assert "invalid_report" in repair_prompt
-    assert "base_ref" in repair_prompt
+    assert "status" in repair_prompt
     assert "第 2 次生成尝试" in repair_prompt
 
 
@@ -658,7 +667,7 @@ def test_code_review_service_reports_token_truncation_during_retry(
     assert "token 上限被截断" in client.messages[1][-1]["content"]
 
 
-def test_code_review_service_retries_empty_and_mismatched_reports(
+def test_code_review_service_retries_empty_then_binds_authoritative_fields(
     tmp_path: Path,
 ) -> None:
     review_input = make_review_input(tmp_path)
@@ -667,7 +676,6 @@ def test_code_review_service_retries_empty_and_mismatched_reports(
         [
             LLMResponse.final_answer(""),
             LLMResponse.final_answer(mismatched_report.model_dump_json()),
-            LLMResponse.final_answer(make_report(review_input).model_dump_json()),
         ]
     )
     service = CodeReviewService(
@@ -679,21 +687,15 @@ def test_code_review_service_retries_empty_and_mismatched_reports(
     report = service.review(base_ref="main", head_ref="feature", workspace=tmp_path)
 
     assert report.review_id == "review-1"
-    assert len(client.messages) == 3
+    assert len(client.messages) == 2
     assert "empty_llm_response" in client.messages[1][-1]["content"]
-    assert "report_mismatch" in client.messages[2][-1]["content"]
-    assert "review_id 必须与 INPUT.review_id 完全一致" in (
-        client.messages[2][-1]["content"]
-    )
 
 
 def test_code_review_service_stops_after_configured_report_attempts(
     tmp_path: Path,
 ) -> None:
     review_input = make_review_input(tmp_path)
-    client = SequenceLLMClient(
-        [LLMResponse.final_answer("not-json") for _ in range(3)]
-    )
+    client = SequenceLLMClient([LLMResponse.final_answer("not-json") for _ in range(3)])
     service = CodeReviewService(
         llm_client=client,
         evidence_collector=FixedCollector(review_input),

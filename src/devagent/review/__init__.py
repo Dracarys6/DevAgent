@@ -1,6 +1,7 @@
 from .models import (
     CodeReviewInput,
     CodeReviewReport,
+    CodeReviewReportDraft,
     ReviewCategory,
     ReviewFinding,
     ReviewLineSide,
@@ -19,6 +20,7 @@ from .ports import (
 __all__ = [
     "CodeReviewInput",
     "CodeReviewReport",
+    "CodeReviewReportDraft",
     "ReviewCategory",
     "ReviewFinding",
     "ReviewLineSide",

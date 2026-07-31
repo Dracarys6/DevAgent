@@ -142,3 +142,15 @@ class CodeReviewReport(ReviewModel):
         ):
             raise ValueError("证据不足报告必须说明 missing_evidence")
         return self
+
+
+class CodeReviewReportDraft(ReviewModel):
+    """模型负责生成的审查分析；身份和证据字段由 Service 绑定。"""
+
+    # * 兼容旧版完整报告响应，但不信任模型复制的身份字段和 evidence。
+    model_config = ConfigDict(extra="ignore")
+
+    status: ReviewStatus
+    summary: str = Field(min_length=1, max_length=2000)
+    findings: list[ReviewFinding] = Field(default_factory=list)
+    missing_evidence: list[MissingEvidence] = Field(default_factory=list)

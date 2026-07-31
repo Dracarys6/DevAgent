@@ -1,0 +1,112 @@
+{
+  "provider": "openai-compatible-live",
+  "model": "gpt-5.6-terra",
+  "api_mode": "responses",
+  "base_ref": "7229c86^",
+  "head_ref": "7229c86",
+  "workspace_label": "examples/sample_repo",
+  "expected_finding": {
+    "category": "correctness",
+    "severities": [
+      "medium",
+      "high",
+      "critical"
+    ],
+    "file_path": "src/sample_app/uploader.py",
+    "line": 24,
+    "side": "head",
+    "keywords": [
+      "build_upload_timeout",
+      "min_timeout_seconds"
+    ]
+  },
+  "latency_ms": 15791.328374994919,
+  "attempt_count": 1,
+  "attempt_errors": [],
+  "report": {
+    "review_id": "b38dfc23-20b9-406a-a503-3e0bc089813c",
+    "base_ref": "7229c86^",
+    "head_ref": "7229c86",
+    "status": "reviewed",
+    "summary": "发现 1 个会导致大文件上传超时计算错误的问题：`UploadManager` 未使用输入参数及配置中的动态超时计算逻辑，现有新增测试也会失败。",
+    "findings": [
+      {
+        "finding_id": "R1",
+        "severity": "medium",
+        "category": "correctness",
+        "title": "大文件上传始终返回最小超时值",
+        "description": "`build_upload_timeout` 忽略了 `size_mb`、`bandwidth_mb_s` 以及 `safety_factor`，无论文件大小和带宽为何均返回 `min_timeout_seconds`。例如新增测试传入 80 MB 和 10 MB/s 时，期望超时至少为 12 秒，但默认配置下该方法实际返回 3 秒。这会使较大或较慢上传的超时值不足。",
+        "file_path": "src/sample_app/uploader.py",
+        "line_start": 24,
+        "line_end": 24,
+        "side": "head",
+        "evidence_ids": [
+          "E1",
+          "E3",
+          "E5"
+        ],
+        "suggestion": "调用 `estimate_upload_timeout(size_mb, bandwidth_mb_s)` 取得基础时长，乘以 `self.config.safety_factor` 后与 `self.config.min_timeout_seconds` 取较大值并返回，从而同时满足最小超时和动态超时要求。",
+        "verification_steps": [
+          "运行 `pytest tests/test_uploader.py`，确认 `test_large_upload_uses_dynamic_timeout` 通过。",
+          "增加或执行用例：默认配置下 `build_upload_timeout(80, 10)` 返回不小于 12。",
+          "增加或执行用例：较小文件的计算结果低于最小值时仍返回 `min_timeout_seconds`。"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "E1",
+        "kind": "git_diff",
+        "tool_name": "git_compare",
+        "source": "7229c86acc4e2ff3f6e44c2c1bc32b725b6f6a35",
+        "locator": "merge_base=757c253b12bb761423bd6f7972fce4c62213fd2f;base_sha=757c253b12bb761423bd6f7972fce4c62213fd2f;head_sha=7229c86acc4e2ff3f6e44c2c1bc32b725b6f6a35;hunks=4;truncated=false",
+        "excerpt": "diff --git a/src/sample_app/__init__.py b/src/sample_app/__init__.py\nnew file mode 100644\nindex 0000000..9931a1c\n--- /dev/null\n+++ b/src/sample_app/__init__.py\n@@ -0,0 +1,3 @@\n+from .uploader import UploadManager, UploadConfig\n+\n+__all__ = [\"UploadManager\", \"UploadConfig\"]\ndiff --git a/src/sample_app/uploader.py b/src/sample_app/uploader.py\nnew file mode 100644\nindex 0000000..dca283b\n--- /dev/null\n+++ b/src/sample_app/uploader.py\n@@ -0,0 +1,24 @@\n+from dataclasses import dataclass\n+\n+\n+@dataclass(frozen=True)\n+class UploadConfig:\n+    min_timeout_seconds: int = 3\n+    safety_factor: float = 1.5\n+\n+\n+def estimate_upload_timeout(size_mb: float, bandwidth_mb_s: float) -> float:\n+    if size_mb <= 0:\n+        raise ValueError(\"size_mb must be greater than 0\")\n+    if bandwidth_mb_s <= 0:\n+        raise ValueError(\"bandwidth_mb_s must be greater than 0\")\n+    return size_mb / bandwidth_mb_s\n+\n+\n+class UploadManager:\n+    def __init__(self, config: UploadConfig | None = None) -> None:\n+        self.config = config or UploadConfig()\n+\n+    def build_upload_timeout(self, size_mb: float, bandwidth_mb_s: float) -> float:\n+        return self.config.min_timeout_seconds\ndiff --git a/tests/conftest.py b/tests/conftest.py\nnew file mode 100644\nindex 0000000..35de06e\n--- /dev/null\n+++ b/tests/conftest.py\n@@ -0,0 +1,7 @@\n+from pathlib import Path\n+import sys\n+\n+\n+ROOT = Path(__file__).resolve().parents[1]\n+SRC = ROOT / \"src\"\n+sys.path.insert(0, str(SRC))\ndiff --git a/tests/test_uploader.py b/tests/test_uploader.py\nnew file mode 100644\nindex 0000000..630703e\n--- /dev/null\n+++ b/tests/test_uploader.py\n@@ -0,0 +1,17 @@\n+from sample_app import UploadConfig, UploadManager\n+\n+\n+def test_small_upload_uses_min_timeout():\n+    manager = UploadManager(UploadConfig(min_timeout_seconds=3))\n+\n+    timeout = manager.build_upload_timeout(size_mb=4, bandwidth_mb_s=10)\n+\n+    assert timeout == 3\n+\n+\n+def test_large_upload_uses_dynamic_timeout():\n+    manager = UploadManager()\n+\n+    timeout = manager.build_upload_timeout(size_mb=80, bandwidth_mb_s=10)\n+\n+    assert timeout >= 12\n"
+      },
+      {
+        "evidence_id": "E2",
+        "kind": "code",
+        "tool_name": "read_file",
+        "source": "examples/sample_repo",
+        "locator": "path=src/sample_app/__init__.py;lines=1-3",
+        "excerpt": "1: from .uploader import UploadManager, UploadConfig\n2: \n3: __all__ = [\"UploadManager\", \"UploadConfig\"]"
+      },
+      {
+        "evidence_id": "E3",
+        "kind": "code",
+        "tool_name": "read_file",
+        "source": "examples/sample_repo",
+        "locator": "path=src/sample_app/uploader.py;lines=1-24",
+        "excerpt": "1: from dataclasses import dataclass\n2: \n3: \n4: @dataclass(frozen=True)\n5: class UploadConfig:\n6:     min_timeout_seconds: int = 3\n7:     safety_factor: float = 1.5\n8: \n9: \n10: def estimate_upload_timeout(size_mb: float, bandwidth_mb_s: float) -> float:\n11:     if size_mb <= 0:\n12:         raise ValueError(\"size_mb must be greater than 0\")\n13:     if bandwidth_mb_s <= 0:\n14:         raise ValueError(\"bandwidth_mb_s must be greater than 0\")\n15:     return size_mb / bandwidth_mb_s\n16: \n17: \n18: class UploadManager:\n19:     def __init__(self, config: UploadConfig | None = None) -> None:\n20:         self.config = config or UploadConfig()\n21: \n22:     def build_upload_timeout(self, size_mb: float, bandwidth_mb_s: float) -> float:\n23:\n24:         return self.config.min_timeout_seconds"
+      },
+      {
+        "evidence_id": "E4",
+        "kind": "code",
+        "tool_name": "read_file",
+        "source": "examples/sample_repo",
+        "locator": "path=tests/conftest.py;lines=1-7",
+        "excerpt": "1: from pathlib import Path\n2: import sys\n3: \n4: \n5: ROOT = Path(__file__).resolve().parents[1]\n6: SRC = ROOT / \"src\"\n7: sys.path.insert(0, str(SRC))"
+      },
+      {
+        "evidence_id": "E5",
+        "kind": "code",
+        "tool_name": "read_file",
+        "source": "examples/sample_repo",
+        "locator": "path=tests/test_uploader.py;lines=1-17",
+        "excerpt": "1: from sample_app import UploadConfig, UploadManager\n2: \n3: \n4: def test_small_upload_uses_min_timeout():\n5:     manager = UploadManager(UploadConfig(min_timeout_seconds=3))\n6: \n7:     timeout = manager.build_upload_timeout(size_mb=4, bandwidth_mb_s=10)\n8: \n9:     assert timeout == 3\n10: \n11: \n12: def test_large_upload_uses_dynamic_timeout():\n13:     manager = UploadManager()\n14: \n15:     timeout = manager.build_upload_timeout(size_mb=80, bandwidth_mb_s=10)\n16: \n17:     assert timeout >= 12"
+      }
+    ],
+    "missing_evidence": []
+  },
+  "metrics": {
+    "reviewed": true,
+    "required_evidence_covered": true,
+    "evidence_references_grounded": true,
+    "expected_finding_matched": true,
+    "finding_count": 1,
+    "unexpected_finding_count": 0,
+    "expected_keyword_hit_count": 2,
+    "expected_keyword_count": 2,
+    "expected_keyword_hit_rate": 1.0,
+    "passed": true
+  }
+}

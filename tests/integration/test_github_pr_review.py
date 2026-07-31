@@ -52,7 +52,7 @@ class EvidenceEchoLLMClient:
         self.calls.append(messages)
         content = messages[1]["content"]
         start = content.index("代码审查输入：\n") + len("代码审查输入：\n")
-        end = content.index("\nCodeReviewReport JSON Schema：", start)
+        end = content.index("\nCodeReviewReportDraft JSON Schema：", start)
         review_input = CodeReviewInput.model_validate_json(content[start:end])
         report = CodeReviewReport(
             review_id=review_input.review_id,

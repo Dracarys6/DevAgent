@@ -269,6 +269,27 @@ def test_git_compare_records_patch_truncation(
     assert result.hunk_count > 0
 
 
+def test_git_compare_filters_files_with_safe_pathspecs(
+    git_repo_for_compare: tuple[Path, dict[str, str]],
+):
+    repo, _ = git_repo_for_compare
+
+    result = git_compare("main", "feature", repo, pathspecs=["app.py"])
+
+    assert [item.new_path for item in result.changed_files] == ["app.py"]
+    assert "diff --git a/app.py b/app.py" in result.patch
+    assert "added file.py" not in result.patch
+
+
+def test_git_compare_rejects_unsafe_pathspecs(
+    git_repo_for_compare: tuple[Path, dict[str, str]],
+):
+    repo, _ = git_repo_for_compare
+
+    with pytest.raises(GitCompareError, match="pathspec"):
+        git_compare("main", "feature", repo, pathspecs=["../secret.py"])
+
+
 def test_git_compare_result_supports_json_round_trip(
     git_repo_for_compare: tuple[Path, dict[str, str]],
 ):
@@ -286,10 +307,20 @@ def test_git_compare_accepts_workspace_inside_repository(
     repo, refs = git_repo_for_compare
     nested = repo / "nested"
     nested.mkdir()
+    (nested / "worker.py").write_text("enabled = True\n", encoding="utf-8")
+    subprocess.run(["git", "add", "nested/worker.py"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "commit", "--quiet", "-m", "add nested worker"],
+        cwd=repo,
+        check=True,
+    )
 
-    result = git_compare("main", "feature", nested)
+    result = git_compare("main", "HEAD", nested)
 
     assert result.merge_base == refs["common"]
+    assert [item.new_path for item in result.changed_files] == ["worker.py"]
+    assert "diff --git a/worker.py b/worker.py" in result.patch
+    assert "added file.py" not in result.patch
 
 
 @pytest.mark.parametrize(

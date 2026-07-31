@@ -40,11 +40,23 @@ from .live_diagnosis import (
     render_live_ci_diagnosis_report,
     run_live_ci_diagnosis,
 )
+from .live_review import (
+    LiveCodeReviewMetrics,
+    LiveCodeReviewRun,
+    LiveReviewExpectedFinding,
+    create_live_review_collector,
+    evaluate_live_code_review,
+    render_live_code_review_report,
+    run_live_code_review,
+)
 
 __all__ = [
     "ExpectedReviewFinding",
     "LiveCIDiagnosisMetrics",
     "LiveCIDiagnosisRun",
+    "LiveCodeReviewMetrics",
+    "LiveCodeReviewRun",
+    "LiveReviewExpectedFinding",
     "LiveRAGEvalRun",
     "LiveRAGMetrics",
     "LiveRAGPrediction",
@@ -62,6 +74,7 @@ __all__ = [
     "ReviewEvalMetrics",
     "evaluate_live_rag_predictions",
     "evaluate_live_ci_diagnosis",
+    "evaluate_live_code_review",
     "evaluate_rag_predictions",
     "evaluate_rag_context",
     "evaluate_review_cases",
@@ -70,8 +83,11 @@ __all__ = [
     "render_review_baseline_report",
     "render_live_rag_report",
     "render_live_ci_diagnosis_report",
+    "render_live_code_review_report",
     "render_rag_baseline_report",
     "run_live_rag_agent_eval",
     "run_live_ci_diagnosis",
+    "run_live_code_review",
+    "create_live_review_collector",
     "run_rag_eval",
 ]
