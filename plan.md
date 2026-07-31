@@ -1458,7 +1458,7 @@ uv run --locked pytest tests/
 
 周期：约 1 到 2 周。
 
-当前状态：第 6 周诊断和第 7 周代码合入审查的确定性自动化链路已完成；真实 provider 的 CI Diagnosis、Log Diagnosis 和 Local Code Review 均已通过固定证据验收并保存标准化报告。GitHub App 真实 PR 仍等待对应平台 live 验收。未完成真实运行证据的链路不得描述为完整业务闭环。
+当前状态：第 6 周诊断和第 7 周代码合入审查的确定性自动化链路已完成；真实 provider 的 CI Diagnosis、Log Diagnosis 和 Local Code Review 均已通过固定证据验收并保存标准化报告。GitHub App 也已在专用测试仓库完成真实 PR、webhook、installation token、模型分析和评论回写验收。未完成真实运行证据的链路不得描述为完整业务闭环。
 
 ### 任务清单
 
@@ -1486,8 +1486,8 @@ uv run --locked pytest tests/
 * [x] 实现 GitHub App adapter：校验 webhook 签名、解析 PR base/head SHA、读取变更、触发审查并回写建议。
 * [x] 实现 `POST /api/v1/integrations/github/webhooks`；首版用有界内存 DeliveryStore 保证 delivery ID 幂等，并更新同一条带标记的摘要评论，避免重复刷屏。
 * [x] 建立包含正确性、安全、兼容性、性能和测试缺口的固定 merge review eval cases。
-* [ ] 在专用 GitHub 测试仓库安装真实 GitHub App，创建包含已知缺陷的真实 PR，完成真实 webhook、installation token、代码审查和评论回写 smoke test。
-* [ ] 将真实 PR URL、base/head SHA、delivery GUID、report_id、摘要/inline comment URL、各阶段耗时和验收结论记录到 `docs/evaluation/github_pr_smoke.md`；不得记录任何凭据。
+* [x] 在专用 GitHub 测试仓库安装真实 GitHub App，创建包含已知缺陷的真实 PR，完成真实 webhook、installation token、代码审查和评论回写 smoke test。
+* [x] 将真实 PR URL、base/head SHA、delivery GUID、report_id、摘要/inline comment URL、各阶段耗时和验收结论记录到 `docs/evaluation/github_pr_smoke.md`；不得记录任何凭据。
 
 ### 诊断执行边界
 

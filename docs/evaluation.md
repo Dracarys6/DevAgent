@@ -451,6 +451,36 @@ uv run --locked python scripts/run_live_code_review.py \
   --input-json eval/reports/code_review_live.json
 ```
 
+## GitHub PR Review Smoke Test
+
+Local Code Review live evaluation 证明真实模型能够基于 Git 和代码 Evidence 生成有效报告；GitHub smoke
+继续验证外部平台路径：
+
+```text
+GitHub pull_request delivery
+  -> 原始 body HMAC-SHA256 签名校验
+  -> delivery ID 幂等检查
+  -> GitHub App JWT / installation token
+  -> 真实 PR base/head 与 diff evidence
+  -> CodeReviewService + 真实 provider
+  -> 摘要 comment upsert + inline comment
+```
+
+2026-07-24 在专用测试仓库完成 `opened`、`synchronize` 和同 delivery 的 redelivery。真实模型定位
+`src/downloads.py:7 RIGHT` 的 1 个 HIGH security finding；PR 始终保留 1 条 DevAgent 摘要评论，
+并成功发布 inline comment。重复 delivery 被识别为 `duplicate`，没有新增模型调用或评论；真实 webhook
+到摘要发布耗时 37.2 秒，低于 60 秒目标。
+
+完整的 PR URL、base/head SHA、delivery GUID、report_id、评论 URL、失败记录和安全边界见：
+
+```text
+docs/evaluation/github_pr_smoke.md
+```
+
+这项 smoke 使用真实外部平台和凭据，因此不进入默认 pytest。自动化测试继续负责签名拒绝、事件过滤、
+幂等、任务状态和发布 adapter 契约；真实 smoke 负责证明 App 权限、GitHub API、webhook 转发和评论回写
+在平台上确实可用。
+
 ## 运行方法
 
 运行 RAG Evaluation：

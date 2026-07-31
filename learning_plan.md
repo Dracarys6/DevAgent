@@ -856,11 +856,12 @@ Day 48：接入 GitHub Pull Request 建议模式 [x]
 验收：基于原始 body 和常量时间比较校验 X-Hub-Signature-256；有界内存 DeliveryStore 保证 delivery ID 幂等；使用 FakeGitHubClient 回写摘要和以 line / side 定位的 inline comments，无法映射时降级到摘要；不访问真实网络
 学习记录：对应 daily 文档解释 GitHub App installation token、webhook 签名、delivery redelivery、202 异步确认和 review comment line / side 定位
 
-Day 49：建立 Review Evaluation 并完成端到端验收 [进行中：Local Review live 已完成，真实 PR smoke 待验收]
+Day 49：建立 Review Evaluation 并完成端到端验收 [x]
 产出：eval/cases/code_review/、src/devagent/eval/review_metrics.py、src/devagent/eval/live_review.py、tests/eval/test_review_metrics.py、tests/eval/test_live_review.py、tests/integration/test_github_pr_review.py、eval/reports/code_review_baseline.md、eval/reports/code_review_live_summary.md、docs/evaluation/github_pr_smoke.md
 样例：正确性、安全、兼容性、性能、测试缺口、无缺陷变更和固定 GitHub webhook payload
 真实验证：固定本地变更先通过真实 provider 的 Service / Git / read_file / Pydantic 全链路验收；GitHub 阶段在专用测试仓库安装 GitHub App，先用固定 LLM 验证平台链路，再显式使用真实 provider 完成一次分析
 验收：Local Review 可重复计算 finding 匹配、误报、证据覆盖与引用完整率，并保存脱敏 live report；真实 PR 完成 opened、synchronize、redelivery，报告、Trace 和评论可由 report_id 关联
+实测：专用 GitHub 测试仓库完成真实 App 鉴权、webhook、PR evidence、真实模型分析、摘要 upsert、inline comment 和 delivery 去重；真实 provider 找到 1 个 HIGH security finding，webhook 到摘要发布耗时 37.2 秒
 ```
 
 ### 第 7 周额外收尾

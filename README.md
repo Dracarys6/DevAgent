@@ -55,7 +55,7 @@ Python 要求：3.11+
 | CI 诊断 API | 代码化证据采集、服务端权威字段绑定、结构化报告和真实 provider 验收 | 已完成真实验收 |
 | 日志诊断 API | 结构化日志时间线、首异常/连锁错误区分、置信边界和真实 provider 验收 | 已完成真实验收 |
 | 代码审查服务与 API | merge-base diff、证据驱动 finding、结构化重试与 `POST /api/v1/reviews/code` | 已完成真实验收 |
-| GitHub PR 建议模式 | 签名校验、delivery 幂等、installation token、摘要 upsert 与 inline comment | 自动化闭环完成，真实 smoke 待验收 |
+| GitHub PR 建议模式 | 签名校验、delivery 幂等、installation token、摘要 upsert 与 inline comment | 已完成真实验收 |
 | Review Evaluation | 固定 case、风险召回率、可行动准确率、误报率、证据与 diff 定位指标 | 已完成基线 |
 | BM25 RAG / Memory | 稳定切片、证据定位、关键词检索和 `knowledge_retrieve` 工具 | 已完成基线 |
 | Agent ContextManager | 保留完整历史，为 LLM 请求生成带原子工具块和关键 evidence 的压缩视图 | 已完成基础版 |
@@ -82,7 +82,7 @@ Mock、固定响应和 Fake HTTP Client 只用于可重复测试。下面单独�
 | CI Diagnosis API | 已完成 | 修复后连续 3 次通过 | `ci_diagnosis_live_summary.md` + 单次 MD/JSON |
 | Log Diagnosis | 已完成 | 固定结构化日志真实 API 与 runner 验收通过 | `log_diagnosis_live_summary.md` + MD/JSON |
 | Local Code Review | 已完成 | 固定本地变更真实 provider 验收通过 | `code_review_live_summary.md` + 单次 MD/JSON |
-| GitHub PR Review | Fake adapter 闭环已完成 | 真实 App、PR、webhook 和评论待补 | 未完成 |
+| GitHub PR Review | 已完成 | 真实 App、PR、webhook、模型分析和评论回写通过 | `github_pr_smoke.md` |
 
 本次真实 RAG Agent 基线：
 
@@ -135,6 +135,18 @@ Confirmed Root Cause：0
 代码证据缺口记录：100%
 Expected Keyword Hit Rate：100%（3 / 3）
 端到端延迟：34.19 秒
+```
+
+本次真实 GitHub PR Review 验收：
+
+```text
+专用测试仓库：Dracarys6/devagent-review-smoke#1
+触发事件：opened、synchronize、redelivery
+真实模型结果：定位 1 个 HIGH security finding
+评论结果：1 条可更新摘要 + 1 条 inline comment
+重复 delivery 去重率：100%
+摘要评论重复数：0
+真实 webhook 到摘要发布延迟：37.2 秒（目标 < 60 秒）
 ```
 
 ---
