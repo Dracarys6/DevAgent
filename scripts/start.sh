@@ -129,13 +129,12 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
-VENV_UVICORN="${PROJECT_ROOT}/.venv/bin/uvicorn"
 FRONTEND_DIR="${PROJECT_ROOT}/frontend"
 VITE_BIN="${FRONTEND_DIR}/node_modules/.bin/vite"
 
-[ -x "$VENV_UVICORN" ] || fail "缺少 ${VENV_UVICORN}，请先安装 Python 依赖和项目"
 [ -f "${FRONTEND_DIR}/package.json" ] || fail "缺少 frontend/package.json"
-[ -x "$VITE_BIN" ] || fail "缺少前端依赖，请先执行：cd frontend && npm install"
+[ -x "$VITE_BIN" ] || fail "缺少前端依赖，请先执行：cd frontend && npm ci"
+command_exists uv || fail "未找到 uv，请先运行 ./scripts/setup.sh"
 command_exists node || fail "未找到 Node.js"
 command_exists npm || fail "未找到 npm"
 command_exists curl || fail "未找到 curl"
@@ -155,7 +154,7 @@ echo
 
 (
     cd "$PROJECT_ROOT" || exit 1
-    exec "$VENV_UVICORN" devagent.api.app:app \
+    exec uv run --locked uvicorn devagent.api.app:app \
         --reload \
         --host "$BACKEND_HOST" \
         --port "$BACKEND_PORT"

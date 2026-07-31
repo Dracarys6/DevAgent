@@ -3,20 +3,17 @@
 set -eu
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VENV_DIR="${PROJECT_ROOT}/.venv"
-PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 usage() {
     cat <<'EOF'
 用法：scripts/setup.sh [选项]
 
-创建 Python 虚拟环境，并安装后端与前端依赖。
+使用 uv 创建 Python 虚拟环境，并安装后端与前端依赖。
 
 选项：
   -h, --help   显示帮助
 
-环境变量：
-  PYTHON_BIN   创建虚拟环境所用的 Python 命令（默认 python3）
+Python 版本由项目根目录的 .python-version 管理；uv 会在需要时安装它。
 EOF
 }
 
@@ -38,25 +35,15 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-command -v "$PYTHON_BIN" >/dev/null 2>&1 || fail "未找到 Python：${PYTHON_BIN}"
+command -v uv >/dev/null 2>&1 || fail "未找到 uv，请先安装：https://docs.astral.sh/uv/getting-started/installation/"
 command -v node >/dev/null 2>&1 || fail "未找到 Node.js"
 command -v npm >/dev/null 2>&1 || fail "未找到 npm"
 
-"$PYTHON_BIN" -c '
-import sys
-
-if sys.version_info < (3, 11):
-    raise SystemExit("DevAgent 需要 Python 3.11 或更高版本")
-' || fail "Python 版本不满足要求"
-
-if [ ! -x "${VENV_DIR}/bin/python" ]; then
-    echo "正在创建 Python 虚拟环境：${VENV_DIR}"
-    "$PYTHON_BIN" -m venv "$VENV_DIR"
-fi
-
-echo "正在安装 Python 依赖和 editable 项目..."
-"${VENV_DIR}/bin/python" -m pip install -r "${PROJECT_ROOT}/requirements.txt"
-"${VENV_DIR}/bin/python" -m pip install -e "$PROJECT_ROOT"
+echo "正在通过 uv 同步 Python、依赖和 editable 项目..."
+(
+    cd "$PROJECT_ROOT"
+    uv sync --locked
+)
 
 echo "正在安装前端依赖..."
 (

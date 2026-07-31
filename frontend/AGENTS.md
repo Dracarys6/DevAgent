@@ -40,7 +40,7 @@ this file adds frontend-specific guidance.
 - Update `docs/frontend.md` when frontend behavior, visual direction, API usage,
   setup, or architectural boundaries change.
 - If a frontend change requires a backend contract change, verify the relevant
-  `.venv/bin/pytest` API tests as well as the frontend checks.
+  `uv run --locked pytest` API tests as well as the frontend checks.
 
 ## Commit Habit
 

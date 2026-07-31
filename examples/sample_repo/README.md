@@ -15,14 +15,14 @@ UploadManager 原本应该根据文件大小和带宽动态计算 timeout。
 从 DevAgent 项目根目录运行：
 
 ```bash
-.venv/bin/pytest examples/sample_repo/tests -q
+uv run --locked pytest examples/sample_repo/tests -q
 ```
 
 或进入样例仓库运行：
 
 ```bash
 cd examples/sample_repo
-../../.venv/bin/pytest -q
+uv run --project ../.. --locked pytest -q
 ```
 
 预期结果：

@@ -200,7 +200,7 @@ Agent 执行过程：
 Agent 可能想调用：
 
 ```bash
-pytest tests/
+uv run --locked pytest tests/
 ```
 
 如果是低风险命令，可以允许执行。
@@ -667,7 +667,7 @@ class ToolResult:
 
 ```json
 {
-  "command": "pytest tests/test_upload.py",
+  "command": "uv run --locked pytest tests/test_upload.py",
   "cwd": "."
 }
 ```
@@ -1356,7 +1356,7 @@ Agent：根据日志和代码，失败原因可能是...
 ```text
 Agent 请求执行 Shell 命令：
 
-pytest tests/test_upload.py
+uv run --locked pytest tests/test_upload.py
 
 请选择：
 [本次允许] [始终允许] [本次拒绝] [始终拒绝]
@@ -1430,7 +1430,7 @@ Agent 能够：
 当 Agent 想执行：
 
 ```bash
-pytest tests/
+uv run --locked pytest tests/
 ```
 
 系统应：
@@ -1751,14 +1751,14 @@ Agent 应该能够：
 离线评测可以运行：
 
 ```bash
-.venv/bin/python scripts/generate_rag_baseline.py
+uv run --locked python scripts/generate_rag_baseline.py
 ```
 
 真实 Agent 评测可以显式运行：
 
 ```bash
 DEVAGENT_ENABLE_LIVE_EVAL=1 \
-  .venv/bin/python scripts/run_live_rag_eval.py
+  uv run --locked python scripts/run_live_rag_eval.py
 ```
 
 量化目标：
@@ -2289,7 +2289,7 @@ Git diff 风险分析类
 Agent 请求执行：
 
 ```bash
-pytest tests/
+uv run --locked pytest tests/
 ```
 
 展示点：
@@ -2535,9 +2535,9 @@ MCP、Docker Sandbox、复杂前端属于加分项，不进入主路径。
 文件读写
 pathlib 路径处理
 subprocess 执行命令
-venv 虚拟环境
-pip / pyproject.toml
-pytest 基础测试
+uv 管理的 `.venv` 虚拟环境
+`pyproject.toml` / `uv.lock` 依赖管理
+`uv run pytest` 基础测试
 类型标注
 ```
 
@@ -2551,9 +2551,9 @@ pytest 基础测试
 验收标准：
 
 ```text
-能独立创建虚拟环境
-能安装依赖
-能运行 pytest
+能通过 uv 独立创建虚拟环境
+能通过 `uv sync --locked` 安装锁定依赖
+能运行 `uv run pytest`
 能读懂简单类和函数
 能把一个功能拆成函数
 能解释 pathlib、subprocess、pytest 在项目里的用途
@@ -2642,7 +2642,7 @@ WebSocket 或 SSE
 验收标准：
 
 ```text
-能用 uvicorn 启动服务
+能用 `uv run uvicorn` 启动服务
 能在 Swagger 页面调用接口
 能创建任务并得到 task_id
 能查询 RUNNING / DONE / FAILED 状态
@@ -3085,7 +3085,7 @@ Agent 能基于工具结果回答
 演示方式：
 
 ```bash
-uvicorn devagent.api.app:app --reload
+uv run --locked uvicorn devagent.api.app:app --reload
 ```
 
 验收标准：

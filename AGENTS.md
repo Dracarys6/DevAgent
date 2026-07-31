@@ -9,6 +9,7 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 ## Tech Stack
 
 - Python 3.11+
+- uv for Python version, virtual environment, dependency, lockfile, and command management
 - Pydantic v2 for schemas and validation
 - pytest for deterministic unit and integration tests
 - pathlib for file path handling
@@ -57,10 +58,11 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 
 ## Testing Rules
 
-- Run Python commands through the project virtual environment: `.venv/bin/python`, `.venv/bin/pytest`, `.venv/bin/uvicorn`, or other `.venv/bin/...` entrypoints.
-- Do not use system `python`, `pytest`, or `uvicorn` for this project unless the virtual environment is missing and the user explicitly asks for a fallback.
+- Run Python commands through uv, for example `uv run python`, `uv run pytest`, and `uv run uvicorn`.
+- Use `uv sync --locked` to reproduce the committed environment. Use `uv add <package>` for runtime dependencies and `uv add --dev <package>` for development-only dependencies so `pyproject.toml` and `uv.lock` stay synchronized.
+- Do not use system `python`, `pytest`, or `uvicorn`, invoke `.venv/bin/...` directly, or install project dependencies with `pip` unless uv is unavailable and the user explicitly asks for a fallback.
 - When passing inline code or documentation text through a shell command, quote it so backticks, `$()`, and other shell substitutions cannot execute embedded commands.
-- When documenting commands in daily docs, prefer the `.venv/bin/...` form so verification is reproducible.
+- When documenting commands in daily docs, prefer the `uv run ...` form so verification uses the locked project environment.
 - Add pytest tests for every new tool, manager, API route, runtime behavior, and RAG component.
 - Test both success and failure cases.
 - Mock LLM responses instead of calling real models in unit tests.

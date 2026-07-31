@@ -225,13 +225,13 @@ eval/reports/rag_live_provider.json
 
 ```bash
 DEVAGENT_ENABLE_LIVE_EVAL=1 \
-  .venv/bin/python scripts/run_live_rag_eval.py
+  uv run --locked python scripts/run_live_rag_eval.py
 ```
 
 重新评分已有真实输出，不产生新的 API 调用：
 
 ```bash
-.venv/bin/python scripts/run_live_rag_eval.py \
+uv run --locked python scripts/run_live_rag_eval.py \
   --input-json eval/reports/rag_live_provider.json
 ```
 
@@ -305,7 +305,7 @@ report_id、scenario、target、原始 evidence
 
 ```bash
 DEVAGENT_ENABLE_LIVE_EVAL=1 \
-  .venv/bin/python scripts/run_live_ci_diagnosis.py \
+  uv run --locked python scripts/run_live_ci_diagnosis.py \
   --output eval/reports/ci_diagnosis_live_manual.md
 ```
 
@@ -372,38 +372,38 @@ installation token 和评论回写属于单独的显式 smoke test。
 运行 RAG Evaluation：
 
 ```bash
-.venv/bin/pytest tests/eval/test_runner.py tests/eval/test_rag_report.py -q
+uv run --locked pytest tests/eval/test_runner.py tests/eval/test_rag_report.py -q
 ```
 
 运行真实 RAG Agent Evaluation：
 
 ```bash
 DEVAGENT_ENABLE_LIVE_EVAL=1 \
-  .venv/bin/python scripts/run_live_rag_eval.py
+  uv run --locked python scripts/run_live_rag_eval.py
 ```
 
 生成 RAG baseline：
 
 ```bash
-.venv/bin/python scripts/generate_rag_baseline.py
+uv run --locked python scripts/generate_rag_baseline.py
 ```
 
 生成 Code Review baseline：
 
 ```bash
-.venv/bin/python scripts/generate_review_baseline.py
+uv run --locked python scripts/generate_review_baseline.py
 ```
 
 运行 Evaluation 模块：
 
 ```bash
-.venv/bin/pytest tests/eval -q
+uv run --locked pytest tests/eval -q
 ```
 
 运行全量回归：
 
 ```bash
-.venv/bin/pytest -q
+uv run --locked pytest -q
 ```
 
 ## 失败分析

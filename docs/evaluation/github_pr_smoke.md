@@ -76,7 +76,7 @@ Check local files without network access:
 
 ```bash
 DEVAGENT_ENABLE_GITHUB_SMOKE=1 \
-  .venv/bin/python scripts/github_pr_smoke.py --check-config
+  uv run --locked python scripts/github_pr_smoke.py --check-config
 ```
 
 Probe the real App token, Pull Request API, local fetch, and diff mapping without
@@ -84,7 +84,7 @@ publishing comments:
 
 ```bash
 DEVAGENT_ENABLE_GITHUB_SMOKE=1 \
-  .venv/bin/python scripts/github_pr_smoke.py --pull-number <PR_NUMBER>
+  uv run --locked python scripts/github_pr_smoke.py --pull-number <PR_NUMBER>
 ```
 
 ## Webhook Run
@@ -92,7 +92,7 @@ DEVAGENT_ENABLE_GITHUB_SMOKE=1 \
 Start DevAgent:
 
 ```bash
-.venv/bin/uvicorn devagent.api.app:app --host 127.0.0.1 --port 8000
+uv run --locked uvicorn devagent.api.app:app --host 127.0.0.1 --port 8000
 ```
 
 Expose port 8000 through an HTTPS forwarding service and configure the GitHub App

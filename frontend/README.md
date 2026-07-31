@@ -25,14 +25,14 @@ DevAgent Console 是后端 Agent Runtime 的 Web GUI，首版覆盖：
 需要分别调试进程时，可先在项目根目录启动 API：
 
 ```bash
-.venv/bin/uvicorn devagent.api.app:app --reload
+uv run --locked uvicorn devagent.api.app:app --reload
 ```
 
 再启动前端：
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 

@@ -3,7 +3,6 @@
 set -eu
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTEST_BIN="${PROJECT_ROOT}/.venv/bin/pytest"
 RUN_BACKEND=true
 RUN_FRONTEND=false
 
@@ -27,15 +26,15 @@ EOF
 }
 
 run_backend() {
-    [ -x "$PYTEST_BIN" ] || {
-        echo "缺少 ${PYTEST_BIN}，请先运行 ./scripts/setup.sh" >&2
+    command -v uv >/dev/null 2>&1 || {
+        echo "缺少 uv，请先运行 ./scripts/setup.sh" >&2
         exit 1
     }
 
     echo "==> 运行后端测试"
     (
         cd "$PROJECT_ROOT"
-        "$PYTEST_BIN" "$@"
+        uv run --locked pytest "$@"
     )
 }
 

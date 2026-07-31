@@ -9,8 +9,9 @@ DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实
 ```text
 当前进度：Agent Runtime + Tool/Permission/Event/Trace + Diagnosis/Review + BM25 RAG + ContextManager + 离线/真实 RAG Evaluation + React Console
 当前阶段：第 8 周 RAG / Memory 离线基线和真实 Agent 验收已完成；第 9 周比较向量、混合召回与重排
-测试状态：使用 `.venv/bin/pytest -q` 执行全量回归
+测试状态：使用 `uv run --locked pytest -q` 执行全量回归
 Python 要求：3.11+
+环境管理：uv + `pyproject.toml` + `uv.lock`
 ```
 
 ---
@@ -153,7 +154,7 @@ sequenceDiagram
 
 ### 一键启动前后端
 
-完成 Python 和前端依赖安装后，在项目根目录执行：
+首次克隆先运行 `./scripts/setup.sh` 同步后端与前端依赖，之后在项目根目录执行：
 
 ```bash
 ./scripts/start.sh
@@ -174,26 +175,35 @@ sequenceDiagram
 ./scripts/start.sh --help
 ```
 
-### 1. 创建并激活虚拟环境
+### 1. 安装 uv
+
+按照 [uv 官方安装文档](https://docs.astral.sh/uv/getting-started/installation/) 安装后确认命令可用：
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+uv --version
 ```
 
-### 2. 安装依赖与项目
+### 2. 同步开发环境
 
 ```bash
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m pip install -e .
+./scripts/setup.sh
 ```
 
-`-e` 表示 editable install。修改 `src/devagent` 中的源码后，无需重新安装。
+脚本执行 `uv sync --locked`，根据 `.python-version`、`pyproject.toml` 和 `uv.lock`
+创建 `.venv`、安装 editable 项目与开发依赖，然后通过 `npm ci` 安装前端依赖。日常只修改
+Python 依赖时，可以直接运行：
+
+```bash
+uv sync --locked
+```
+
+新增运行依赖使用 `uv add <package>`，新增开发依赖使用 `uv add --dev <package>`；两条命令会同时
+更新项目元数据和锁文件。
 
 ### 3. 运行测试
 
 ```bash
-.venv/bin/pytest -q
+uv run --locked pytest -q
 ```
 
 预期结果：全部测试通过；具体数量以当前分支输出为准。
@@ -211,13 +221,13 @@ rg --version
 安装 editable 包后，可以运行：
 
 ```bash
-devagent "请分析项目" --workspace .
+uv run --locked devagent "请分析项目" --workspace .
 ```
 
 也可以直接使用模块入口：
 
 ```bash
-.venv/bin/python -m devagent.cli "请分析项目" --workspace .
+uv run --locked python -m devagent.cli "请分析项目" --workspace .
 ```
 
 输出会展示 LLM 调用、工具调用和最终回答。失败场景会返回非 0 退出码并输出中文错误。
@@ -227,7 +237,7 @@ devagent "请分析项目" --workspace .
 ```bash
 export DEVAGENT_LLM_API_KEY="你的 key"
 export DEVAGENT_LLM_MODEL="你的模型名"
-devagent "请分析项目中的 ToolRegistry" --workspace . --provider real
+uv run --locked devagent "请分析项目中的 ToolRegistry" --workspace . --provider real
 ```
 
 `real` 模式默认只向模型暴露低风险工具。高风险工具需要通过 ToolExecutor、CommandGuard 和 PermissionManager 审批链显式接入。
@@ -296,7 +306,7 @@ result = registry.execute(
 result = registry.execute(
     "run_shell",
     {
-        "command": ["pytest", "-q"],
+        "command": ["uv", "run", "--locked", "pytest", "-q"],
         "cwd": ".",
         "workspace": ".",
         "timeout": 30,
@@ -400,6 +410,8 @@ flowchart TD
     A[Agent Runtime]
     A --> B[ToolRegistry / Agent Skills]
     B --> C[FastAPI / ToolExecutor]
+├── pyproject.toml             # 项目元数据与直接依赖
+├── uv.lock                    # uv 可复现依赖锁文件
     C --> D[PermissionManager / EventBus / Trace]
     D --> E[CI / 日志诊断闭环]
     E --> F[代码合入审查 + Review Evaluation]
