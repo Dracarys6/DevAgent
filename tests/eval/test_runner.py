@@ -7,8 +7,8 @@ from pydantic import BaseModel, ValidationError
 from devagent.eval import (
     RAGEvalCase,
     RAGEvalConfigurationError,
-    RAGEvalRun,
     RAGEvalPrediction,
+    RAGEvalRun,
     evaluate_rag_predictions,
     load_rag_eval_cases,
     run_rag_eval,
@@ -80,6 +80,28 @@ def make_result(
         top_k=5,
         total_candidates=len(items),
         items=items,
+        retrieval_ms=0.5,
+    )
+
+
+def make_ranked_result(paths: list[str]) -> RetrievalResult:
+    return RetrievalResult(
+        query="alpha",
+        top_k=len(paths),
+        total_candidates=len(paths),
+        items=[
+            EvidenceSnippet(
+                chunk_id=f"chunk-{rank}",
+                document_id=f"document-{rank}",
+                source="workspace",
+                path=path,
+                line_range=LineRange(start=rank, end=rank),
+                excerpt="alpha beta",
+                score=float(len(paths) - rank + 1),
+                rank=rank,
+            )
+            for rank, path in enumerate(paths, start=1)
+        ],
         retrieval_ms=0.5,
     )
 
@@ -252,11 +274,77 @@ def test_metrics_are_perfect_for_complete_positive_and_empty_negative() -> None:
 
     assert metrics.tool_hit_rate == 1
     assert metrics.evidence_hit_rate == 1
+    assert metrics.mrr_at_5 == 1
     assert metrics.answer_keyword_hit_rate == 1
     assert metrics.empty_result_accuracy == 1
     assert metrics.evidence_location_completeness == 1
     assert metrics.failed_tool_case_ids == []
     assert metrics.missed_evidence_case_ids == []
+
+
+def test_metrics_calculate_mrr_at_5_from_first_relevant_result() -> None:
+    positive_cases = [
+        make_case(case_id=f"positive-{index}", expected_paths=["target.py"])
+        for index in range(1, 5)
+    ]
+    cases = [*positive_cases, make_case(case_id="negative", expect_empty=True)]
+    predictions = [
+        make_prediction(
+            case_id="positive-1",
+            result=make_ranked_result(["target.py"]),
+        ),
+        make_prediction(
+            case_id="positive-2",
+            result=make_ranked_result(["noise-1.py", "target.py"]),
+        ),
+        make_prediction(
+            case_id="positive-3",
+            result=make_ranked_result(
+                [
+                    "noise-1.py",
+                    "noise-2.py",
+                    "noise-3.py",
+                    "noise-4.py",
+                    "target.py",
+                ]
+            ),
+        ),
+        make_prediction(
+            case_id="positive-4",
+            result=make_ranked_result(
+                [
+                    "noise-1.py",
+                    "noise-2.py",
+                    "noise-3.py",
+                    "noise-4.py",
+                    "noise-5.py",
+                    "target.py",
+                ]
+            ),
+        ),
+        make_prediction(
+            case_id="negative",
+            result=make_result(empty=True),
+            answer_text="",
+        ),
+    ]
+
+    metrics = evaluate_rag_predictions(cases, predictions)
+
+    assert metrics.evidence_hit_rate == 0.75
+    assert metrics.reciprocal_rank_sum == pytest.approx(1 + 1 / 2 + 1 / 5)
+    assert metrics.mrr_at_5 == pytest.approx((1 + 1 / 2 + 1 / 5) / 4)
+    assert metrics.missed_evidence_case_ids == ["positive-4"]
+
+
+def test_metrics_model_rejects_inconsistent_mrr() -> None:
+    cases, predictions = make_complete_eval_input()
+    metrics = evaluate_rag_predictions(cases, predictions)
+    payload = metrics.model_dump()
+    payload["mrr_at_5"] = 0.5
+
+    with pytest.raises(ValidationError, match="reciprocal_rank_sum"):
+        type(metrics).model_validate(payload)
 
 
 def test_metrics_expose_path_keyword_and_negative_result_failures() -> None:
@@ -276,6 +364,7 @@ def test_metrics_expose_path_keyword_and_negative_result_failures() -> None:
     metrics = evaluate_rag_predictions(cases, predictions)
 
     assert metrics.evidence_hit_rate == 0
+    assert metrics.mrr_at_5 == 0
     assert metrics.answer_keyword_hit_rate == 0.5
     assert metrics.empty_result_accuracy == 0
     assert metrics.missed_evidence_case_ids == ["positive"]
@@ -358,6 +447,7 @@ def test_location_completeness_detects_untrusted_constructed_evidence() -> None:
     metrics = evaluate_rag_predictions(cases, predictions)
 
     assert metrics.evidence_location_completeness == 0
+    assert metrics.incomplete_location_case_ids == ["positive"]
 
 
 def test_run_model_rejects_metrics_prediction_count_mismatch() -> None:
@@ -430,16 +520,17 @@ def test_runner_converts_invalid_success_content_to_failed_prediction(
     assert all(item.error_code == "INVALID_TOOL_CONTENT" for item in run.predictions)
 
 
-def test_fixed_baseline_meets_day54_quality_targets() -> None:
+def test_fixed_baseline_meets_day57_bm25_quality_targets() -> None:
     cases = load_rag_eval_cases(RAG_CASE_DIR)
 
     run = run_rag_eval(cases, workspace=RAG_WORKSPACE)
 
-    assert run.metrics.case_count == 20
-    assert run.metrics.positive_case_count == 18
-    assert run.metrics.negative_case_count == 2
+    assert run.metrics.case_count == 36
+    assert run.metrics.positive_case_count == 30
+    assert run.metrics.negative_case_count == 6
     assert run.metrics.tool_hit_rate == 1
     assert run.metrics.evidence_hit_rate >= 0.8
+    assert run.metrics.mrr_at_5 == pytest.approx(29.5 / 30)
     assert run.metrics.answer_keyword_hit_rate >= 0.8
     assert run.metrics.empty_result_accuracy == 1
     assert run.metrics.evidence_location_completeness == 1
@@ -452,8 +543,8 @@ def test_fixed_baseline_has_repeatable_semantic_results() -> None:
     first = run_rag_eval(cases, workspace=RAG_WORKSPACE)
     second = run_rag_eval(cases, workspace=RAG_WORKSPACE)
 
-    def semantic_result(run: object) -> list[tuple[object, ...]]:
-        predictions = getattr(run, "predictions")
+    def semantic_result(run: RAGEvalRun) -> list[tuple[object, ...]]:
+        predictions = run.predictions
         return [
             (
                 item.case_id,

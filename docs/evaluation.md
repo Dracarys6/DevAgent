@@ -247,6 +247,48 @@ live report：证明真实模型、Runtime、工具和最终答案链路能够�
 
 没有 live report 的用户业务能力只能写“已实现，真实验收待完成”，不能写成完整闭环。
 
+## Week 9 BM25 Frozen Baseline
+
+第 9 周先冻结增强后的数据集和 BM25 对照组，再引入向量、混合召回与 rerank。新基准保留第 8 周
+20 条历史 case，并扩充到 36 条：
+
+```text
+正样本：30
+负样本：6
+Corpus documents：21
+语料类型：Python、Markdown、JSONL 日志、CI JSON
+```
+
+`expected_paths` 作为本地 workspace evidence 的 relevance label。Hit@5 判断前 5 名内是否出现任一
+expected path；MRR@5 对第一个相关结果的排名取倒数，再以全部正样本为分母。漏召回贡献 0，负样本
+不进入 MRR，而由 Empty Result Accuracy 单独评分。
+
+报告：
+
+```text
+eval/reports/rag_bm25_baseline.md
+```
+
+固定结果：
+
+| Metric | Result | Target |
+| --- | ---: | ---: |
+| Top-5 Evidence Hit Rate | 100.0% | >= 80% |
+| MRR@5 | 98.3% | BM25 baseline |
+| Answer Keyword Hit Rate | 100.0% | >= 80% |
+| Empty Result Accuracy | 100.0% | 100% |
+| Evidence Location Completeness | 100.0% | >= 90% |
+| Context Reduction Rate | 77.8% | >= 40% |
+| Retrieval p95 | 7.31 ms | < 800 ms |
+
+29 个正样本首位命中；`github-inline-fallback` 的正确 Markdown evidence 位于第 2 名，所以 Hit@5
+仍是 100%，MRR@5 为 98.3%。当前固定运行没有 tool failure、Top-5 miss、负样本错误召回、定位缺失
+或关键词缺失。
+
+Day57 只评估 Retriever，故意不调用 LLM，以隔离检索排序质量、延迟与上下文成本。第 9 周最终候选
+策略仍必须在 Day63 通过真实 AgentRuntime 和真实 provider 评测答案、引用、拒答、延迟与失败率，
+不能用这份确定性基准替代真实业务验收。
+
 ## Live CI Diagnosis Evaluation
 
 固定 CI case 经过以下真实链路：
@@ -501,6 +543,9 @@ DEVAGENT_ENABLE_LIVE_EVAL=1 \
 ```bash
 uv run --locked python scripts/generate_rag_baseline.py
 ```
+
+该命令默认生成第 9 周的 `eval/reports/rag_bm25_baseline.md`。第 8 周
+`eval/reports/rag_baseline.md` 作为历史快照保留。
 
 生成 Code Review baseline：
 

@@ -1,7 +1,7 @@
+import subprocess
 from argparse import ArgumentParser
 from datetime import UTC, datetime
 from pathlib import Path
-import subprocess
 
 from devagent.eval import (
     evaluate_rag_context,
@@ -13,7 +13,7 @@ from devagent.eval import (
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CASE_DIR = PROJECT_ROOT / "eval" / "cases" / "rag"
 DEFAULT_WORKSPACE = DEFAULT_CASE_DIR / "workspace"
-DEFAULT_OUTPUT = PROJECT_ROOT / "eval" / "reports" / "rag_baseline.md"
+DEFAULT_OUTPUT = PROJECT_ROOT / "eval" / "reports" / "rag_bm25_baseline.md"
 
 
 def main() -> None:

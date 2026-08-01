@@ -1,12 +1,21 @@
 import json
-from math import ceil
+from math import ceil, isclose
 from pathlib import Path, PurePosixPath
 from time import perf_counter
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from devagent.memory import RetrievalResult
 from devagent.tools import KnowledgeRetrieveTool, ToolRegistry
+
+MRR_CUTOFF = 5
 
 
 class RAGEvalConfigurationError(ValueError):
@@ -102,8 +111,10 @@ class RAGEvalMetrics(RAGEvalModel):
     correct_empty_count: int = Field(ge=0)
     located_evidence_count: int = Field(ge=0)
     returned_evidence_count: int = Field(ge=0)
+    reciprocal_rank_sum: float = Field(ge=0)
     tool_hit_rate: float = Field(ge=0, le=1)
     evidence_hit_rate: float = Field(ge=0, le=1)
+    mrr_at_5: float = Field(ge=0, le=1)
     answer_keyword_hit_rate: float = Field(ge=0, le=1)
     empty_result_accuracy: float = Field(ge=0, le=1)
     evidence_location_completeness: float = Field(ge=0, le=1)
@@ -114,6 +125,16 @@ class RAGEvalMetrics(RAGEvalModel):
     missed_evidence_case_ids: list[str]
     missing_answer_keywords: list[str]
     incorrect_non_empty_case_ids: list[str]
+    incomplete_location_case_ids: list[str]
+
+    @model_validator(mode="after")
+    def validate_ranking_metrics(self) -> "RAGEvalMetrics":
+        if self.reciprocal_rank_sum > self.positive_case_count:
+            raise ValueError("reciprocal_rank_sum 不能大于正样本数量")
+        expected_mrr = self.reciprocal_rank_sum / self.positive_case_count
+        if not isclose(self.mrr_at_5, expected_mrr, abs_tol=1e-12):
+            raise ValueError("mrr_at_5 与 reciprocal_rank_sum 不一致")
+        return self
 
 
 class RAGEvalRun(RAGEvalModel):
@@ -167,10 +188,12 @@ def evaluate_rag_predictions(
     correct_empty_count = 0
     located_evidence_count = 0
     returned_evidence_count = 0
+    reciprocal_rank_sum = 0.0
     failed_tool_case_ids: list[str] = []
     missed_evidence_case_ids: list[str] = []
     missing_answer_keywords: list[str] = []
     incorrect_non_empty_case_ids: list[str] = []
+    incomplete_location_case_ids: list[str] = []
 
     for case in cases:
         prediction = prediction_by_id[case.case_id]
@@ -189,6 +212,8 @@ def evaluate_rag_predictions(
         )
         returned_evidence_count += len(items)
         located_evidence_count += sum(_has_complete_location(item) for item in items)
+        if any(not _has_complete_location(item) for item in items):
+            incomplete_location_case_ids.append(case.case_id)
 
         if case.expect_empty:
             if prediction.tool_success and not items:
@@ -197,9 +222,14 @@ def evaluate_rag_predictions(
                 incorrect_non_empty_case_ids.append(case.case_id)
             continue
 
-        actual_paths = {item.path for item in items}
-        if actual_paths & set(case.expected_paths):
+        relevant_rank = _first_relevant_rank(
+            expected_paths=set(case.expected_paths),
+            result=prediction.retrieval_result,
+            cutoff=MRR_CUTOFF,
+        )
+        if relevant_rank is not None:
             evidence_hit_count += 1
+            reciprocal_rank_sum += 1 / relevant_rank
         else:
             missed_evidence_case_ids.append(case.case_id)
 
@@ -223,8 +253,10 @@ def evaluate_rag_predictions(
         correct_empty_count=correct_empty_count,
         located_evidence_count=located_evidence_count,
         returned_evidence_count=returned_evidence_count,
+        reciprocal_rank_sum=reciprocal_rank_sum,
         tool_hit_rate=tool_hit_count / len(cases),
         evidence_hit_rate=evidence_hit_count / len(positive_cases),
+        mrr_at_5=reciprocal_rank_sum / len(positive_cases),
         answer_keyword_hit_rate=matched_keyword_count / expected_keyword_count,
         empty_result_accuracy=correct_empty_count / len(negative_cases),
         evidence_location_completeness=(
@@ -239,6 +271,7 @@ def evaluate_rag_predictions(
         missed_evidence_case_ids=missed_evidence_case_ids,
         missing_answer_keywords=missing_answer_keywords,
         incorrect_non_empty_case_ids=incorrect_non_empty_case_ids,
+        incomplete_location_case_ids=incomplete_location_case_ids,
     )
 
 
@@ -274,7 +307,7 @@ def run_rag_eval(
                 answer_text = "\n\n".join(
                     item.excerpt for item in retrieval_result.items
                 )
-            except Exception:
+            except ValidationError:
                 # ! Provider or adapter content is untrusted even when ToolResult says success.
                 tool_success = False
                 error_code = "INVALID_TOOL_CONTENT"
@@ -343,6 +376,20 @@ def _percentile(values: list[float], percentile: float) -> float:
     ordered = sorted(values)
     index = max(0, ceil(percentile * len(ordered)) - 1)
     return ordered[index]
+
+
+def _first_relevant_rank(
+    *,
+    expected_paths: set[str],
+    result: RetrievalResult | None,
+    cutoff: int,
+) -> int | None:
+    if result is None:
+        return None
+    for item in result.items[:cutoff]:
+        if item.path in expected_paths:
+            return item.rank
+    return None
 
 
 def _validate_relative_path(value: str) -> str:

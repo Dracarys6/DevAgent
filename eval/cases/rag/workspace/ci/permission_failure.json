@@ -1,0 +1,12 @@
+{
+  "pipeline_id": "pipeline-guard-42",
+  "status": "failed",
+  "job": "agent-security-tests",
+  "failed_test": "tests/security/test_command_guard.py::test_blocks_recursive_root_delete",
+  "error_type": "PermissionDeniedError",
+  "error_message": "high-risk shell command was blocked before execution",
+  "location": "src/security/command_guard.py:88",
+  "command": "rm -rf /",
+  "risk_level": "critical",
+  "policy_decision": "deny"
+}

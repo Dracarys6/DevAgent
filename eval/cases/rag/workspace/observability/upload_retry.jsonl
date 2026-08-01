@@ -1,0 +1,5 @@
+{"timestamp":"2026-07-13T09:00:00Z","sequence_id":1,"level":"INFO","service":"api","message":"large upload accepted","context":{"upload_id":"up-100","size_mb":100}}
+{"timestamp":"2026-07-13T09:00:04Z","sequence_id":2,"level":"ERROR","service":"uploader","message":"UploadTimeoutError after 3 seconds","context":{"upload_id":"up-100","timeout_seconds":3,"expected_seconds":12}}
+{"timestamp":"2026-07-13T09:00:05Z","sequence_id":3,"level":"WARNING","service":"retry","message":"retry scheduled","context":{"upload_id":"up-100","attempt":1}}
+{"timestamp":"2026-07-13T09:00:09Z","sequence_id":4,"level":"ERROR","service":"retry","message":"RetryExhaustedError","context":{"upload_id":"up-100","attempt":1}}
+{"timestamp":"2026-07-13T09:00:10Z","sequence_id":5,"level":"CRITICAL","service":"task","message":"upload task finished","context":{"upload_id":"up-100","status":"failed"}}

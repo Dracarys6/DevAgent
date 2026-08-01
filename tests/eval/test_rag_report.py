@@ -236,15 +236,18 @@ def test_render_report_contains_metrics_business_slices_and_boundaries(
     )
 
     assert "Top-5 Evidence Hit Rate | 100.0%" in report
+    assert "MRR@5 | 100.0%" in report
     assert "Context Reduction Rate" in report
     assert "| ci | 1 | 100.0%" in report
     assert "Full-corpus oracle injection" in report
     assert "Negative cases" in report
     assert "live-LLM answer accuracy" in report
+    assert "`tool_failure`" in report
+    assert "`miss_at_5`" in report
     assert "abc123" in report
 
 
-def test_fixed_rag_baseline_meets_week8_targets() -> None:
+def test_fixed_rag_bm25_baseline_is_frozen_and_meets_targets() -> None:
     cases = load_rag_eval_cases(RAG_CASE_DIR)
     run = run_rag_eval(cases, workspace=RAG_WORKSPACE)
 
@@ -254,14 +257,28 @@ def test_fixed_rag_baseline_meets_week8_targets() -> None:
         workspace=RAG_WORKSPACE,
     )
 
-    assert context.corpus_document_count == 17
-    assert context.corpus_chars_per_case == 4_923
-    assert context.positive_case_count == 18
-    assert context.average_retrieved_context_chars == pytest.approx(1040.6666666666667)
-    assert context.context_reduction_rate == pytest.approx(0.7886112803845893)
+    positive_cases = [case for case in cases if not case.expect_empty]
+    negative_cases = [case for case in cases if case.expect_empty]
+    expected_paths = {path for case in positive_cases for path in case.expected_paths}
+
+    assert len(cases) == 36
+    assert len(positive_cases) == 30
+    assert len(negative_cases) == 6
+    assert context.corpus_document_count == 21
+    assert context.positive_case_count == 30
+    assert {path.suffix for path in map(Path, expected_paths)} >= {
+        ".py",
+        ".md",
+        ".jsonl",
+        ".json",
+    }
+    assert all((RAG_WORKSPACE / path).is_file() for path in expected_paths)
     assert run.metrics.evidence_hit_rate >= 0.8
+    assert run.metrics.mrr_at_5 == pytest.approx(29.5 / 30)
+    assert run.metrics.empty_result_accuracy == 1
     assert run.metrics.p95_latency_ms < 800
     assert run.metrics.evidence_location_completeness >= 0.9
+    assert context.context_reduction_rate >= 0.4
 
     categories = {item.category: item for item in context.categories}
     for category in ("ci", "log", "diagnosis", "review"):

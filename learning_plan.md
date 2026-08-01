@@ -995,10 +995,11 @@ BM25 + 向量混合召回
 每日任务与验收：
 
 ```text
-Day 57：固化 RAG 增强评测集与 BM25 基准
+Day 57：固化 RAG 增强评测集与 BM25 基准 [x]
 产出：eval/cases/rag/、eval/reports/rag_bm25_baseline.md
-范围：将第 8 周 20 条用例扩充到 30 到 50 条，覆盖代码、Markdown、日志和 CI JSON，并标注 expected_sources
+范围：将第 8 周 20 条用例扩充到 30 到 50 条，覆盖代码、Markdown、日志和 CI JSON，并以 expected_paths 标注 evidence source relevance
 验收：固定数据集可重复输出 Top-5 Evidence Hit Rate、MRR@5、p95 延迟和失败类型
+实测：36 条固定 case（30 正 / 6 负）覆盖 21 份多类型文档；BM25 Top-5 命中率 100%、MRR@5 98.3%、负样本准确率 100%、上下文减少 77.8%，本地检索 p95 7.31 ms
 
 Day 58：定义向量检索抽象
 产出：src/devagent/memory/embeddings.py、src/devagent/memory/vector_retriever.py
