@@ -18,6 +18,10 @@ from .models import (
     LineRange,
     RetrievalResult,
 )
+from .openai_embeddings import (
+    OpenAIEmbeddingConfig,
+    OpenAIEmbeddingProvider,
+)
 from .retriever import BM25Config, KeywordRetriever, RetrievalError
 from .vector_retriever import (
     VectorRetrievalError,
@@ -38,6 +42,8 @@ __all__ = [
     "EvidenceSnippet",
     "KeywordRetriever",
     "LineRange",
+    "OpenAIEmbeddingConfig",
+    "OpenAIEmbeddingProvider",
     "RetrievalError",
     "RetrievalResult",
     "VectorRetrievalError",

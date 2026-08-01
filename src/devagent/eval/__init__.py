@@ -56,6 +56,15 @@ from .runner import (
     load_rag_eval_cases,
     run_rag_eval,
 )
+from .vector_baseline import (
+    MeasuredEmbeddingProvider,
+    VectorBaselineError,
+    VectorBaselineRun,
+    VectorBaselineSummary,
+    render_vector_baseline_report,
+    run_vector_baseline,
+    summarize_vector_baseline_run,
+)
 
 __all__ = [
     "ExpectedReviewFinding",
@@ -69,6 +78,7 @@ __all__ = [
     "LiveRAGMetrics",
     "LiveRAGPrediction",
     "LiveReviewExpectedFinding",
+    "MeasuredEmbeddingProvider",
     "RAGAgentAnswer",
     "RAGContextCategoryMetrics",
     "RAGContextMetrics",
@@ -81,6 +91,9 @@ __all__ = [
     "ReviewEvalConfigurationError",
     "ReviewEvalDiffLine",
     "ReviewEvalMetrics",
+    "VectorBaselineError",
+    "VectorBaselineRun",
+    "VectorBaselineSummary",
     "create_live_review_collector",
     "evaluate_live_ci_diagnosis",
     "evaluate_live_code_review",
@@ -97,9 +110,12 @@ __all__ = [
     "render_live_rag_report",
     "render_rag_baseline_report",
     "render_review_baseline_report",
+    "render_vector_baseline_report",
     "run_live_ci_diagnosis",
     "run_live_code_review",
     "run_live_log_diagnosis",
     "run_live_rag_agent_eval",
     "run_rag_eval",
+    "run_vector_baseline",
+    "summarize_vector_baseline_run",
 ]

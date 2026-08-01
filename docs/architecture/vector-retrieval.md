@@ -35,6 +35,12 @@ Document and query methods remain separate because retrieval models may use diff
 prefixes or encoding paths. Document calls are batch-oriented; query calls are
 latency-sensitive.
 
+`OpenAIEmbeddingProvider` adapts the OpenAI-compatible `embeddings.create` API. It
+splits document inputs into configured batches, validates that response indexes are
+unique and cover every batch position, restores input order, and omits the optional
+`dimensions` request field unless it is explicitly configured. The API base URL must
+be the provider root such as `/v1`; the SDK appends `/embeddings` itself.
+
 Provider output is validated before indexing or search:
 
 ```text
@@ -86,6 +92,27 @@ provider failures.
 - Rebuild document vectors when the embedding space changes, even if dimensions match.
 - Calibrate similarity thresholds with fixed positive and negative cases instead of an
   arbitrary production constant.
+- Configure provider batch limits explicitly. The Day59 live provider accepts at most
+  10 inputs per request, while other OpenAI-compatible providers may allow different
+  limits.
+
+## Day59 Live Baseline
+
+The frozen 36-case corpus was evaluated with `text-embedding-v4` using 21 documents
+and 21 chunks. The exact in-memory vector index produced:
+
+```text
+Top-5 evidence hit rate: 100.0%
+MRR@5: 93.3%
+Empty result accuracy: 0.0%
+Evidence location completeness: 100.0%
+Context reduction: 75.1%
+Query p95: 317.61 ms
+```
+
+The zero empty-result accuracy is expected for an unthresholded nearest-neighbor
+baseline: every query has a closest vector even when no evidence is relevant. It is a
+measured calibration problem, not evidence that a vector database is required.
 
 ## Verification
 
@@ -94,5 +121,9 @@ metadata preservation, malformed vectors, empty corpora, and provider failures:
 
 ```bash
 .venv/bin/pytest tests/memory/test_embeddings.py \
-  tests/memory/test_vector_retriever.py -q
+  tests/memory/test_vector_retriever.py \
+  tests/memory/test_openai_embeddings.py -q
+
+DEVAGENT_ENABLE_LIVE_EMBEDDING_EVAL=1 \
+  .venv/bin/python scripts/run_vector_baseline.py
 ```
