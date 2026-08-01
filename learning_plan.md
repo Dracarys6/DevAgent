@@ -1001,10 +1001,11 @@ Day 57：固化 RAG 增强评测集与 BM25 基准 [x]
 验收：固定数据集可重复输出 Top-5 Evidence Hit Rate、MRR@5、p95 延迟和失败类型
 实测：36 条固定 case（30 正 / 6 负）覆盖 21 份多类型文档；BM25 Top-5 命中率 100%、MRR@5 98.3%、负样本准确率 100%、上下文减少 77.8%，本地检索 p95 7.31 ms
 
-Day 58：定义向量检索抽象
+Day 58：定义向量检索抽象 [x]
 产出：src/devagent/memory/embeddings.py、src/devagent/memory/vector_retriever.py
 接口：EmbeddingProvider、VectorRetriever，provider 适配与检索流程解耦
 验收：固定向量 fixture 可确定性验证相似度排序、空语料和 provider 失败
+实测：固定二维向量完整经过文档编码、查询编码、单位化、cosine 排序和 Evidence 映射；排序与 tie-break 重复一致，异常向量拒绝、受控 provider 错误转换和空语料零调用均达到 100%
 
 Day 59：实现向量检索基线
 产出：向量索引构建、查询和元数据映射实现及 tests/memory/
