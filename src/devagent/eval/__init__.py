@@ -1,3 +1,11 @@
+from .hybrid_baseline import (
+    HybridBaselineError,
+    HybridBaselineRun,
+    HybridBaselineSummary,
+    render_hybrid_baseline_report,
+    run_hybrid_baseline,
+    summarize_hybrid_baseline_run,
+)
 from .live_diagnosis import (
     LiveCIDiagnosisMetrics,
     LiveCIDiagnosisRun,
@@ -5,6 +13,7 @@ from .live_diagnosis import (
     render_live_ci_diagnosis_report,
     run_live_ci_diagnosis,
 )
+from .live_embeddings import LiveEmbeddingSettings, load_live_embedding_settings
 from .live_log_diagnosis import (
     LiveLogDiagnosisMetrics,
     LiveLogDiagnosisRun,
@@ -68,10 +77,14 @@ from .vector_baseline import (
 
 __all__ = [
     "ExpectedReviewFinding",
+    "HybridBaselineError",
+    "HybridBaselineRun",
+    "HybridBaselineSummary",
     "LiveCIDiagnosisMetrics",
     "LiveCIDiagnosisRun",
     "LiveCodeReviewMetrics",
     "LiveCodeReviewRun",
+    "LiveEmbeddingSettings",
     "LiveLogDiagnosisMetrics",
     "LiveLogDiagnosisRun",
     "LiveRAGEvalRun",
@@ -102,8 +115,10 @@ __all__ = [
     "evaluate_rag_context",
     "evaluate_rag_predictions",
     "evaluate_review_cases",
+    "load_live_embedding_settings",
     "load_rag_eval_cases",
     "load_review_eval_cases",
+    "render_hybrid_baseline_report",
     "render_live_ci_diagnosis_report",
     "render_live_code_review_report",
     "render_live_log_diagnosis_report",
@@ -111,11 +126,13 @@ __all__ = [
     "render_rag_baseline_report",
     "render_review_baseline_report",
     "render_vector_baseline_report",
+    "run_hybrid_baseline",
     "run_live_ci_diagnosis",
     "run_live_code_review",
     "run_live_log_diagnosis",
     "run_live_rag_agent_eval",
     "run_rag_eval",
     "run_vector_baseline",
+    "summarize_hybrid_baseline_run",
     "summarize_vector_baseline_run",
 ]

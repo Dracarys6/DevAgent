@@ -1,0 +1,548 @@
+{
+  "provider_name": "openai-compatible:text-embedding-v4",
+  "model": "text-embedding-v4",
+  "case_ids": [
+    "event-bus-publish",
+    "event-store-task-events",
+    "task-manager-cancel",
+    "trace-by-task",
+    "permission-policy-match",
+    "command-guard-dangerous",
+    "tool-executor-permission",
+    "sse-event-queue",
+    "websocket-subscription",
+    "ci-upload-timeout",
+    "log-upload-timeout",
+    "diagnosis-evidence-binding",
+    "review-diff-location",
+    "document-chunking",
+    "bm25-ranking",
+    "knowledge-workspace-boundary",
+    "evidence-line-range",
+    "high-risk-command-approval",
+    "context-preserve-original-input",
+    "context-atomic-tool-block",
+    "context-recent-block-budget",
+    "github-webhook-signature",
+    "github-delivery-dedup",
+    "github-inline-fallback",
+    "structured-log-first-anomaly",
+    "structured-log-retry-chain",
+    "structured-log-final-status",
+    "ci-permission-denied",
+    "ci-critical-command-risk",
+    "ci-security-test-location",
+    "negative-payment-billing",
+    "negative-kubernetes-deployment",
+    "negative-graphql-federation",
+    "negative-terraform-aurora",
+    "negative-swiftui-keychain",
+    "negative-kafka-rebalance"
+  ],
+  "vector_dimensions": 1024,
+  "document_count": 21,
+  "chunk_count": 21,
+  "candidate_k": 20,
+  "rrf_k": 60,
+  "keyword_weight": 1.0,
+  "vector_weight": 1.0,
+  "document_embedding_call_count": 3,
+  "query_embedding_call_count": 36,
+  "input_tokens": 2285,
+  "index_build_ms": 1520.8722079987638,
+  "candidate_source_traceability": 1.0,
+  "hybrid_metrics": {
+    "case_count": 36,
+    "positive_case_count": 30,
+    "negative_case_count": 6,
+    "tool_hit_count": 36,
+    "evidence_hit_count": 30,
+    "matched_answer_keyword_count": 60,
+    "expected_answer_keyword_count": 60,
+    "correct_empty_count": 0,
+    "located_evidence_count": 180,
+    "returned_evidence_count": 180,
+    "reciprocal_rank_sum": 29.5,
+    "tool_hit_rate": 1.0,
+    "evidence_hit_rate": 1.0,
+    "mrr_at_5": 0.9833333333333333,
+    "answer_keyword_hit_rate": 1.0,
+    "empty_result_accuracy": 0.0,
+    "evidence_location_completeness": 1.0,
+    "average_latency_ms": 156.00162040532774,
+    "p50_latency_ms": 149.7015410568565,
+    "p95_latency_ms": 195.7939169369638,
+    "failed_tool_case_ids": [],
+    "missed_evidence_case_ids": [],
+    "missing_answer_keywords": [],
+    "incorrect_non_empty_case_ids": [
+      "negative-payment-billing",
+      "negative-kubernetes-deployment",
+      "negative-graphql-federation",
+      "negative-terraform-aurora",
+      "negative-swiftui-keychain",
+      "negative-kafka-rebalance"
+    ],
+    "incomplete_location_case_ids": []
+  },
+  "hybrid_context": {
+    "corpus_document_count": 21,
+    "corpus_chars_per_case": 7959,
+    "positive_case_count": 30,
+    "full_context_chars_total": 238770,
+    "retrieved_context_chars_total": 62616,
+    "average_full_context_chars": 7959.0,
+    "average_retrieved_context_chars": 2087.2,
+    "max_retrieved_context_chars": 3079,
+    "context_reduction_rate": 0.7377559994974243,
+    "categories": [
+      {
+        "category": "api",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1832.0,
+        "context_reduction_rate": 0.7698203291870838
+      },
+      {
+        "category": "ci",
+        "case_count": 4,
+        "evidence_hit_count": 4,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1901.25,
+        "context_reduction_rate": 0.7611194873727856
+      },
+      {
+        "category": "context",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2871.0,
+        "context_reduction_rate": 0.6392762909913305
+      },
+      {
+        "category": "diagnosis",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2168.0,
+        "context_reduction_rate": 0.7276039703480337
+      },
+      {
+        "category": "docs",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1423.0,
+        "context_reduction_rate": 0.821208694559618
+      },
+      {
+        "category": "event",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1777.5,
+        "context_reduction_rate": 0.7766679231059178
+      },
+      {
+        "category": "github",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2230.3333333333335,
+        "context_reduction_rate": 0.7197721656824559
+      },
+      {
+        "category": "log",
+        "case_count": 4,
+        "evidence_hit_count": 4,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1964.25,
+        "context_reduction_rate": 0.7532039200904637
+      },
+      {
+        "category": "memory",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2240.3333333333335,
+        "context_reduction_rate": 0.7185157264312937
+      },
+      {
+        "category": "permission",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2282.0,
+        "context_reduction_rate": 0.7132805628847845
+      },
+      {
+        "category": "review",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2168.0,
+        "context_reduction_rate": 0.7276039703480337
+      },
+      {
+        "category": "security",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2171.0,
+        "context_reduction_rate": 0.727227038572685
+      },
+      {
+        "category": "task",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1355.0,
+        "context_reduction_rate": 0.829752481467521
+      },
+      {
+        "category": "tool",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2166.5,
+        "context_reduction_rate": 0.727792436235708
+      },
+      {
+        "category": "trace",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2010.0,
+        "context_reduction_rate": 0.7474557105163966
+      }
+    ]
+  },
+  "vector_metrics": {
+    "case_count": 36,
+    "positive_case_count": 30,
+    "negative_case_count": 6,
+    "tool_hit_count": 36,
+    "evidence_hit_count": 30,
+    "matched_answer_keyword_count": 60,
+    "expected_answer_keyword_count": 60,
+    "correct_empty_count": 0,
+    "located_evidence_count": 180,
+    "returned_evidence_count": 180,
+    "reciprocal_rank_sum": 28.0,
+    "tool_hit_rate": 1.0,
+    "evidence_hit_rate": 1.0,
+    "mrr_at_5": 0.9333333333333333,
+    "answer_keyword_hit_rate": 1.0,
+    "empty_result_accuracy": 0.0,
+    "evidence_location_completeness": 1.0,
+    "average_latency_ms": 155.83993402025146,
+    "p50_latency_ms": 149.53812502790242,
+    "p95_latency_ms": 195.67204196937382,
+    "failed_tool_case_ids": [],
+    "missed_evidence_case_ids": [],
+    "missing_answer_keywords": [],
+    "incorrect_non_empty_case_ids": [
+      "negative-payment-billing",
+      "negative-kubernetes-deployment",
+      "negative-graphql-federation",
+      "negative-terraform-aurora",
+      "negative-swiftui-keychain",
+      "negative-kafka-rebalance"
+    ],
+    "incomplete_location_case_ids": []
+  },
+  "vector_context": {
+    "corpus_document_count": 21,
+    "corpus_chars_per_case": 7959,
+    "positive_case_count": 30,
+    "full_context_chars_total": 238770,
+    "retrieved_context_chars_total": 59453,
+    "average_full_context_chars": 7959.0,
+    "average_retrieved_context_chars": 1981.7666666666667,
+    "max_retrieved_context_chars": 2887,
+    "context_reduction_rate": 0.7510030573355111,
+    "categories": [
+      {
+        "category": "api",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1894.5,
+        "context_reduction_rate": 0.76196758386732
+      },
+      {
+        "category": "ci",
+        "case_count": 4,
+        "evidence_hit_count": 4,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1625.75,
+        "context_reduction_rate": 0.7957343887423043
+      },
+      {
+        "category": "context",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2749.6666666666665,
+        "context_reduction_rate": 0.6545210872387653
+      },
+      {
+        "category": "diagnosis",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2168.0,
+        "context_reduction_rate": 0.7276039703480337
+      },
+      {
+        "category": "docs",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1423.0,
+        "context_reduction_rate": 0.821208694559618
+      },
+      {
+        "category": "event",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1535.5,
+        "context_reduction_rate": 0.8070737529840433
+      },
+      {
+        "category": "github",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2380.6666666666665,
+        "context_reduction_rate": 0.7008836956066508
+      },
+      {
+        "category": "log",
+        "case_count": 4,
+        "evidence_hit_count": 4,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1963.5,
+        "context_reduction_rate": 0.7532981530343008
+      },
+      {
+        "category": "memory",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2337.0,
+        "context_reduction_rate": 0.7063701470033924
+      },
+      {
+        "category": "permission",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1423.0,
+        "context_reduction_rate": 0.821208694559618
+      },
+      {
+        "category": "review",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2168.0,
+        "context_reduction_rate": 0.7276039703480337
+      },
+      {
+        "category": "security",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1423.0,
+        "context_reduction_rate": 0.821208694559618
+      },
+      {
+        "category": "task",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2030.0,
+        "context_reduction_rate": 0.7449428320140721
+      },
+      {
+        "category": "tool",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1932.0,
+        "context_reduction_rate": 0.7572559366754618
+      },
+      {
+        "category": "trace",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1335.0,
+        "context_reduction_rate": 0.8322653599698455
+      }
+    ]
+  },
+  "bm25_metrics": {
+    "case_count": 36,
+    "positive_case_count": 30,
+    "negative_case_count": 6,
+    "tool_hit_count": 36,
+    "evidence_hit_count": 30,
+    "matched_answer_keyword_count": 60,
+    "expected_answer_keyword_count": 60,
+    "correct_empty_count": 6,
+    "located_evidence_count": 123,
+    "returned_evidence_count": 123,
+    "reciprocal_rank_sum": 29.5,
+    "tool_hit_rate": 1.0,
+    "evidence_hit_rate": 1.0,
+    "mrr_at_5": 0.9833333333333333,
+    "answer_keyword_hit_rate": 1.0,
+    "empty_result_accuracy": 1.0,
+    "evidence_location_completeness": 1.0,
+    "average_latency_ms": 0.10355666422078179,
+    "p50_latency_ms": 0.09145902004092932,
+    "p95_latency_ms": 0.2513750223442912,
+    "failed_tool_case_ids": [],
+    "missed_evidence_case_ids": [],
+    "missing_answer_keywords": [],
+    "incorrect_non_empty_case_ids": [],
+    "incomplete_location_case_ids": []
+  },
+  "bm25_context": {
+    "corpus_document_count": 21,
+    "corpus_chars_per_case": 7959,
+    "positive_case_count": 30,
+    "full_context_chars_total": 238770,
+    "retrieved_context_chars_total": 52938,
+    "average_full_context_chars": 7959.0,
+    "average_retrieved_context_chars": 1764.6,
+    "max_retrieved_context_chars": 2817,
+    "context_reduction_rate": 0.778288729739917,
+    "categories": [
+      {
+        "category": "api",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1441.5,
+        "context_reduction_rate": 0.818884281944968
+      },
+      {
+        "category": "ci",
+        "case_count": 4,
+        "evidence_hit_count": 4,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1927.75,
+        "context_reduction_rate": 0.7577899233572056
+      },
+      {
+        "category": "context",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2080.0,
+        "context_reduction_rate": 0.738660635758261
+      },
+      {
+        "category": "diagnosis",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1933.0,
+        "context_reduction_rate": 0.7571302927503455
+      },
+      {
+        "category": "docs",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 92.0,
+        "context_reduction_rate": 0.9884407588893077
+      },
+      {
+        "category": "event",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1679.5,
+        "context_reduction_rate": 0.7889810277673075
+      },
+      {
+        "category": "github",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1455.3333333333333,
+        "context_reduction_rate": 0.8171462076475269
+      },
+      {
+        "category": "log",
+        "case_count": 4,
+        "evidence_hit_count": 4,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1981.75,
+        "context_reduction_rate": 0.7510051514009297
+      },
+      {
+        "category": "memory",
+        "case_count": 3,
+        "evidence_hit_count": 3,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1461.6666666666667,
+        "context_reduction_rate": 0.8163504627884575
+      },
+      {
+        "category": "permission",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2282.0,
+        "context_reduction_rate": 0.7132805628847845
+      },
+      {
+        "category": "review",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2168.0,
+        "context_reduction_rate": 0.7276039703480337
+      },
+      {
+        "category": "security",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2079.0,
+        "context_reduction_rate": 0.7387862796833773
+      },
+      {
+        "category": "task",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 1355.0,
+        "context_reduction_rate": 0.829752481467521
+      },
+      {
+        "category": "tool",
+        "case_count": 2,
+        "evidence_hit_count": 2,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2047.5,
+        "context_reduction_rate": 0.7427440633245382
+      },
+      {
+        "category": "trace",
+        "case_count": 1,
+        "evidence_hit_count": 1,
+        "evidence_hit_rate": 1.0,
+        "average_retrieved_context_chars": 2063.0,
+        "context_reduction_rate": 0.7407965824852368
+      }
+    ]
+  }
+}

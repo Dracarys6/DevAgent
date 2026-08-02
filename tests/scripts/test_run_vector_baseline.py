@@ -20,7 +20,7 @@ def clear_embedding_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(
-        "scripts.run_vector_baseline.load_dotenv", lambda **kwargs: False
+        "devagent.eval.live_embeddings.load_dotenv", lambda **kwargs: False
     )
 
 

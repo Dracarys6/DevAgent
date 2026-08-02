@@ -114,6 +114,10 @@ The zero empty-result accuracy is expected for an unthresholded nearest-neighbor
 baseline: every query has a closest vector even when no evidence is relevant. It is a
 measured calibration problem, not evidence that a vector database is required.
 
+The vector candidates are combined with BM25 through the RRF design documented in
+[`hybrid-retrieval.md`](hybrid-retrieval.md). Hybrid fusion reuses the same
+`RetrievalResult` and evidence identity contracts.
+
 ## Verification
 
 Deterministic fixtures validate exact cosine ordering, score mapping, stable ties,

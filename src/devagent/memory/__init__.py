@@ -10,6 +10,13 @@ from .embeddings import (
     normalize_embedding_vector,
     validate_embedding_vector,
 )
+from .hybrid_retriever import (
+    HybridRetrievalError,
+    HybridRetriever,
+    HybridRetrieverConfig,
+    Retriever,
+    fuse_retrieval_results,
+)
 from .models import (
     Chunk,
     ChunkType,
@@ -40,16 +47,21 @@ __all__ = [
     "EmbeddingProviderError",
     "EmbeddingVector",
     "EvidenceSnippet",
+    "HybridRetrievalError",
+    "HybridRetriever",
+    "HybridRetrieverConfig",
     "KeywordRetriever",
     "LineRange",
     "OpenAIEmbeddingConfig",
     "OpenAIEmbeddingProvider",
     "RetrievalError",
     "RetrievalResult",
+    "Retriever",
     "VectorRetrievalError",
     "VectorRetriever",
     "VectorRetrieverConfig",
     "chunk_document",
+    "fuse_retrieval_results",
     "normalize_embedding_vector",
     "validate_embedding_vector",
 ]
