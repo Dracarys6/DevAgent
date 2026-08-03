@@ -22,7 +22,9 @@ from devagent.diagnosis import (
     MissingEvidence,
 )
 from devagent.llm import LLMResponse, ToolCall
+from devagent.memory import EvidenceSnippet, LineRange, RetrievalResult
 from devagent.tools.git_tools import GitDiffError
+from devagent.tools.knowledge_tools import KnowledgeRetrieveError
 from devagent.tools.log_tools import SearchLogError
 
 
@@ -34,6 +36,28 @@ def make_evidence() -> Evidence:
         source="pipeline-1001",
         locator="commit_id=abc123",
         excerpt='{"status":"failed"}',
+    )
+
+
+def make_retrieval_result(query: str) -> RetrievalResult:
+    return RetrievalResult(
+        query=query,
+        top_k=3,
+        total_candidates=1,
+        retrieval_ms=3.5,
+        items=[
+            EvidenceSnippet(
+                chunk_id="chunk-uploader",
+                document_id="doc-uploader",
+                source="workspace",
+                path="src/sample_app/uploader.py",
+                line_range=LineRange(start=1, end=24),
+                excerpt="def build_upload_timeout():\n    return 3",
+                score=0.9,
+                rank=1,
+                metadata={"retrieval_method": "hybrid_rrf"},
+            )
+        ],
     )
 
 
@@ -103,12 +127,14 @@ class FixedLogCollector:
         report_id: str,
         task_id: str,
         data_dir: str,
+        workspace: str | None = None,
     ) -> LogDiagnosisInput:
         self.calls.append(
             {
                 "report_id": report_id,
                 "task_id": task_id,
                 "data_dir": data_dir,
+                "workspace": workspace or ".",
             }
         )
         return self.diagnosis_input
@@ -245,6 +271,78 @@ def test_local_ci_evidence_collector_reads_complete_real_sample_evidence():
     assert result.missing_evidence == []
 
 
+def test_local_ci_evidence_collector_appends_retrieved_workspace_evidence():
+    raw_ci_result = json.dumps(
+        {
+            "pipeline_id": "pipeline-1001",
+            "status": "failed",
+            "failed_jobs": [{"name": "unit-tests"}],
+            "core_log": "AssertionError: assert 3 >= 12",
+        }
+    )
+    calls: list[tuple[str, str, int]] = []
+
+    def retrieve(query: str, workspace: str, top_k: int) -> RetrievalResult:
+        calls.append((query, workspace, top_k))
+        return make_retrieval_result(query)
+
+    collector = LocalCIEvidenceCollector(
+        ci_result_reader=lambda commit_id: raw_ci_result,
+        git_diff_reader=lambda commit_id, workspace: "-return timeout\n+return 3",
+        knowledge_retriever=retrieve,
+    )
+
+    result = collector.collect(
+        report_id="report-ci-001",
+        commit_id="abc123",
+        workspace="examples/sample_repo",
+    )
+
+    assert [item.kind for item in result.evidence] == [
+        EvidenceKind.CI_RESULT,
+        EvidenceKind.GIT_DIFF,
+        EvidenceKind.KNOWLEDGE,
+    ]
+    assert result.evidence[2].evidence_id == "E3"
+    assert "path=src/sample_app/uploader.py" in result.evidence[2].locator
+    assert "AssertionError" in calls[0][0]
+    assert calls[0][1:] == ("examples/sample_repo", 3)
+    assert result.missing_evidence == []
+
+
+def test_local_ci_evidence_collector_keeps_domain_evidence_on_retrieval_failure():
+    raw_ci_result = json.dumps(
+        {
+            "pipeline_id": "pipeline-1001",
+            "status": "failed",
+            "failed_jobs": [{"name": "unit-tests"}],
+            "core_log": "AssertionError",
+        }
+    )
+
+    def fail_retrieval(query: str, workspace: str, top_k: int) -> RetrievalResult:
+        raise KnowledgeRetrieveError("embedding unavailable")
+
+    collector = LocalCIEvidenceCollector(
+        ci_result_reader=lambda commit_id: raw_ci_result,
+        git_diff_reader=lambda commit_id, workspace: "+return 3",
+        knowledge_retriever=fail_retrieval,
+    )
+
+    result = collector.collect(
+        report_id="report-ci-001",
+        commit_id="abc123",
+        workspace="examples/sample_repo",
+    )
+
+    assert [item.kind for item in result.evidence] == [
+        EvidenceKind.CI_RESULT,
+        EvidenceKind.GIT_DIFF,
+    ]
+    assert result.missing_evidence[-1].suggested_tool == "knowledge_retrieve"
+    assert "embedding unavailable" not in result.missing_evidence[-1].reason
+
+
 def test_local_ci_evidence_collector_rejects_malformed_tool_json():
     collector = LocalCIEvidenceCollector(
         ci_result_reader=lambda commit_id: "not-json",
@@ -276,6 +374,50 @@ def test_local_log_evidence_collector_reads_timeline_and_marks_root_cause_gap():
     assert "UploadTimeoutError" in result.evidence[0].excerpt
     assert "RetryExhaustedError" in result.evidence[0].excerpt
     assert result.missing_evidence[0].suggested_tool == "read_file"
+
+
+def test_local_log_evidence_collector_separates_log_and_knowledge_workspaces():
+    calls: list[tuple[str, str, int]] = []
+
+    def retrieve(query: str, workspace: str, top_k: int) -> RetrievalResult:
+        calls.append((query, workspace, top_k))
+        return make_retrieval_result(query)
+
+    collector = LocalLogEvidenceCollector(knowledge_retriever=retrieve)
+
+    result = collector.collect(
+        report_id="report-log-001",
+        task_id="task_001",
+        data_dir="examples/sample_logs",
+        workspace="examples/sample_repo",
+    )
+
+    assert result.workspace == "examples/sample_repo"
+    assert [item.kind for item in result.evidence] == [
+        EvidenceKind.LOG,
+        EvidenceKind.KNOWLEDGE,
+    ]
+    assert "UploadTimeoutError" in calls[0][0]
+    assert calls[0][1:] == ("examples/sample_repo", 3)
+    assert result.missing_evidence == []
+
+
+def test_local_log_evidence_collector_keeps_timeline_on_retrieval_failure():
+    def fail_retrieval(query: str, workspace: str, top_k: int) -> RetrievalResult:
+        raise KnowledgeRetrieveError("secret provider response")
+
+    collector = LocalLogEvidenceCollector(knowledge_retriever=fail_retrieval)
+
+    result = collector.collect(
+        report_id="report-log-001",
+        task_id="task_001",
+        data_dir="examples/sample_logs",
+        workspace="examples/sample_repo",
+    )
+
+    assert [item.kind for item in result.evidence] == [EvidenceKind.LOG]
+    assert result.missing_evidence[-1].suggested_tool == "knowledge_retrieve"
+    assert "secret provider response" not in result.missing_evidence[-1].reason
 
 
 def test_local_log_evidence_collector_converts_missing_log_to_missing_evidence():

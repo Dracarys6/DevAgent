@@ -7,6 +7,7 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from devagent.diagnosis.models import Evidence, EvidenceKind, MissingEvidence
+from devagent.diagnosis.retrieval_evidence import map_retrieval_evidence
 from devagent.llm import LLMClient, LLMResponse, LLMResponseType
 from devagent.prompts.code_review import (
     CODE_REVIEW_SYSTEM_PROMPT,
@@ -18,6 +19,7 @@ from devagent.tools.git_tools import (
     GitCompareResult,
     git_compare,
 )
+from devagent.tools.knowledge_tools import KnowledgeRetrieveError, KnowledgeRetriever
 from devagent.tools.read_file_tools import ReadFileError, read_file
 
 from .models import (
@@ -32,6 +34,9 @@ MAX_CONTEXT_FILES = 5
 MAX_CONTEXT_LINES_PER_FILE = 200
 DEFAULT_REPORT_ATTEMPTS = 3
 MAX_REPORT_ATTEMPTS = 5
+MAX_AUGMENTED_DIFF_CHARS = 3_000
+MAX_REVIEW_RETRIEVAL_CHARS = 900
+DEFAULT_REVIEW_RETRIEVAL_TOP_K = 3
 
 ReviewIdFactory = Callable[[], str]
 GitCompareReader = Callable[[str, str, str | Path], GitCompareResult]
@@ -97,9 +102,11 @@ class LocalCodeReviewEvidenceCollector:
         *,
         git_compare_reader: GitCompareReader = git_compare,
         file_reader: ReviewFileReader = read_file,
+        knowledge_retriever: KnowledgeRetriever | None = None,
     ) -> None:
         self._git_compare_reader = git_compare_reader
         self._file_reader = file_reader
+        self._knowledge_retriever = knowledge_retriever
 
     def collect(
         self,
@@ -145,13 +152,25 @@ class LocalCodeReviewEvidenceCollector:
                 head_ref=head_ref,
                 evidence=evidence,
                 missing_evidence=missing_evidence,
+                max_excerpt_chars=(
+                    MAX_AUGMENTED_DIFF_CHARS
+                    if self._knowledge_retriever is not None
+                    else MAX_REVIEW_EVIDENCE_CHARS
+                ),
             )
-            self._append_file_evidence(
+            retrieval_succeeded = self._append_retrieval_evidence(
                 result=result,
                 workspace=workspace,
                 evidence=evidence,
                 missing_evidence=missing_evidence,
             )
+            if not retrieval_succeeded:
+                self._append_file_evidence(
+                    result=result,
+                    workspace=workspace,
+                    evidence=evidence,
+                    missing_evidence=missing_evidence,
+                )
             return _build_review_input(
                 review_id=review_id,
                 base_ref=base_ref,
@@ -167,6 +186,49 @@ class LocalCodeReviewEvidenceCollector:
                 code=CodeReviewServiceErrorCode.EVIDENCE_COLLECTION_FAILED,
                 message="Git compare 返回了无法标准化的数据",
             ) from exc
+
+    def _append_retrieval_evidence(
+        self,
+        *,
+        result: GitCompareResult,
+        workspace: Path,
+        evidence: list[Evidence],
+        missing_evidence: list[MissingEvidence],
+    ) -> bool:
+        if self._knowledge_retriever is None:
+            return False
+        query = _build_review_retrieval_query(result)
+        try:
+            retrieval = self._knowledge_retriever(
+                query,
+                workspace,
+                DEFAULT_REVIEW_RETRIEVAL_TOP_K,
+            )
+        except KnowledgeRetrieveError:
+            missing_evidence.append(
+                MissingEvidence(
+                    needed="变更相关的代码与文档上下文",
+                    reason="工作区增强检索未返回可用证据，已降级到文件读取",
+                    suggested_tool="knowledge_retrieve",
+                )
+            )
+            return False
+        retrieved = map_retrieval_evidence(
+            retrieval,
+            start_index=len(evidence) + 1,
+            max_total_chars=MAX_REVIEW_RETRIEVAL_CHARS,
+        )
+        if not retrieved:
+            missing_evidence.append(
+                MissingEvidence(
+                    needed="变更相关的代码与文档上下文",
+                    reason="工作区增强检索结果为空，已降级到文件读取",
+                    suggested_tool="knowledge_retrieve",
+                )
+            )
+            return False
+        evidence.extend(retrieved)
+        return True
 
     def _append_file_evidence(
         self,
@@ -484,6 +546,7 @@ def _append_diff_evidence(
     head_ref: str,
     evidence: list[Evidence],
     missing_evidence: list[MissingEvidence],
+    max_excerpt_chars: int = MAX_REVIEW_EVIDENCE_CHARS,
 ) -> None:
     if result.patch.strip():
         evidence.append(
@@ -499,7 +562,10 @@ def _append_diff_evidence(
                     f"hunks={result.hunk_count};"
                     f"truncated={str(result.truncated).lower()}"
                 ),
-                excerpt=_truncate_excerpt(result.patch),
+                excerpt=_truncate_excerpt(
+                    result.patch,
+                    max_chars=max_excerpt_chars,
+                ),
             )
         )
     else:
@@ -539,6 +605,17 @@ def _select_context_paths(result: GitCompareResult) -> list[str]:
     return paths
 
 
+def _build_review_retrieval_query(result: GitCompareResult) -> str:
+    paths = _select_context_paths(result)
+    return "\n".join(
+        [
+            "code review changed files related implementation dependencies and tests",
+            *paths,
+            result.patch[:1_200],
+        ]
+    )[:2_000]
+
+
 def _build_review_input(
     *,
     review_id: str,
@@ -574,8 +651,12 @@ def _safe_file_error_reason(exc: Exception) -> str:
     return "无法安全读取变更文件"
 
 
-def _truncate_excerpt(value: str) -> str:
-    return value[:MAX_REVIEW_EVIDENCE_CHARS]
+def _truncate_excerpt(
+    value: str,
+    *,
+    max_chars: int = MAX_REVIEW_EVIDENCE_CHARS,
+) -> str:
+    return value[:max_chars]
 
 
 def _next_evidence_id(evidence: list[Evidence]) -> str:

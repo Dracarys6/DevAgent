@@ -1,0 +1,130 @@
+{
+  "generated_at": "2026-08-03T03:36:40.489768+00:00",
+  "revision": "22c6d36 + working tree",
+  "provider": "openai-compatible-live",
+  "model": "gpt-5.6-terra",
+  "api_mode": "responses",
+  "embedding_model": "text-embedding-v4",
+  "retrieval_strategy": "hybrid_rrf_cached_snapshot",
+  "workflows": {
+    "ci_failure": {
+      "passed": true,
+      "metrics": {
+        "diagnosed": true,
+        "required_evidence_covered": true,
+        "evidence_references_grounded": true,
+        "root_cause_finding_count": 1,
+        "recommendation_count": 1,
+        "expected_keyword_hit_count": 2,
+        "expected_keyword_count": 2,
+        "expected_keyword_hit_rate": 1.0,
+        "passed": true
+      },
+      "latency_ms": 12726.589625002816,
+      "attempt_count": 1,
+      "attempt_errors": [],
+      "knowledge_evidence_count": 2,
+      "knowledge_referenced": true,
+      "evidence_reference_grounded": true
+    },
+    "log_failure": {
+      "passed": true,
+      "metrics": {
+        "diagnosed": true,
+        "log_evidence_covered": true,
+        "evidence_references_grounded": true,
+        "first_anomaly_identified": true,
+        "cascade_error_identified": true,
+        "confirmed_root_cause_count": 1,
+        "knowledge_evidence_covered": true,
+        "code_evidence_gap_recorded": false,
+        "root_cause_confidence_valid": true,
+        "recommendation_count": 1,
+        "expected_keyword_hit_count": 3,
+        "expected_keyword_count": 3,
+        "expected_keyword_hit_rate": 1.0,
+        "passed": true
+      },
+      "latency_ms": 19057.7634589863,
+      "attempt_count": 1,
+      "attempt_errors": [],
+      "knowledge_evidence_count": 2,
+      "knowledge_referenced": true,
+      "evidence_reference_grounded": true
+    },
+    "code_review": {
+      "passed": true,
+      "metrics": {
+        "reviewed": true,
+        "required_evidence_covered": true,
+        "evidence_references_grounded": true,
+        "expected_finding_matched": true,
+        "finding_count": 1,
+        "unexpected_finding_count": 0,
+        "expected_keyword_hit_count": 2,
+        "expected_keyword_count": 2,
+        "expected_keyword_hit_rate": 1.0,
+        "passed": true
+      },
+      "latency_ms": 13991.470957989804,
+      "attempt_count": 1,
+      "attempt_errors": [],
+      "knowledge_evidence_count": 2,
+      "knowledge_referenced": true,
+      "evidence_reference_grounded": true
+    }
+  },
+  "knowledge_reference_case_count": 3,
+  "context": {
+    "passed": true,
+    "average_reduction_rate": 0.45222309961880897,
+    "locator_completeness_rate": 1.0,
+    "domain_flow_availability_rate": 1.0,
+    "duplicate_location_count": 0,
+    "cases": [
+      {
+        "case_id": "ci-upload-timeout",
+        "scenario": "ci_failure",
+        "baseline_context_chars": 5998,
+        "optimized_context_chars": 3947,
+        "domain_evidence_chars": 3047,
+        "retrieval_evidence_chars": 900,
+        "retrieval_evidence_count": 2,
+        "complete_locator_count": 2,
+        "duplicate_location_count": 0,
+        "retrieval_fallback_recorded": false,
+        "context_reduction_rate": 0.34194731577192394,
+        "domain_flow_available": true
+      },
+      {
+        "case_id": "log-upload-timeout",
+        "scenario": "log_failure",
+        "baseline_context_chars": 4518,
+        "optimized_context_chars": 2467,
+        "domain_evidence_chars": 1567,
+        "retrieval_evidence_chars": 900,
+        "retrieval_evidence_count": 2,
+        "complete_locator_count": 2,
+        "duplicate_location_count": 0,
+        "retrieval_fallback_recorded": false,
+        "context_reduction_rate": 0.4539619300575476,
+        "domain_flow_available": true
+      },
+      {
+        "case_id": "review-upload-timeout",
+        "scenario": "code_review",
+        "baseline_context_chars": 6789,
+        "optimized_context_chars": 2982,
+        "domain_evidence_chars": 2082,
+        "retrieval_evidence_chars": 900,
+        "retrieval_evidence_count": 2,
+        "complete_locator_count": 2,
+        "duplicate_location_count": 0,
+        "retrieval_fallback_recorded": false,
+        "context_reduction_rate": 0.5607600530269554,
+        "domain_flow_available": true
+      }
+    ]
+  },
+  "passed": true
+}

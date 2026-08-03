@@ -19,6 +19,7 @@ from devagent.review import (
 )
 from devagent.review.service import CodeReviewEvidenceCollector
 from devagent.tools.git_tools import GitCompareResult, git_compare
+from devagent.tools.knowledge_tools import KnowledgeRetriever
 from devagent.tools.read_file_tools import read_file
 
 MAX_LIVE_REVIEW_ATTEMPTS = 3
@@ -177,10 +178,9 @@ def evaluate_live_code_review(
         for evidence_id in finding.evidence_ids
     }
     evidence_kinds = {item.kind for item in report.evidence}
-    required_evidence_covered = {
-        EvidenceKind.GIT_DIFF,
-        EvidenceKind.CODE,
-    } <= evidence_kinds
+    required_evidence_covered = EvidenceKind.GIT_DIFF in evidence_kinds and bool(
+        {EvidenceKind.CODE, EvidenceKind.KNOWLEDGE} & evidence_kinds
+    )
     evidence_references_grounded = bool(referenced_ids) and (
         referenced_ids <= evidence_ids
     )
@@ -226,11 +226,15 @@ def evaluate_live_code_review(
     )
 
 
-def create_live_review_collector() -> LocalCodeReviewEvidenceCollector:
+def create_live_review_collector(
+    *,
+    knowledge_retriever: KnowledgeRetriever | None = None,
+) -> LocalCodeReviewEvidenceCollector:
     """创建排除人工答案、但保留源码行号的固定评测证据采集器。"""
     return LocalCodeReviewEvidenceCollector(
         git_compare_reader=_read_live_review_compare,
         file_reader=_read_live_review_file,
+        knowledge_retriever=knowledge_retriever,
     )
 
 

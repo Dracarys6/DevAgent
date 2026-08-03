@@ -1,18 +1,17 @@
 import os
+from collections.abc import Callable
 from hashlib import sha256
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
 from devagent.memory import (
-    ChunkingError,
     ChunkType,
     Document,
-    KeywordRetriever,
-    RetrievalError,
     RetrievalResult,
-    chunk_document,
 )
+
+from .knowledge_service import KnowledgeServiceError, WorkspaceKnowledgeService
 
 MAX_KNOWLEDGE_FILES = 1_000
 MAX_KNOWLEDGE_FILE_CHARS = 200_000
@@ -46,6 +45,9 @@ IGNORED_DIRECTORY_NAMES = {
 
 class KnowledgeRetrieveError(ValueError):
     """工作区知识无法被安全发现或检索。"""
+
+
+KnowledgeRetriever = Callable[[str, str | Path, int], RetrievalResult]
 
 
 def _resolve_workspace(workspace: str | Path) -> Path:
@@ -168,12 +170,23 @@ def load_workspace_documents(workspace: str | Path) -> list[Document]:
     return _load_documents(root, _discover_knowledge_files(root))
 
 
+DEFAULT_KNOWLEDGE_SERVICE = WorkspaceKnowledgeService(
+    document_loader=load_workspace_documents
+)
+
+
 def knowledge_retrieve(
-    query: str, workspace: str | Path, top_k: int = 5
+    query: str,
+    workspace: str | Path,
+    top_k: int = 5,
+    *,
+    service: WorkspaceKnowledgeService | None = None,
 ) -> RetrievalResult:
-    documents = load_workspace_documents(workspace)
     try:
-        chunks = [chunk for document in documents for chunk in chunk_document(document)]
-        return KeywordRetriever(chunks).retrieve(query, top_k=top_k)
-    except (ChunkingError, RetrievalError) as exc:
+        return (service or DEFAULT_KNOWLEDGE_SERVICE).retrieve(
+            query=query,
+            workspace=workspace,
+            top_k=top_k,
+        )
+    except KnowledgeServiceError as exc:
         raise KnowledgeRetrieveError(str(exc)) from exc

@@ -10,6 +10,7 @@ from devagent.agent import (
 )
 from devagent.event import InMemoryEventBus, InMemorySequenceAllocator
 from devagent.llm import LLMResponse, MockLLMClient, ToolCall
+from devagent.memory import RetrievalResult
 from devagent.permission import InMemoryPermissionManager, PermissionDecision, RiskLevel
 from devagent.task.manager import (
     LLMClientFactory,
@@ -247,6 +248,33 @@ def test_default_runtime_exposes_builtin_tools_through_permission_aware_executor
     ]
 
 
+def test_task_manager_injects_knowledge_strategy_into_runtime_registry():
+    calls: list[tuple[str, str, int]] = []
+
+    def retrieve(query: str, workspace: str, top_k: int) -> RetrievalResult:
+        calls.append((query, workspace, top_k))
+        return RetrievalResult(
+            query=query,
+            top_k=top_k,
+            total_candidates=0,
+            retrieval_ms=2.0,
+        )
+
+    manager = TaskManager(
+        InMemoryTaskRepository(),
+        knowledge_retriever=retrieve,
+    )
+    task = manager.create_task(question="检索 runtime", workspace="workspace")
+
+    result = manager._create_tool_registry(task).execute(
+        "knowledge_retrieve",
+        {"query": "runtime", "workspace": task.workspace, "top_k": 3},
+    )
+
+    assert result.success is True
+    assert calls == [("runtime", "workspace", 3)]
+
+
 def test_run_task_success_marks_task_done():
     repository = InMemoryTaskRepository()
     runtime = SuccessRuntime()
@@ -366,9 +394,9 @@ def test_task_manager_resumes_suspended_runtime_after_approval():
     assert completed.status == TaskStatus.DONE
     assert manager.can_resume_permission(pending_request.request_id) is False
     assert tool.call_count == 1
-    assert [
-        event.type for event in manager.event_store.list(task.task_id)
-    ].count(AgentEventType.RUN_START) == 1
+    assert [event.type for event in manager.event_store.list(task.task_id)].count(
+        AgentEventType.RUN_START
+    ) == 1
 
 
 def test_run_task_runtime_exception_marks_task_failed():

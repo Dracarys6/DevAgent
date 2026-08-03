@@ -5,6 +5,7 @@ import pytest
 
 from devagent.diagnosis import Evidence, EvidenceKind, MissingEvidence
 from devagent.llm import LLMResponse, ToolCall
+from devagent.memory import EvidenceSnippet, LineRange, RetrievalResult
 from devagent.review import (
     CodeReviewInput,
     CodeReviewReport,
@@ -19,6 +20,7 @@ from devagent.tools.git_tools import (
     GitCompareError,
     GitCompareResult,
 )
+from devagent.tools.knowledge_tools import KnowledgeRetrieveError
 from devagent.tools.read_file_tools import ReadFileError
 
 
@@ -50,6 +52,28 @@ def make_evidence(evidence_id: str = "E1", excerpt: str = "diff evidence") -> Ev
         source="b" * 40,
         locator="merge_base=abc;hunks=1",
         excerpt=excerpt,
+    )
+
+
+def make_retrieval_result(query: str) -> RetrievalResult:
+    return RetrievalResult(
+        query=query,
+        top_k=3,
+        total_candidates=1,
+        retrieval_ms=4.0,
+        items=[
+            EvidenceSnippet(
+                chunk_id="chunk-app",
+                document_id="doc-app",
+                source="workspace",
+                path="src/app.py",
+                line_range=LineRange(start=1, end=5),
+                excerpt="def changed_behavior():\n    return 1",
+                score=0.8,
+                rank=1,
+                metadata={"retrieval_method": "hybrid_rrf"},
+            )
+        ],
     )
 
 
@@ -184,6 +208,72 @@ def test_local_collector_builds_bounded_diff_and_file_evidence(tmp_path: Path) -
             {"start_line": 1, "max_lines": 200, "workspace": tmp_path},
         )
     ]
+
+
+def test_local_collector_uses_retrieval_instead_of_mechanical_file_reads(
+    tmp_path: Path,
+) -> None:
+    reader = RecordingFileReader()
+    calls: list[tuple[str, Path, int]] = []
+
+    def retrieve(query: str, workspace: Path, top_k: int) -> RetrievalResult:
+        calls.append((query, workspace, top_k))
+        return make_retrieval_result(query)
+
+    collector = LocalCodeReviewEvidenceCollector(
+        git_compare_reader=lambda base, head, workspace: make_compare_result(
+            patch="x" * 5_000
+        ),
+        file_reader=reader,
+        knowledge_retriever=retrieve,
+    )
+
+    review_input = collector.collect(
+        review_id="review-1",
+        base_ref="main",
+        head_ref="feature",
+        workspace=tmp_path,
+    )
+
+    assert [item.kind for item in review_input.evidence] == [
+        EvidenceKind.GIT_DIFF,
+        EvidenceKind.KNOWLEDGE,
+    ]
+    assert len(review_input.evidence[0].excerpt) == 3_000
+    assert review_input.evidence[1].evidence_id == "E2"
+    assert calls[0][1:] == (tmp_path, 3)
+    assert "src/app.py" in calls[0][0]
+    assert reader.calls == []
+
+
+def test_local_collector_falls_back_to_file_reads_when_retrieval_fails(
+    tmp_path: Path,
+) -> None:
+    reader = RecordingFileReader("1: fallback = True")
+
+    def fail_retrieval(query: str, workspace: Path, top_k: int) -> RetrievalResult:
+        raise KnowledgeRetrieveError("provider secret")
+
+    collector = LocalCodeReviewEvidenceCollector(
+        git_compare_reader=lambda base, head, workspace: make_compare_result(),
+        file_reader=reader,
+        knowledge_retriever=fail_retrieval,
+    )
+
+    review_input = collector.collect(
+        review_id="review-1",
+        base_ref="main",
+        head_ref="feature",
+        workspace=tmp_path,
+    )
+
+    assert [item.kind for item in review_input.evidence] == [
+        EvidenceKind.GIT_DIFF,
+        EvidenceKind.CODE,
+    ]
+    assert review_input.missing_evidence[-1].suggested_tool == "knowledge_retrieve"
+    assert "provider secret" not in review_input.missing_evidence[-1].reason
+    assert len(reader.calls) == 1
 
 
 def test_local_collector_records_truncated_patch(tmp_path: Path) -> None:

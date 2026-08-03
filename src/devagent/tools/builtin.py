@@ -1,20 +1,25 @@
 from pydantic import BaseModel, Field
-from .base import BaseTool
-from .models import RiskLevel, ToolResult
-from .git_tools import GitDiffArgs, GitCompareArgs
-from .ci_tools import GetCIResultArgs
-from .log_tools import SearchLogArgs
-from .knowledge_tools import KnowledgeRetrieveArgs
+
 from .adapters import (
-    read_file_as_tool_result,
-    search_code_as_tool_result,
-    run_shell_as_tool_result,
-    git_diff_as_tool_result,
     get_ci_result_as_tool_result,
-    search_log_as_tool_result,
     git_compare_as_tool_result,
+    git_diff_as_tool_result,
     knowledge_retrieve_as_tool_result,
+    read_file_as_tool_result,
+    run_shell_as_tool_result,
+    search_code_as_tool_result,
+    search_log_as_tool_result,
 )
+from .base import BaseTool
+from .ci_tools import GetCIResultArgs
+from .git_tools import GitCompareArgs, GitDiffArgs
+from .knowledge_tools import (
+    KnowledgeRetrieveArgs,
+    KnowledgeRetriever,
+    knowledge_retrieve,
+)
+from .log_tools import SearchLogArgs
+from .models import RiskLevel, ToolResult
 from .registry import ToolRegistry
 
 
@@ -119,11 +124,24 @@ class KnowledgeRetrieveTool(BaseTool[KnowledgeRetrieveArgs]):
     args_model = KnowledgeRetrieveArgs
     risk_level = RiskLevel.LOW
 
+    def __init__(
+        self,
+        *,
+        retriever: KnowledgeRetriever = knowledge_retrieve,
+    ) -> None:
+        self._retriever = retriever
+
     def execute(self, args: KnowledgeRetrieveArgs) -> ToolResult:
-        return knowledge_retrieve_as_tool_result(**args.model_dump())
+        return knowledge_retrieve_as_tool_result(
+            **args.model_dump(),
+            retriever=self._retriever,
+        )
 
 
-def create_builtin_registry() -> ToolRegistry:
+def create_builtin_registry(
+    *,
+    knowledge_retriever: KnowledgeRetriever = knowledge_retrieve,
+) -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(ReadFileTool())
     registry.register(SearchCodeTool())
@@ -132,5 +150,5 @@ def create_builtin_registry() -> ToolRegistry:
     registry.register(GetCIResultTool())
     registry.register(SearchLogTool())
     registry.register(GitCompareTool())
-    registry.register(KnowledgeRetrieveTool())
+    registry.register(KnowledgeRetrieveTool(retriever=knowledge_retriever))
     return registry

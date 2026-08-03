@@ -1,17 +1,19 @@
 import json
 import sys
-import pytest
 from pathlib import Path
 
+import pytest
+
+from devagent.memory import RetrievalResult
 from devagent.tools.builtin import (
     GetCIResultTool,
-    GitDiffTool,
     GitCompareTool,
+    GitDiffTool,
+    KnowledgeRetrieveTool,
     ReadFileTool,
     RunShellTool,
     SearchCodeTool,
     SearchLogTool,
-    KnowledgeRetrieveTool,
     create_builtin_registry,
 )
 from devagent.tools.models import ErrorCode, RiskLevel
@@ -178,6 +180,29 @@ def test_create_builtin_registry_registers_all_tools():
         "search_code",
         "search_log",
     ]
+
+
+def test_create_builtin_registry_injects_knowledge_strategy() -> None:
+    calls: list[tuple[str, str, int]] = []
+
+    def retrieve(query: str, workspace: str, top_k: int) -> RetrievalResult:
+        calls.append((query, workspace, top_k))
+        return RetrievalResult(
+            query=query,
+            top_k=top_k,
+            total_candidates=0,
+            retrieval_ms=1.0,
+        )
+
+    registry = create_builtin_registry(knowledge_retriever=retrieve)
+
+    result = registry.execute(
+        "knowledge_retrieve",
+        {"query": "runtime", "workspace": "workspace", "top_k": 2},
+    )
+
+    assert result.success is True
+    assert calls == [("runtime", "workspace", 2)]
 
 
 def test_knowledge_retrieve_tool_returns_workspace_evidence(

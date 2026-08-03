@@ -3,6 +3,8 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from devagent.api.app import app
+from devagent.api.routes.knowledge import get_workspace_knowledge_service
+from devagent.memory import RetrievalResult
 
 client = TestClient(app)
 
@@ -36,6 +38,39 @@ def test_knowledge_search_returns_ranked_workspace_evidence(tmp_path: Path) -> N
     assert "HMAC SHA-256" in body["items"][0]["excerpt"]
     assert body["items"][0]["metadata"]["retrieval_method"] == "bm25"
     assert body["retrieval_ms"] >= 0
+
+
+def test_knowledge_search_uses_dependency_injected_strategy() -> None:
+    class FixedKnowledgeService:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str, int]] = []
+
+        def retrieve(
+            self,
+            query: str,
+            workspace: str,
+            top_k: int,
+        ) -> RetrievalResult:
+            self.calls.append((query, workspace, top_k))
+            return RetrievalResult(
+                query=query,
+                top_k=top_k,
+                total_candidates=0,
+                retrieval_ms=0.5,
+            )
+
+    service = FixedKnowledgeService()
+    app.dependency_overrides[get_workspace_knowledge_service] = lambda: service
+    try:
+        response = client.post(
+            "/api/v1/knowledge/search",
+            json={"query": "hybrid", "workspace": "workspace", "top_k": 4},
+        )
+    finally:
+        app.dependency_overrides.pop(get_workspace_knowledge_service, None)
+
+    assert response.status_code == 200
+    assert service.calls == [("hybrid", "workspace", 4)]
 
 
 def test_knowledge_search_returns_empty_items_when_query_has_no_match(
@@ -95,6 +130,6 @@ def test_knowledge_search_is_exposed_in_openapi() -> None:
     assert operation["requestBody"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/KnowledgeSearchRequest"
     }
-    assert operation["responses"]["200"]["content"]["application/json"][
-        "schema"
-    ] == {"$ref": "#/components/schemas/RetrievalResult"}
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RetrievalResult"
+    }

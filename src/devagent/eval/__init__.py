@@ -1,3 +1,11 @@
+from .business_rag import (
+    BusinessRAGCase,
+    BusinessRAGCaseMetrics,
+    BusinessRAGEvalRun,
+    BusinessRAGMetrics,
+    evaluate_business_rag,
+    render_business_rag_report,
+)
 from .hybrid_baseline import (
     HybridBaselineError,
     HybridBaselineRun,
@@ -86,6 +94,10 @@ from .vector_baseline import (
 )
 
 __all__ = [
+    "BusinessRAGCase",
+    "BusinessRAGCaseMetrics",
+    "BusinessRAGEvalRun",
+    "BusinessRAGMetrics",
     "ExpectedReviewFinding",
     "HybridBaselineError",
     "HybridBaselineRun",
@@ -123,6 +135,7 @@ __all__ = [
     "VectorBaselineRun",
     "VectorBaselineSummary",
     "create_live_review_collector",
+    "evaluate_business_rag",
     "evaluate_live_ci_diagnosis",
     "evaluate_live_code_review",
     "evaluate_live_log_diagnosis",
@@ -133,6 +146,7 @@ __all__ = [
     "load_live_embedding_settings",
     "load_rag_eval_cases",
     "load_review_eval_cases",
+    "render_business_rag_report",
     "render_hybrid_baseline_report",
     "render_live_ci_diagnosis_report",
     "render_live_code_review_report",

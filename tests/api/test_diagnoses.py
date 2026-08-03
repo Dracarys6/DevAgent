@@ -139,9 +139,12 @@ def test_diagnose_ci_maps_service_error_to_bad_gateway():
 
 def test_diagnose_log_returns_validated_report():
     class StubService:
-        def diagnose_log(self, *, task_id: str, data_dir: str) -> DiagnosisReport:
+        def diagnose_log(
+            self, *, task_id: str, data_dir: str, workspace: str
+        ) -> DiagnosisReport:
             assert task_id == "task_001"
             assert data_dir == "examples/sample_logs"
+            assert workspace == "."
             return make_log_report()
 
     app.dependency_overrides[get_diagnosis_service] = lambda: StubService()
@@ -167,7 +170,9 @@ def test_diagnose_log_rejects_invalid_task_id(task_id: str):
 
 def test_diagnose_log_maps_service_error_to_bad_gateway():
     class FailingService:
-        def diagnose_log(self, *, task_id: str, data_dir: str) -> DiagnosisReport:
+        def diagnose_log(
+            self, *, task_id: str, data_dir: str, workspace: str
+        ) -> DiagnosisReport:
             raise DiagnosisServiceError(
                 code=DiagnosisServiceErrorCode.EVIDENCE_COLLECTION_FAILED,
                 message="日志工具返回了无法标准化的数据",
@@ -273,4 +278,5 @@ def test_openapi_log_diagnosis_example_uses_real_fixture():
     assert schema["examples"][0] == {
         "task_id": "task_001",
         "data_dir": "examples/sample_logs",
+        "workspace": "examples/sample_repo",
     }

@@ -13,6 +13,7 @@ from .models import (
     MissingEvidence,
     Recommendation,
 )
+from .retrieval_evidence import map_retrieval_evidence
 
 __all__ = [
     "CIEvidenceCollector",
@@ -36,6 +37,7 @@ __all__ = [
     "MissingEvidence",
     "Recommendation",
     "ReportIdFactory",
+    "map_retrieval_evidence",
 ]
 
 

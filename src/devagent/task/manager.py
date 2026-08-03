@@ -8,9 +8,9 @@ from dotenv import load_dotenv
 from devagent.agent import (
     AgentEvent,
     AgentEventType,
-    AgentRuntime,
     AgentRunResult,
     AgentRunStatus,
+    AgentRuntime,
 )
 from devagent.event import (
     InMemoryEventBus,
@@ -34,6 +34,7 @@ from devagent.tools import (
     ToolRegistry,
 )
 from devagent.tools.builtin import create_builtin_registry
+from devagent.tools.knowledge_tools import KnowledgeRetriever, knowledge_retrieve
 
 from .models import AgentTask, InvalidTaskTransitionError, TaskStatus
 from .repository import InMemoryTaskRepository
@@ -105,6 +106,7 @@ class TaskManager:
         permission_manager: InMemoryPermissionManager | None = None,
         policy_store: InMemoryPermissionPolicyStore | None = None,
         sequence_allocator: InMemorySequenceAllocator | None = None,
+        knowledge_retriever: KnowledgeRetriever = knowledge_retrieve,
     ) -> None:
         self.repository = repository
         self._runtime_factory = runtime_factory or self._create_runtime
@@ -117,6 +119,7 @@ class TaskManager:
             sequence_allocator=self.sequence_allocator,
         )
         self.policy_store = policy_store or InMemoryPermissionPolicyStore()
+        self._knowledge_retriever = knowledge_retriever
         self._suspended_runtimes: dict[str, RuntimeLike] = {}
 
     def _create_runtime(self, task: AgentTask) -> AgentRuntime:
@@ -141,7 +144,9 @@ class TaskManager:
         return runtime
 
     def _create_tool_registry(self, task: AgentTask) -> ToolRegistry:
-        return create_builtin_registry()
+        return create_builtin_registry(
+            knowledge_retriever=self._knowledge_retriever,
+        )
 
     def create_task(
         self,
@@ -182,9 +187,7 @@ class TaskManager:
 
     def resume_task(self, permission_request_id: str) -> AgentTask:
         """恢复一个已审批且处于 WAITING_PERMISSION 的 Agent 任务。"""
-        permission_request = self.permission_manager.get_request(
-            permission_request_id
-        )
+        permission_request = self.permission_manager.get_request(permission_request_id)
         if permission_request.task_id is None:
             raise ValueError("权限请求没有关联 Agent 任务")
         task_id = permission_request.task_id

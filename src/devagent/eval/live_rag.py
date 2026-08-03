@@ -11,6 +11,7 @@ from devagent.agent import AgentRunStatus, AgentRuntime
 from devagent.llm import LLMClient, tool_registry_to_openai_tools
 from devagent.memory import RetrievalResult
 from devagent.tools import KnowledgeRetrieveTool, ToolRegistry, ToolResult
+from devagent.tools.knowledge_tools import KnowledgeRetriever, knowledge_retrieve
 
 from .runner import RAGEvalCase, RAGEvalConfigurationError
 
@@ -127,6 +128,7 @@ def run_live_rag_agent_eval(
     provider: str,
     model: str,
     api_mode: str,
+    knowledge_retriever: KnowledgeRetriever = knowledge_retrieve,
     max_attempts: int = 2,
 ) -> LiveRAGEvalRun:
     """通过真实 AgentRuntime、LLMClient 和 knowledge tool 执行 RAG case。"""
@@ -146,6 +148,7 @@ def run_live_rag_agent_eval(
             case,
             workspace=root,
             llm_client_factory=llm_client_factory,
+            knowledge_retriever=knowledge_retriever,
             max_attempts=max_attempts,
         )
         for case in cases
@@ -406,6 +409,7 @@ def _run_live_case(
     *,
     workspace: Path,
     llm_client_factory: LiveLLMClientFactory,
+    knowledge_retriever: KnowledgeRetriever,
     max_attempts: int,
 ) -> LiveRAGPrediction:
     attempt_errors: list[str] = []
@@ -413,7 +417,7 @@ def _run_live_case(
 
     for attempt in range(1, max_attempts + 1):
         registry = ToolRegistry()
-        registry.register(KnowledgeRetrieveTool())
+        registry.register(KnowledgeRetrieveTool(retriever=knowledge_retriever))
         client = llm_client_factory(tool_registry_to_openai_tools(registry))
         runtime = AgentRuntime(
             llm_client=client,

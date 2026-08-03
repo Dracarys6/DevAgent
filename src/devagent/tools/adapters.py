@@ -1,30 +1,30 @@
 import subprocess
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 
-from .models import ErrorCode, ToolResult
-from .read_file_tools import read_file, MAX_READ_LINES
-from .search_code_tools import search_code, MAX_SEARCH_CHARS, DEFAULT_SEARCH_TIMEOUT
-from .run_shell_tools import run_shell, MAX_OUTPUT_CHARS, DEFAULT_SHELL_TIMEOUT
-from .git_tools import (
-    DEFAULT_GIT_TIMEOUT,
-    MAX_GIT_DIFF_CHARS,
-    MAX_GIT_COMPARE_CHARS,
-    git_diff,
-    git_compare,
-)
 from .ci_tools import (
+    DEFAULT_CI_DATA_DIR,
     DEFAULT_CI_LOG_CHARS,
     get_ci_result,
-    DEFAULT_CI_DATA_DIR,
 )
+from .git_tools import (
+    DEFAULT_GIT_TIMEOUT,
+    MAX_GIT_COMPARE_CHARS,
+    MAX_GIT_DIFF_CHARS,
+    git_compare,
+    git_diff,
+)
+from .knowledge_tools import KnowledgeRetriever, knowledge_retrieve
 from .log_tools import (
     DEFAULT_LOG_DATA_DIR,
     DEFAULT_MAX_LOG_CHARS,
     DEFAULT_MAX_LOG_ENTRIES,
     search_log,
 )
-from .knowledge_tools import knowledge_retrieve
+from .models import ErrorCode, ToolResult
+from .read_file_tools import MAX_READ_LINES, read_file
+from .run_shell_tools import DEFAULT_SHELL_TIMEOUT, MAX_OUTPUT_CHARS, run_shell
+from .search_code_tools import DEFAULT_SEARCH_TIMEOUT, MAX_SEARCH_CHARS, search_code
 
 
 def _error_code_from_exception(
@@ -419,6 +419,8 @@ def knowledge_retrieve_as_tool_result(
     query: str,
     workspace: str | Path,
     top_k: int = 5,
+    *,
+    retriever: KnowledgeRetriever = knowledge_retrieve,
 ) -> ToolResult:
     metadata = {
         "query": query,
@@ -427,7 +429,7 @@ def knowledge_retrieve_as_tool_result(
     }
 
     def action() -> str:
-        result = knowledge_retrieve(query, workspace, top_k)
+        result = retriever(query, workspace, top_k)
         metadata.update(
             {
                 "total_candidates": result.total_candidates,

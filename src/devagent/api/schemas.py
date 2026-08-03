@@ -137,6 +137,7 @@ class LogDiagnosisRequest(BaseModel):
                 {
                     "task_id": "task_001",
                     "data_dir": "examples/sample_logs",
+                    "workspace": "examples/sample_repo",
                 }
             ]
         },
@@ -148,6 +149,7 @@ class LogDiagnosisRequest(BaseModel):
         pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
     )
     data_dir: str = Field(default="examples/sample_logs", min_length=1, max_length=2000)
+    workspace: str = Field(default=".", min_length=1, max_length=2000)
 
 
 class CodeReviewRequest(BaseModel):

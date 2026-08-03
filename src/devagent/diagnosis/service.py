@@ -16,6 +16,10 @@ from devagent.prompts import (
 )
 from devagent.tools.ci_tools import CIResultError, get_ci_result
 from devagent.tools.git_tools import GitDiffError, git_diff
+from devagent.tools.knowledge_tools import (
+    KnowledgeRetrieveError,
+    KnowledgeRetriever,
+)
 from devagent.tools.log_tools import SearchLogError, search_log
 
 from .models import (
@@ -28,6 +32,7 @@ from .models import (
     LogDiagnosisInput,
     MissingEvidence,
 )
+from .retrieval_evidence import map_retrieval_evidence
 
 MAX_EVIDENCE_EXCERPT_CHARS = 4_000
 ReportIdFactory = Callable[[], str]
@@ -35,6 +40,11 @@ CIResultReader = Callable[[str], str]
 GitDiffReader = Callable[[str, str], str]
 LogResultReader = Callable[[str, str], str]
 CI_GIT_PATHS = ("*.py",)
+DEFAULT_BUSINESS_RETRIEVAL_TOP_K = 3
+MAX_BUSINESS_RETRIEVAL_CHARS = 900
+MAX_RETRIEVAL_QUERY_CHARS = 2_000
+MAX_CI_CONTEXT_CHARS = 8_000
+MAX_LOG_CONTEXT_CHARS = 6_000
 
 
 class DiagnosisServiceErrorCode(str, Enum):
@@ -82,6 +92,7 @@ class LogEvidenceCollector(Protocol):
         report_id: str,
         task_id: str,
         data_dir: str,
+        workspace: str | None = None,
     ) -> LogDiagnosisInput: ...
 
 
@@ -110,9 +121,11 @@ class LocalCIEvidenceCollector:
         *,
         ci_result_reader: CIResultReader = get_ci_result,
         git_diff_reader: GitDiffReader = read_ci_git_diff,
+        knowledge_retriever: KnowledgeRetriever | None = None,
     ) -> None:
         self._ci_result_reader = ci_result_reader
         self._git_diff_reader = git_diff_reader
+        self._knowledge_retriever = knowledge_retriever
 
     def collect(
         self,
@@ -177,6 +190,12 @@ class LocalCIEvidenceCollector:
                 )
             )
 
+        self._append_retrieval_evidence(
+            workspace=workspace,
+            evidence=evidence,
+            missing_evidence=missing_evidence,
+        )
+
         return DiagnosisInput(
             report_id=report_id,
             commit_id=commit_id,
@@ -184,6 +203,44 @@ class LocalCIEvidenceCollector:
             evidence=evidence,
             missing_evidence=missing_evidence,
         )
+
+    def _append_retrieval_evidence(
+        self,
+        *,
+        workspace: str,
+        evidence: list[Evidence],
+        missing_evidence: list[MissingEvidence],
+    ) -> None:
+        if self._knowledge_retriever is None or not evidence:
+            return
+        query = _build_retrieval_query(
+            "CI failure related code and configuration", evidence
+        )
+        try:
+            result = self._knowledge_retriever(
+                query,
+                workspace,
+                DEFAULT_BUSINESS_RETRIEVAL_TOP_K,
+            )
+        except KnowledgeRetrieveError:
+            missing_evidence.append(_retrieval_missing_evidence("CI 异常"))
+            return
+        retrieval_budget = _remaining_retrieval_budget(
+            evidence,
+            total_budget=MAX_CI_CONTEXT_CHARS,
+        )
+        if retrieval_budget == 0:
+            missing_evidence.append(_retrieval_budget_missing_evidence("CI 异常"))
+            return
+        retrieved = map_retrieval_evidence(
+            result,
+            start_index=len(evidence) + 1,
+            max_total_chars=retrieval_budget,
+        )
+        if retrieved:
+            evidence.extend(retrieved)
+        else:
+            missing_evidence.append(_retrieval_missing_evidence("CI 异常"))
 
 
 def read_log_result(task_id: str, data_dir: str) -> str:
@@ -198,8 +255,10 @@ class LocalLogEvidenceCollector:
         self,
         *,
         log_result_reader: LogResultReader = read_log_result,
+        knowledge_retriever: KnowledgeRetriever | None = None,
     ) -> None:
         self._log_result_reader = log_result_reader
+        self._knowledge_retriever = knowledge_retriever
 
     def collect(
         self,
@@ -207,9 +266,11 @@ class LocalLogEvidenceCollector:
         report_id: str,
         task_id: str,
         data_dir: str,
+        workspace: str | None = None,
     ) -> LogDiagnosisInput:
         evidence: list[Evidence] = []
         missing_evidence: list[MissingEvidence] = []
+        knowledge_workspace = workspace or data_dir
         try:
             raw_result = self._log_result_reader(task_id, data_dir)
             payload = json.loads(raw_result)
@@ -226,13 +287,11 @@ class LocalLogEvidenceCollector:
                 )
             )
             if payload.get("first_anomaly") is not None:
-                # * 日志可以确认时间线，但没有代码或配置证据时不能把根因标为 confirmed。
-                missing_evidence.append(
-                    MissingEvidence(
-                        needed="首个异常对应的代码、配置或依赖证据",
-                        reason="日志只能证明异常时间线，不能单独确认代码根因",
-                        suggested_tool="read_file",
-                    )
+                self._append_retrieval_evidence(
+                    payload=payload,
+                    workspace=knowledge_workspace,
+                    evidence=evidence,
+                    missing_evidence=missing_evidence,
                 )
         except SearchLogError as exc:
             missing_evidence.append(
@@ -251,10 +310,49 @@ class LocalLogEvidenceCollector:
         return LogDiagnosisInput(
             report_id=report_id,
             task_id=task_id,
-            workspace=data_dir,
+            workspace=knowledge_workspace,
             evidence=evidence,
             missing_evidence=missing_evidence,
         )
+
+    def _append_retrieval_evidence(
+        self,
+        *,
+        payload: dict,
+        workspace: str,
+        evidence: list[Evidence],
+        missing_evidence: list[MissingEvidence],
+    ) -> None:
+        if self._knowledge_retriever is None:
+            missing_evidence.append(_log_code_missing_evidence())
+            return
+        query = _build_log_retrieval_query(payload)
+        try:
+            result = self._knowledge_retriever(
+                query,
+                workspace,
+                DEFAULT_BUSINESS_RETRIEVAL_TOP_K,
+            )
+        except KnowledgeRetrieveError:
+            missing_evidence.append(_retrieval_missing_evidence("日志首个异常"))
+            return
+        retrieval_budget = _remaining_retrieval_budget(
+            evidence,
+            total_budget=MAX_LOG_CONTEXT_CHARS,
+        )
+        if retrieval_budget == 0:
+            missing_evidence.append(_retrieval_budget_missing_evidence("日志首个异常"))
+            return
+        retrieved = map_retrieval_evidence(
+            result,
+            start_index=len(evidence) + 1,
+            max_total_chars=retrieval_budget,
+            preferred_paths=_log_source_paths(payload),
+        )
+        if retrieved:
+            evidence.extend(retrieved)
+        else:
+            missing_evidence.append(_retrieval_missing_evidence("日志首个异常"))
 
 
 def _build_log_locator(payload: dict) -> str:
@@ -268,6 +366,80 @@ def _build_log_locator(payload: dict) -> str:
         f"first_anomaly_sequence_id={first_sequence or 'none'};"
         f"entries={summary['total_entry_count']}"
     )
+
+
+def _build_retrieval_query(prefix: str, evidence: list[Evidence]) -> str:
+    parts = [prefix]
+    for item in evidence:
+        parts.extend((item.locator, item.excerpt[:700]))
+    return "\n".join(parts)[:MAX_RETRIEVAL_QUERY_CHARS]
+
+
+def _build_log_retrieval_query(payload: dict) -> str:
+    anomaly = payload.get("first_anomaly")
+    if not isinstance(anomaly, dict):
+        return "structured log failure related source code and configuration"
+    query = "\n".join(
+        (
+            "structured log first anomaly related source code and configuration",
+            str(anomaly.get("service") or ""),
+            str(anomaly.get("message") or ""),
+            str(anomaly.get("source") or ""),
+            json.dumps(
+                anomaly.get("context") or {},
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+        )
+    )
+    return query[:MAX_RETRIEVAL_QUERY_CHARS]
+
+
+def _log_source_paths(payload: dict) -> tuple[str, ...]:
+    anomaly = payload.get("first_anomaly")
+    if not isinstance(anomaly, dict):
+        return ()
+    source = anomaly.get("source")
+    if not isinstance(source, str) or not source.strip():
+        return ()
+    path, _, possible_line = source.rpartition(":")
+    if path and possible_line.isdigit():
+        return (path,)
+    return (source,)
+
+
+def _log_code_missing_evidence() -> MissingEvidence:
+    return MissingEvidence(
+        needed="首个异常对应的代码、配置或依赖证据",
+        reason="日志只能证明异常时间线，不能单独确认代码根因",
+        suggested_tool="read_file",
+    )
+
+
+def _retrieval_missing_evidence(subject: str) -> MissingEvidence:
+    return MissingEvidence(
+        needed=f"{subject}对应的工作区代码或配置证据",
+        reason="工作区增强检索未返回可用证据",
+        suggested_tool="knowledge_retrieve",
+    )
+
+
+def _retrieval_budget_missing_evidence(subject: str) -> MissingEvidence:
+    return MissingEvidence(
+        needed=f"{subject}对应的补充工作区上下文",
+        reason="领域权威证据已用尽当前上下文预算",
+        suggested_tool="knowledge_retrieve",
+    )
+
+
+def _remaining_retrieval_budget(
+    evidence: list[Evidence],
+    *,
+    total_budget: int,
+) -> int:
+    used_chars = sum(len(item.excerpt) for item in evidence)
+    return max(0, min(MAX_BUSINESS_RETRIEVAL_CHARS, total_budget - used_chars))
 
 
 def _build_ci_result_evidence(
@@ -349,6 +521,7 @@ class DiagnosisService:
         *,
         task_id: str,
         data_dir: str = "examples/sample_logs",
+        workspace: str = ".",
     ) -> DiagnosisReport:
         if self._log_evidence_collector is None:
             raise DiagnosisServiceError(
@@ -360,6 +533,7 @@ class DiagnosisService:
             report_id=report_id,
             task_id=task_id,
             data_dir=data_dir,
+            workspace=workspace,
         )
         draft = self._generate_draft(
             system_prompt=LOG_DIAGNOSIS_SYSTEM_PROMPT,

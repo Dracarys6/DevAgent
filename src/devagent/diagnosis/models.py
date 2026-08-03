@@ -3,7 +3,6 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
 EvidenceId = Annotated[str, Field(pattern=r"^E[1-9][0-9]*$")]
 NonEmptyText = Annotated[str, Field(min_length=1)]
 
@@ -18,6 +17,7 @@ class EvidenceKind(str, Enum):
     GIT_DIFF = "git_diff"
     LOG = "log"
     USER_INPUT = "user_input"
+    KNOWLEDGE = "knowledge"
 
 
 class Evidence(DiagnosisModel):
@@ -27,6 +27,7 @@ class Evidence(DiagnosisModel):
     source: str = Field(min_length=1)
     locator: str = Field(min_length=1)
     excerpt: str = Field(min_length=1, max_length=4_000)
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class FindingKind(str, Enum):

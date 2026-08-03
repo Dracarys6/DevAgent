@@ -22,7 +22,11 @@ from devagent.llm import LLMResponse, MockLLMClient
 EXPECTED_KEYWORDS = ["UploadTimeoutError", "RetryExhaustedError", "3 秒"]
 
 
-def make_report(*, confirmed_root_cause: bool = False) -> DiagnosisReport:
+def make_report(
+    *,
+    confirmed_root_cause: bool = False,
+    knowledge_evidence: bool = False,
+) -> DiagnosisReport:
     evidence = Evidence(
         evidence_id="E1",
         kind=EvidenceKind.LOG,
@@ -45,13 +49,25 @@ def make_report(*, confirmed_root_cause: bool = False) -> DiagnosisReport:
             evidence_ids=["E1"],
         ),
     ]
+    evidence_items = [evidence]
+    if knowledge_evidence:
+        evidence_items.append(
+            Evidence(
+                evidence_id="E2",
+                kind=EvidenceKind.KNOWLEDGE,
+                tool_name="knowledge_retrieve",
+                source="workspace",
+                locator="path=src/uploader.py;lines=1-24;chunk_id=chunk-1;rank=1",
+                excerpt="def build_upload_timeout(): return 3",
+            )
+        )
     if confirmed_root_cause:
         findings.append(
             Finding(
                 kind=FindingKind.ROOT_CAUSE,
                 statement="代码实现确定是根因。",
                 confidence=Confidence.CONFIRMED,
-                evidence_ids=["E1"],
+                evidence_ids=["E2" if knowledge_evidence else "E1"],
             )
         )
     return DiagnosisReport(
@@ -61,7 +77,7 @@ def make_report(*, confirmed_root_cause: bool = False) -> DiagnosisReport:
         status=DiagnosisStatus.DIAGNOSED,
         summary="上传先超时，之后重试耗尽并导致任务失败。",
         findings=findings,
-        evidence=[evidence],
+        evidence=evidence_items,
         recommendations=[
             Recommendation(
                 action="检查上传 timeout 的代码和配置。",
@@ -70,13 +86,17 @@ def make_report(*, confirmed_root_cause: bool = False) -> DiagnosisReport:
                 verification_steps=["读取上传 timeout 实现", "重新运行上传任务"],
             )
         ],
-        missing_evidence=[
-            MissingEvidence(
-                needed="上传 timeout 的代码或配置证据",
-                reason="日志不能单独确认代码根因",
-                suggested_tool="read_file",
-            )
-        ],
+        missing_evidence=(
+            []
+            if knowledge_evidence
+            else [
+                MissingEvidence(
+                    needed="上传 timeout 的代码或配置证据",
+                    reason="日志不能单独确认代码根因",
+                    suggested_tool="read_file",
+                )
+            ]
+        ),
     )
 
 
@@ -137,7 +157,20 @@ def test_live_log_metrics_reject_confirmed_root_cause_from_logs_alone() -> None:
     )
 
     assert metrics.confirmed_root_cause_count == 1
+    assert metrics.root_cause_confidence_valid is False
     assert metrics.passed is False
+
+
+def test_live_log_metrics_accept_confirmed_root_cause_with_knowledge_evidence() -> None:
+    metrics = evaluate_live_log_diagnosis(
+        make_report(confirmed_root_cause=True, knowledge_evidence=True),
+        EXPECTED_KEYWORDS,
+    )
+
+    assert metrics.knowledge_evidence_covered is True
+    assert metrics.confirmed_root_cause_count == 1
+    assert metrics.root_cause_confidence_valid is True
+    assert metrics.passed is True
 
 
 def test_live_log_report_is_traceable_and_hides_absolute_data_dir(

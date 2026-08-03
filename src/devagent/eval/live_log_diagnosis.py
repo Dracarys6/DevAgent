@@ -14,6 +14,7 @@ from devagent.diagnosis import (
     FindingKind,
     LocalCIEvidenceCollector,
     LocalLogEvidenceCollector,
+    LogEvidenceCollector,
 )
 from devagent.llm import LLMClient
 
@@ -36,7 +37,9 @@ class LiveLogDiagnosisMetrics(LiveLogDiagnosisModel):
     first_anomaly_identified: bool = Field(strict=True)
     cascade_error_identified: bool = Field(strict=True)
     confirmed_root_cause_count: int = Field(ge=0)
+    knowledge_evidence_covered: bool = Field(strict=True)
     code_evidence_gap_recorded: bool = Field(strict=True)
+    root_cause_confidence_valid: bool = Field(strict=True)
     recommendation_count: int = Field(ge=0)
     expected_keyword_hit_count: int = Field(ge=0)
     expected_keyword_count: int = Field(ge=1)
@@ -74,6 +77,8 @@ def run_live_log_diagnosis(
     model: str,
     api_mode: str,
     expected_keywords: list[str],
+    workspace: str | Path | None = None,
+    log_evidence_collector: LogEvidenceCollector | None = None,
     max_attempts: int = 2,
 ) -> LiveLogDiagnosisRun:
     """通过真实 DiagnosisService 执行固定日志诊断并评分。"""
@@ -89,6 +94,12 @@ def run_live_log_diagnosis(
     root = Path(data_dir).expanduser().resolve()
     if not root.is_dir():
         raise ValueError("Live Log Diagnosis data_dir 不存在或不是目录")
+    knowledge_root = (
+        Path(workspace).expanduser().resolve() if workspace is not None else root
+    )
+    if not knowledge_root.is_dir():
+        raise ValueError("Live Log Diagnosis workspace 不存在或不是目录")
+    collector = log_evidence_collector or LocalLogEvidenceCollector()
 
     report: DiagnosisReport | None = None
     attempt_errors: list[str] = []
@@ -97,10 +108,14 @@ def run_live_log_diagnosis(
         service = DiagnosisService(
             llm_client=llm_client_factory(),
             ci_evidence_collector=LocalCIEvidenceCollector(),
-            log_evidence_collector=LocalLogEvidenceCollector(),
+            log_evidence_collector=collector,
         )
         try:
-            report = service.diagnose_log(task_id=task_id, data_dir=str(root))
+            report = service.diagnose_log(
+                task_id=task_id,
+                data_dir=str(root),
+                workspace=str(knowledge_root),
+            )
             attempt_count = attempt
             break
         except DiagnosisServiceError as exc:
@@ -162,9 +177,18 @@ def evaluate_live_log_diagnosis(
         and finding.confidence == Confidence.CONFIRMED
         for finding in report.findings
     )
+    knowledge_evidence_covered = EvidenceKind.KNOWLEDGE in {
+        item.kind for item in report.evidence
+    }
     code_evidence_gap_recorded = any(
-        item.suggested_tool in {"read_file", "search_code"}
+        item.suggested_tool in {"read_file", "search_code", "knowledge_retrieve"}
         for item in report.missing_evidence
+    )
+    root_cause_confidence_valid = (
+        knowledge_evidence_covered or confirmed_root_cause_count == 0
+    )
+    code_context_boundary_satisfied = (
+        knowledge_evidence_covered or code_evidence_gap_recorded
     )
     searchable_text = " ".join(
         [
@@ -187,8 +211,8 @@ def evaluate_live_log_diagnosis(
             evidence_references_grounded,
             first_anomaly_identified,
             cascade_error_identified,
-            confirmed_root_cause_count == 0,
-            code_evidence_gap_recorded,
+            root_cause_confidence_valid,
+            code_context_boundary_satisfied,
             bool(report.recommendations),
             keyword_hits == len(normalized_keywords),
         )
@@ -200,7 +224,9 @@ def evaluate_live_log_diagnosis(
         first_anomaly_identified=first_anomaly_identified,
         cascade_error_identified=cascade_error_identified,
         confirmed_root_cause_count=confirmed_root_cause_count,
+        knowledge_evidence_covered=knowledge_evidence_covered,
         code_evidence_gap_recorded=code_evidence_gap_recorded,
+        root_cause_confidence_valid=root_cause_confidence_valid,
         recommendation_count=len(report.recommendations),
         expected_keyword_hit_count=keyword_hits,
         expected_keyword_count=len(normalized_keywords),
@@ -241,7 +267,9 @@ def render_live_log_diagnosis_report(
         f"| First Anomaly Identified | {metrics.first_anomaly_identified} |",
         f"| Cascade Error Identified | {metrics.cascade_error_identified} |",
         f"| Confirmed Root Causes | {metrics.confirmed_root_cause_count} |",
+        f"| Knowledge Evidence Covered | {metrics.knowledge_evidence_covered} |",
         f"| Code Evidence Gap Recorded | {metrics.code_evidence_gap_recorded} |",
+        f"| Root Cause Confidence Valid | {metrics.root_cause_confidence_valid} |",
         f"| Recommendations | {metrics.recommendation_count} |",
         (
             "| Expected Keyword Hit Rate | "
@@ -361,7 +389,9 @@ def _empty_metrics(expected_keywords: list[str]) -> LiveLogDiagnosisMetrics:
         first_anomaly_identified=False,
         cascade_error_identified=False,
         confirmed_root_cause_count=0,
+        knowledge_evidence_covered=False,
         code_evidence_gap_recorded=False,
+        root_cause_confidence_valid=False,
         recommendation_count=0,
         expected_keyword_hit_count=0,
         expected_keyword_count=len(expected_keywords),

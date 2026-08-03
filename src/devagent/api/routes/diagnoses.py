@@ -97,6 +97,7 @@ def diagnose_log(
         return service.diagnose_log(
             task_id=request.task_id,
             data_dir=request.data_dir,
+            workspace=request.workspace,
         )
     except DiagnosisServiceError as exc:
         raise HTTPException(
