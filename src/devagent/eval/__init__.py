@@ -45,6 +45,16 @@ from .rag_report import (
     evaluate_rag_context,
     render_rag_baseline_report,
 )
+from .rerank_baseline import (
+    MeasuredReranker,
+    RerankBaselineError,
+    RerankBaselineRun,
+    RerankBaselineSummary,
+    RerankCaseObservation,
+    render_rerank_baseline_report,
+    run_rerank_baseline,
+    summarize_rerank_baseline_run,
+)
 from .review_metrics import (
     ExpectedReviewFinding,
     ReviewEvalCase,
@@ -92,6 +102,7 @@ __all__ = [
     "LiveRAGPrediction",
     "LiveReviewExpectedFinding",
     "MeasuredEmbeddingProvider",
+    "MeasuredReranker",
     "RAGAgentAnswer",
     "RAGContextCategoryMetrics",
     "RAGContextMetrics",
@@ -100,6 +111,10 @@ __all__ = [
     "RAGEvalMetrics",
     "RAGEvalPrediction",
     "RAGEvalRun",
+    "RerankBaselineError",
+    "RerankBaselineRun",
+    "RerankBaselineSummary",
+    "RerankCaseObservation",
     "ReviewEvalCase",
     "ReviewEvalConfigurationError",
     "ReviewEvalDiffLine",
@@ -124,6 +139,7 @@ __all__ = [
     "render_live_log_diagnosis_report",
     "render_live_rag_report",
     "render_rag_baseline_report",
+    "render_rerank_baseline_report",
     "render_review_baseline_report",
     "render_vector_baseline_report",
     "run_hybrid_baseline",
@@ -132,7 +148,9 @@ __all__ = [
     "run_live_log_diagnosis",
     "run_live_rag_agent_eval",
     "run_rag_eval",
+    "run_rerank_baseline",
     "run_vector_baseline",
     "summarize_hybrid_baseline_run",
+    "summarize_rerank_baseline_run",
     "summarize_vector_baseline_run",
 ]

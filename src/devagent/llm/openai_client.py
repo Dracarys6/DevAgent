@@ -5,10 +5,11 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any
 
-from .base import LLMClient
-from .models import LLMResponse, ToolCall
 from devagent.tools.models import RiskLevel
 from devagent.tools.registry import ToolRegistry
+
+from .base import LLMClient
+from .models import LLMResponse, ToolCall
 
 
 class OpenAIAPIMode(str, Enum):
@@ -366,15 +367,25 @@ def _is_gpt_5_6(model: str) -> bool:
     return model == "gpt-5.6" or model.startswith("gpt-5.6-")
 
 
-def _create_sdk_client(api_key: str, base_url: str | None) -> Any:
+def _create_sdk_client(
+    api_key: str,
+    base_url: str | None,
+    timeout_seconds: float | None,
+    max_retries: int | None,
+) -> Any:
     try:
         from openai import OpenAI
     except ImportError as exc:
         raise RuntimeError("缺少 openai 依赖，请先安装 openai") from exc
 
+    kwargs: dict[str, object] = {"api_key": api_key}
     if base_url:
-        return OpenAI(api_key=api_key, base_url=base_url)
-    return OpenAI(api_key=api_key)
+        kwargs["base_url"] = base_url
+    if timeout_seconds is not None:
+        kwargs["timeout"] = timeout_seconds
+    if max_retries is not None:
+        kwargs["max_retries"] = max_retries
+    return OpenAI(**kwargs)
 
 
 class OpenAICompatibleLLMClient:
@@ -390,6 +401,8 @@ class OpenAICompatibleLLMClient:
         response_format: dict[str, Any] | None = None,
         reasoning_effort: str | None = None,
         max_tokens: int | None = None,
+        timeout_seconds: float | None = None,
+        max_retries: int | None = None,
     ) -> None:
         if not api_key:
             raise ValueError("缺少 LLM API Key")
@@ -400,6 +413,7 @@ class OpenAICompatibleLLMClient:
         ):
             raise ValueError("max_tokens 必须大于或等于 1")
         _validate_reasoning_effort(reasoning_effort, model=model)
+        _validate_transport_limits(timeout_seconds, max_retries)
 
         self.model = model
         self.tools = tools or []
@@ -407,7 +421,14 @@ class OpenAICompatibleLLMClient:
         self.response_format = deepcopy(response_format)
         self.reasoning_effort = reasoning_effort
         self.max_tokens = max_tokens
-        self.client = _create_sdk_client(api_key, base_url)
+        self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
+        self.client = _create_sdk_client(
+            api_key,
+            base_url,
+            timeout_seconds,
+            max_retries,
+        )
 
     def chat(self, messages: list[dict[str, Any]]) -> LLMResponse:
         request: dict[str, Any] = {
@@ -453,6 +474,8 @@ class OpenAIResponsesLLMClient:
         response_format: dict[str, Any] | None = None,
         reasoning_effort: str | None = None,
         max_tokens: int | None = None,
+        timeout_seconds: float | None = None,
+        max_retries: int | None = None,
     ) -> None:
         if not api_key:
             raise ValueError("缺少 LLM API Key")
@@ -463,13 +486,21 @@ class OpenAIResponsesLLMClient:
         ):
             raise ValueError("max_tokens 必须大于或等于 1")
         _validate_reasoning_effort(reasoning_effort, model=model)
+        _validate_transport_limits(timeout_seconds, max_retries)
 
         self.model = model
         self.tools = openai_tools_to_responses_tools(tools or [])
         self.response_format = deepcopy(response_format)
         self.reasoning_effort = reasoning_effort
         self.max_tokens = max_tokens
-        self.client = _create_sdk_client(api_key, base_url)
+        self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
+        self.client = _create_sdk_client(
+            api_key,
+            base_url,
+            timeout_seconds,
+            max_retries,
+        )
 
     def chat(self, messages: list[dict[str, Any]]) -> LLMResponse:
         request: dict[str, Any] = {
@@ -503,6 +534,8 @@ def create_openai_llm_client(
     response_format: dict[str, Any] | None = None,
     reasoning_effort: str | None = None,
     max_tokens: int | None = None,
+    timeout_seconds: float | None = None,
+    max_retries: int | None = None,
 ) -> LLMClient:
     """根据显式 API 模式创建对应的 OpenAI LLMClient。"""
     try:
@@ -526,4 +559,24 @@ def create_openai_llm_client(
         response_format=response_format,
         reasoning_effort=reasoning_effort,
         max_tokens=max_tokens,
+        timeout_seconds=timeout_seconds,
+        max_retries=max_retries,
     )
+
+
+def _validate_transport_limits(
+    timeout_seconds: float | None,
+    max_retries: int | None,
+) -> None:
+    if timeout_seconds is not None:
+        if isinstance(timeout_seconds, bool) or not isinstance(
+            timeout_seconds, (int, float)
+        ):
+            raise TypeError("timeout_seconds 必须是数值")
+        if not 0 < timeout_seconds <= 600:
+            raise ValueError("timeout_seconds 必须位于 0 到 600")
+    if max_retries is not None:
+        if isinstance(max_retries, bool) or not isinstance(max_retries, int):
+            raise TypeError("max_retries 必须是整数")
+        if not 0 <= max_retries <= 10:
+            raise ValueError("max_retries 必须位于 0 到 10")

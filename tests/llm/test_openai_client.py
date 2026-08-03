@@ -17,8 +17,8 @@ from devagent.llm.openai_client import (
     to_openai_responses_input,
     tool_registry_to_openai_tools,
 )
-from devagent.tools.builtin import create_builtin_registry
 from devagent.tools import ReadFileTool, ToolRegistry
+from devagent.tools.builtin import create_builtin_registry
 from devagent.tools.models import RiskLevel
 
 
@@ -523,7 +523,7 @@ def test_responses_client_completes_runtime_tool_loop_with_output_replay(tmp_pat
 def test_create_openai_llm_client_selects_responses(monkeypatch):
     monkeypatch.setattr(
         "devagent.llm.openai_client._create_sdk_client",
-        lambda api_key, base_url: SimpleNamespace(),
+        lambda api_key, base_url, timeout_seconds, max_retries: SimpleNamespace(),
     )
 
     client = create_openai_llm_client(
@@ -547,7 +547,7 @@ def test_create_openai_llm_client_rejects_unknown_mode():
 def test_create_openai_llm_client_rejects_gpt_5_6_minimal_reasoning(monkeypatch):
     monkeypatch.setattr(
         "devagent.llm.openai_client._create_sdk_client",
-        lambda api_key, base_url: SimpleNamespace(),
+        lambda api_key, base_url, timeout_seconds, max_retries: SimpleNamespace(),
     )
 
     with pytest.raises(ValueError, match="GPT-5.6.*minimal"):
@@ -566,4 +566,49 @@ def test_openai_client_rejects_invalid_max_tokens(max_tokens: int):
             api_key="test-key",
             model="test-model",
             max_tokens=max_tokens,
+        )
+
+
+def test_create_openai_llm_client_forwards_transport_limits(monkeypatch):
+    captured = {}
+
+    def fake_create_sdk_client(api_key, base_url, timeout_seconds, max_retries):
+        captured.update(
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
+        )
+        return SimpleNamespace()
+
+    monkeypatch.setattr(
+        "devagent.llm.openai_client._create_sdk_client",
+        fake_create_sdk_client,
+    )
+
+    client = create_openai_llm_client(
+        api_key="test-key",
+        model="test-model",
+        timeout_seconds=45.0,
+        max_retries=0,
+    )
+
+    assert client.timeout_seconds == 45.0
+    assert client.max_retries == 0
+    assert captured == {"timeout_seconds": 45.0, "max_retries": 0}
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error"),
+    [
+        ({"timeout_seconds": 0}, "timeout_seconds"),
+        ({"timeout_seconds": True}, "timeout_seconds"),
+        ({"max_retries": -1}, "max_retries"),
+        ({"max_retries": True}, "max_retries"),
+    ],
+)
+def test_openai_client_rejects_invalid_transport_limits(kwargs, error):
+    with pytest.raises((TypeError, ValueError), match=error):
+        OpenAICompatibleLLMClient(
+            api_key="test-key",
+            model="test-model",
+            **kwargs,
         )

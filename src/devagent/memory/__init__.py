@@ -29,6 +29,15 @@ from .openai_embeddings import (
     OpenAIEmbeddingConfig,
     OpenAIEmbeddingProvider,
 )
+from .reranker import (
+    Reranker,
+    RerankerError,
+    RerankingError,
+    RerankingRetriever,
+    RerankingRetrieverConfig,
+    RerankScore,
+    rerank_retrieval_result,
+)
 from .retriever import BM25Config, KeywordRetriever, RetrievalError
 from .vector_retriever import (
     VectorRetrievalError,
@@ -54,6 +63,12 @@ __all__ = [
     "LineRange",
     "OpenAIEmbeddingConfig",
     "OpenAIEmbeddingProvider",
+    "RerankScore",
+    "Reranker",
+    "RerankerError",
+    "RerankingError",
+    "RerankingRetriever",
+    "RerankingRetrieverConfig",
     "RetrievalError",
     "RetrievalResult",
     "Retriever",
@@ -63,5 +78,6 @@ __all__ = [
     "chunk_document",
     "fuse_retrieval_results",
     "normalize_embedding_vector",
+    "rerank_retrieval_result",
     "validate_embedding_vector",
 ]
