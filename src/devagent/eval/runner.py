@@ -1,5 +1,5 @@
 import json
-from math import ceil, isclose
+from math import ceil, isclose, log2
 from pathlib import Path, PurePosixPath
 from time import perf_counter
 
@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-from devagent.memory import RetrievalResult
+from devagent.memory import EvidenceSnippet, RetrievalResult
 from devagent.tools import KnowledgeRetrieveTool, ToolRegistry
 
 MRR_CUTOFF = 5
@@ -30,6 +30,18 @@ class RAGEvalModel(BaseModel):
     )
 
 
+class RAGRelevanceJudgment(RAGEvalModel):
+    """对一个路径的人工相关性标注，3 表示直接证据，1 表示弱支持。"""
+
+    path: str
+    grade: int = Field(ge=1, le=3, strict=True)
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _validate_relative_path(value)
+
+
 class RAGEvalCase(RAGEvalModel):
     case_id: str = Field(min_length=1, max_length=100)
     description: str = Field(min_length=1, max_length=500)
@@ -44,6 +56,7 @@ class RAGEvalCase(RAGEvalModel):
     expect_empty: bool = Field(default=False, strict=True)
     expected_paths: list[str] = Field(default_factory=list)
     expected_keywords: list[str] = Field(default_factory=list)
+    relevance_judgments: list[RAGRelevanceJudgment] = Field(default_factory=list)
 
     @field_validator("expected_paths")
     @classmethod
@@ -63,16 +76,45 @@ class RAGEvalCase(RAGEvalModel):
             raise ValueError("expected_keywords 忽略大小写后不能重复")
         return values
 
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_binary_path_labels(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        if "relevance_judgments" in value or value.get("expect_empty") is True:
+            return value
+        expected_paths = value.get("expected_paths")
+        if not isinstance(expected_paths, list):
+            return value
+        migrated = dict(value)
+        migrated["relevance_judgments"] = [
+            {"path": path, "grade": 3} for path in expected_paths
+        ]
+        return migrated
+
     @model_validator(mode="after")
     def validate_expected_evidence(self) -> "RAGEvalCase":
         if self.expect_empty:
-            if self.expected_paths or self.expected_keywords:
-                raise ValueError("负样本不能声明 expected_paths 或 expected_keywords")
+            if (
+                self.expected_paths
+                or self.expected_keywords
+                or self.relevance_judgments
+            ):
+                raise ValueError(
+                    "负样本不能声明 expected_paths、expected_keywords 或 relevance_judgments"
+                )
             return self
         if not self.expected_paths:
             raise ValueError("正样本至少需要一个 expected_path")
         if not self.expected_keywords:
             raise ValueError("正样本至少需要一个 expected_keyword")
+        if not self.relevance_judgments:
+            raise ValueError("正样本至少需要一个 relevance_judgment")
+        judgment_paths = [item.path for item in self.relevance_judgments]
+        if len(judgment_paths) != len(set(judgment_paths)):
+            raise ValueError("relevance_judgments path 不能重复")
+        if set(judgment_paths) != set(self.expected_paths):
+            raise ValueError("relevance_judgments 必须完整覆盖 expected_paths")
         return self
 
 
@@ -112,6 +154,9 @@ class RAGEvalMetrics(RAGEvalModel):
     located_evidence_count: int = Field(ge=0)
     returned_evidence_count: int = Field(ge=0)
     reciprocal_rank_sum: float = Field(ge=0)
+    precision_at_5: float = Field(ge=0, le=1)
+    recall_at_5: float = Field(ge=0, le=1)
+    ndcg_at_5: float = Field(ge=0, le=1)
     tool_hit_rate: float = Field(ge=0, le=1)
     evidence_hit_rate: float = Field(ge=0, le=1)
     mrr_at_5: float = Field(ge=0, le=1)
@@ -189,6 +234,9 @@ def evaluate_rag_predictions(
     located_evidence_count = 0
     returned_evidence_count = 0
     reciprocal_rank_sum = 0.0
+    precision_sum = 0.0
+    recall_sum = 0.0
+    ndcg_sum = 0.0
     failed_tool_case_ids: list[str] = []
     missed_evidence_case_ids: list[str] = []
     missing_answer_keywords: list[str] = []
@@ -233,6 +281,11 @@ def evaluate_rag_predictions(
         else:
             missed_evidence_case_ids.append(case.case_id)
 
+        precision, recall, ndcg = _ranked_relevance_metrics(case, items)
+        precision_sum += precision
+        recall_sum += recall
+        ndcg_sum += ndcg
+
         folded_answer = prediction.answer_text.casefold()
         expected_keyword_count += len(case.expected_keywords)
         for keyword in case.expected_keywords:
@@ -254,6 +307,9 @@ def evaluate_rag_predictions(
         located_evidence_count=located_evidence_count,
         returned_evidence_count=returned_evidence_count,
         reciprocal_rank_sum=reciprocal_rank_sum,
+        precision_at_5=precision_sum / len(positive_cases),
+        recall_at_5=recall_sum / len(positive_cases),
+        ndcg_at_5=ndcg_sum / len(positive_cases),
         tool_hit_rate=tool_hit_count / len(cases),
         evidence_hit_rate=evidence_hit_count / len(positive_cases),
         mrr_at_5=reciprocal_rank_sum / len(positive_cases),
@@ -273,6 +329,34 @@ def evaluate_rag_predictions(
         incorrect_non_empty_case_ids=incorrect_non_empty_case_ids,
         incomplete_location_case_ids=incomplete_location_case_ids,
     )
+
+
+def _ranked_relevance_metrics(
+    case: RAGEvalCase,
+    items: list[EvidenceSnippet],
+) -> tuple[float, float, float]:
+    """计算路径级宏平均指标；未标注路径按不相关处理。"""
+    grades = {item.path: item.grade for item in case.relevance_judgments}
+    ranked_paths = [
+        item.path
+        for item in items[:MRR_CUTOFF]
+        if hasattr(item, "path") and isinstance(item.path, str)
+    ]
+    relevant_retrieved = len(set(ranked_paths) & set(grades))
+    precision = relevant_retrieved / MRR_CUTOFF
+    recall = relevant_retrieved / len(grades)
+    seen_paths: set[str] = set()
+    dcg = 0.0
+    for rank, path in enumerate(ranked_paths, start=1):
+        grade = 0 if path in seen_paths else grades.get(path, 0)
+        seen_paths.add(path)
+        dcg += ((2**grade) - 1) / log2(rank + 1)
+    ideal_grades = sorted(grades.values(), reverse=True)[:MRR_CUTOFF]
+    ideal_dcg = sum(
+        ((2**grade) - 1) / log2(rank + 1)
+        for rank, grade in enumerate(ideal_grades, start=1)
+    )
+    return precision, recall, dcg / ideal_dcg
 
 
 def run_rag_eval(

@@ -236,6 +236,9 @@ def test_render_report_contains_metrics_business_slices_and_boundaries(
     )
 
     assert "Top-5 Evidence Hit Rate | 100.0%" in report
+    assert "Precision@5 | 20.0%" in report
+    assert "Recall@5 | 100.0%" in report
+    assert "NDCG@5 | 100.0%" in report
     assert "MRR@5 | 100.0%" in report
     assert "Context Reduction Rate" in report
     assert "| ci | 1 | 100.0%" in report

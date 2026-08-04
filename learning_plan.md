@@ -1007,25 +1007,25 @@ Day 58：定义向量检索抽象 [x]
 验收：固定向量 fixture 可确定性验证相似度排序、空语料和 provider 失败
 实测：固定二维向量完整经过文档编码、查询编码、单位化、cosine 排序和 Evidence 映射；排序与 tie-break 重复一致，异常向量拒绝、受控 provider 错误转换和空语料零调用均达到 100%
 
-Day 59：实现向量检索基线
+Day 59：实现向量检索基线 [x]
 产出：向量索引构建、查询和元数据映射实现及 tests/memory/
 验收：向量结果保留 source、path、line_range、score 和稳定 chunk_id，并输出与 BM25 的质量和延迟差异
 
-Day 60：实现 BM25 + 向量混合召回
+Day 60：实现 BM25 + 向量混合召回 [x]
 产出：src/devagent/memory/hybrid_retriever.py、tests/memory/test_hybrid_retriever.py
 策略：使用可解释的分数归一化或 Reciprocal Rank Fusion，保留稳定 tie-break
 验收：同一查询可追踪关键词与向量候选来源，融合结果可确定性复现
 
-Day 61：实现可替换 rerank
+Day 61：实现可替换 rerank [x]
 产出：src/devagent/memory/reranker.py、tests/memory/test_reranker.py
 范围：只重排 Top-N 候选，记录召回分数、重排分数与耗时
 验收：reranker 失败可降级到混合召回，EvidenceSnippet 定位信息不丢失
 
-Day 62：接入业务链路并优化上下文
+Day 62：接入业务链路并优化上下文 [x]
 产出：knowledge_retrieve、CI / 日志诊断、代码合入审查的检索策略接入
 验收：业务报告能引用混合检索 evidence；相比整文件或日志注入，平均上下文字符数降低 40% 以上
 
-Day 63：RAG 增强对比与第 9 周验收
+Day 63：RAG 增强对比与第 9 周验收 [x]
 产出：docs/evaluation.md、eval/reports/rag_optimization.md、eval/reports/rag_live_provider.md
 对比：BM25、向量、混合召回、混合召回 + rerank
 验收：先根据固定数据集的质量、延迟和上下文成本选择候选策略；再让真实 provider 通过 AgentRuntime 在代表性正负样本上运行至少 2 次，比较答案关键词、证据引用、拒答、端到端延迟和失败率后决定默认策略
@@ -1046,8 +1046,8 @@ Day 63：RAG 增强对比与第 9 周验收
 
 ```text
 固定 RAG eval cases 数量达到 30 到 50 条
-混合召回 + rerank 的 Top-5 Evidence Hit Rate >= 85%，且相比第 8 周 BM25 基线提升 >= 5 个百分点
-MRR@5 相比第 8 周 BM25 基线提升 >= 10%
+完整固定集 Hit@5、Recall@5、负样本准确率、定位完整率与检索延迟先通过硬门槛
+通过硬门槛后比较 Precision@5、NDCG@5、MRR@5、上下文和 provider 成本，不设置数学上不可达的固定增量
 平均上下文输入字符数相比整文件 / 日志注入降低 >= 40%
 本地样例库完整检索链路 p95 延迟 < 800ms
 证据引用完整率 >= 95%

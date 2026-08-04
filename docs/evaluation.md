@@ -259,14 +259,20 @@ Corpus documents：21
 语料类型：Python、Markdown、JSONL 日志、CI JSON
 ```
 
-`expected_paths` 作为本地 workspace evidence 的 relevance label。Hit@5 判断前 5 名内是否出现任一
-expected path；MRR@5 对第一个相关结果的排名取倒数，再以全部正样本为分母。漏召回贡献 0，负样本
-不进入 MRR，而由 Empty Result Accuracy 单独评分。
+`expected_paths` 作为本地 workspace evidence 的二元 relevance label，并迁移为 grade 3 的
+`relevance_judgments`。Hit@5 判断前 5 名内是否出现任一相关路径；Precision@5 衡量 Top-5 的相关路径
+密度；Recall@5 衡量已标注相关路径的覆盖率；NDCG@5 使用 1 到 3 级相关性评价完整排序；MRR@5 只评价
+第一个相关结果的位置。负样本不进入这些正样本指标，由 Empty Result Accuracy 单独评分。
+
+当前标注仍是路径级、非穷尽判断。未标注路径按不相关处理，同一路径的多个 chunk 只允许第一次获得
+NDCG 增益。由于多数 case 只标注一个相关路径且 Precision 固定以 5 为分母，当前理论最高
+Precision@5 通常为 20%；它用于同口径比较 evidence 密度，不能脱离标注范围解释成生产准确率。
 
 报告：
 
 ```text
 eval/reports/rag_bm25_baseline.md
+eval/reports/rag_bm25_baseline.json
 ```
 
 固定结果：
@@ -274,12 +280,15 @@ eval/reports/rag_bm25_baseline.md
 | Metric | Result | Target |
 | --- | ---: | ---: |
 | Top-5 Evidence Hit Rate | 100.0% | >= 80% |
+| Precision@5 | 20.0% | path-level baseline |
+| Recall@5 | 100.0% | >= 80% |
+| NDCG@5 | 98.8% | path-level baseline |
 | MRR@5 | 98.3% | BM25 baseline |
 | Answer Keyword Hit Rate | 100.0% | >= 80% |
 | Empty Result Accuracy | 100.0% | 100% |
 | Evidence Location Completeness | 100.0% | >= 90% |
 | Context Reduction Rate | 77.8% | >= 40% |
-| Retrieval p95 | 7.31 ms | < 800 ms |
+| Retrieval p95 | 5.55 ms | < 800 ms |
 
 29 个正样本首位命中；`github-inline-fallback` 的正确 Markdown evidence 位于第 2 名，所以 Hit@5
 仍是 100%，MRR@5 为 98.3%。当前固定运行没有 tool failure、Top-5 miss、负样本错误召回、定位缺失
@@ -614,6 +623,9 @@ BM25、Vector、Hybrid 和 Hybrid + Rerank 必须使用：
 新增指标：
 
 ```text
+Precision@5
+Recall@5
+NDCG@5
 MRR@5
 失败类型分布
 候选来源
@@ -621,16 +633,43 @@ rerank latency
 降级率
 ```
 
-策略选择不能只按最高命中率决定。需要联合比较：
+策略选择先执行不能被高分抵消的 hard gate，再在合格方案中进行 soft ranking：
 
 ```text
-Evidence Hit / MRR
-Context Reduction
-p95 latency
-资源与 provider 成本
-失败降级能力
-业务高价值 case 的实际提升
+Hard gate：Hit / Recall、Empty Result Accuracy、定位完整性、Context Reduction、p95
+Soft ranking：NDCG、MRR、Precision、上下文成本和 provider 成本
 ```
+
+## Week 9 Final Strategy Decision
+
+统一结构化报告：
+
+```text
+eval/reports/rag_optimization.md
+eval/reports/rag_optimization.json
+```
+
+完整 36 条路径级固定集：
+
+| Strategy | Hit@5 | Precision@5 | Recall@5 | NDCG@5 | MRR@5 | Empty | Context | p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| BM25 | 100.0% | 20.0% | 100.0% | 98.8% | 98.3% | 100.0% | 77.8% | 5.55 ms |
+| Vector | 100.0% | 20.0% | 100.0% | 95.1% | 93.3% | 0.0% | 75.1% | 186.23 ms |
+| Hybrid RRF | 100.0% | 20.0% | 100.0% | 98.8% | 98.3% | 0.0% | 73.8% | 236.93 ms |
+
+8 条代表性 Rerank 子集把 NDCG@5 从 93.8% 提升到 100%，MRR@5 从 91.7% 提升到 100%，
+但检索 p95 从 286.30 ms 增加到 15.25 秒，Empty Result Accuracy 仍为 0%。因此最终策略是：
+
+```text
+开放式 Agent：BM25
+领域锚定 CI / Log / Review：Hybrid RRF
+高价值且允许额外延迟：显式 Hybrid + Rerank
+Vector standalone：保留为召回源和实验对照
+```
+
+真实 Agent 使用同一模型、API 模式和 8 条正负样本完成 2 次运行。两次 Tool Call、Grounded Citation
+和 Abstention 的最差值均为 100%，严格端到端成功率平均值和最差值均为 87.5%。失败分别来自不同 case
+的精确关键词代理评分，没有出现同一 case 连续失败；这些数据属于代表集稳定性证据，不等同生产 SLA。
 
 ## 解释边界
 
@@ -654,6 +693,7 @@ BM25 已经是最终最佳策略
 
 准确的项目表达是：
 
-> 我先用 20 条固定研发问题建立 BM25 基线。在保持 Top-5 预期证据命中率 100% 的情况下，
-> evidence 正文相对整库注入减少 78.9%，固定本地工具链 p95 为约 10 ms。这个结果用于回归和
-> 后续策略对比，不代表生产准确率；下一阶段会在同一数据集上扩充难例并比较向量、混合召回和重排。
+> 我使用 36 条路径级标注 case 比较 BM25、Vector 和 Hybrid，并在 8 条代表性子集上验证真实
+> LLM Rerank。开放式 Agent 通过负样本、定位、上下文和延迟硬门槛后选择 BM25；领域锚定业务使用
+> Hybrid；Rerank 只显式用于高价值任务。Precision、Recall 和 NDCG 的结论受当前路径级非穷尽标注
+> 限制，不表述成生产仓库准确率。

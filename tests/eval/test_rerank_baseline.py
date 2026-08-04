@@ -183,6 +183,9 @@ def test_rerank_summary_and_report_exclude_retrieval_content(tmp_path: Path) -> 
     assert "alpha signal" not in serialized
     assert "beta target evidence" not in serialized
     assert "Quality Comparison" in report
+    assert "Precision@5" in report
+    assert "Recall@5" in report
+    assert "NDCG@5" in report
     assert "Fallback cases: 0" in report
     assert "promote-beta" in report
 

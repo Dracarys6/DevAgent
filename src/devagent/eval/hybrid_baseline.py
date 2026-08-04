@@ -311,6 +311,27 @@ def render_hybrid_baseline_report(
                 ">= BM25",
             ),
             _metric_row(
+                "Precision@5",
+                hybrid.precision_at_5,
+                bm25.precision_at_5,
+                vector.precision_at_5,
+                "compare",
+            ),
+            _metric_row(
+                "Recall@5",
+                hybrid.recall_at_5,
+                bm25.recall_at_5,
+                vector.recall_at_5,
+                ">= 80%",
+            ),
+            _metric_row(
+                "NDCG@5",
+                hybrid.ndcg_at_5,
+                bm25.ndcg_at_5,
+                vector.ndcg_at_5,
+                "compare",
+            ),
+            _metric_row(
                 "MRR@5", hybrid.mrr_at_5, bm25.mrr_at_5, vector.mrr_at_5, "observe"
             ),
             _metric_row(

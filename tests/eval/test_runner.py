@@ -1,4 +1,5 @@
 import json
+from math import log2
 from pathlib import Path
 
 import pytest
@@ -140,6 +141,7 @@ def make_complete_eval_input() -> tuple[list[RAGEvalCase], list[RAGEvalPredictio
 
 def test_case_model_accepts_positive_and_negative_contracts() -> None:
     assert make_case().expect_empty is False
+    assert make_case().relevance_judgments[0].grade == 3
     assert make_case(case_id="negative", expect_empty=True).expected_paths == []
 
 
@@ -335,6 +337,77 @@ def test_metrics_calculate_mrr_at_5_from_first_relevant_result() -> None:
     assert metrics.reciprocal_rank_sum == pytest.approx(1 + 1 / 2 + 1 / 5)
     assert metrics.mrr_at_5 == pytest.approx((1 + 1 / 2 + 1 / 5) / 4)
     assert metrics.missed_evidence_case_ids == ["positive-4"]
+
+
+def test_metrics_calculate_precision_recall_and_graded_ndcg_at_5() -> None:
+    positive = RAGEvalCase(
+        case_id="graded",
+        description="分级相关性",
+        category="test",
+        query="upload timeout",
+        expected_paths=["src/direct.py", "docs/support.md"],
+        expected_keywords=["timeout"],
+        relevance_judgments=[
+            {"path": "src/direct.py", "grade": 3},
+            {"path": "docs/support.md", "grade": 1},
+        ],
+    )
+    cases = [positive, make_case(case_id="negative", expect_empty=True)]
+    predictions = [
+        make_prediction(
+            case_id="graded",
+            result=make_ranked_result(
+                ["docs/support.md", "src/direct.py", "src/noise.py"]
+            ),
+            answer_text="timeout",
+        ),
+        make_prediction(
+            case_id="negative",
+            result=make_result(empty=True),
+            answer_text="",
+        ),
+    ]
+
+    metrics = evaluate_rag_predictions(cases, predictions)
+
+    expected_dcg = 1 + 7 / log2(3)
+    ideal_dcg = 7 + 1 / log2(3)
+    assert metrics.precision_at_5 == pytest.approx(2 / 5)
+    assert metrics.recall_at_5 == 1
+    assert metrics.ndcg_at_5 == pytest.approx(expected_dcg / ideal_dcg)
+
+
+def test_ranked_metrics_do_not_reward_duplicate_paths_twice() -> None:
+    positive = make_case(expected_paths=["src/app.py"])
+    cases = [positive, make_case(case_id="negative", expect_empty=True)]
+    predictions = [
+        make_prediction(
+            result=make_ranked_result(["src/app.py", "src/app.py", "noise.py"])
+        ),
+        make_prediction(
+            case_id="negative",
+            result=make_result(empty=True),
+            answer_text="",
+        ),
+    ]
+
+    metrics = evaluate_rag_predictions(cases, predictions)
+
+    assert metrics.precision_at_5 == pytest.approx(1 / 5)
+    assert metrics.recall_at_5 == 1
+    assert metrics.ndcg_at_5 == 1
+
+
+def test_case_rejects_incomplete_or_duplicate_relevance_judgments() -> None:
+    payload = make_case().model_dump(mode="json")
+    payload["relevance_judgments"] = [{"path": "src/other.py", "grade": 3}]
+    with pytest.raises(ValidationError, match="完整覆盖"):
+        RAGEvalCase.model_validate(payload)
+
+    payload["expected_paths"] = ["src/other.py"]
+    payload["relevance_judgments"] *= 2
+    with pytest.raises(ValidationError, match="不能重复"):
+        RAGEvalCase.model_validate(payload)
 
 
 def test_metrics_model_rejects_inconsistent_mrr() -> None:

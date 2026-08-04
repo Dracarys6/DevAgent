@@ -173,6 +173,9 @@ def test_vector_baseline_report_is_sanitized_and_json_round_trips(
     assert restored == run
     assert "fixed-vector-eval" in report
     assert "Top-5 Evidence Hit Rate" in report
+    assert "Precision@5" in report
+    assert "Recall@5" in report
+    assert "NDCG@5" in report
     assert "Document embedding API calls: 1" in report
     assert "private-key" not in report
     assert "base_url" not in report

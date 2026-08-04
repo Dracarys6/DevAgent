@@ -1,7 +1,7 @@
 # RAG Vector Baseline
 
-- Generated at: `2026-08-01T15:13:56.711647+00:00`
-- Commit: `c0e47a7 + working tree`
+- Generated at: `2026-08-04T14:13:19.963754+00:00`
+- Commit: `14f112a + working tree`
 - Provider: `openai-compatible:text-embedding-v4`
 - Model: `text-embedding-v4`
 - Cases: 36
@@ -14,19 +14,22 @@
 - Document embedding API calls: 3
 - Query embedding API calls: 36
 - Provider-reported input tokens: 2285
-- Index build latency: 2300.01 ms
+- Index build latency: 1365.06 ms
 
 ## Retrieval Comparison
 
 | Metric | Vector | BM25 | Target |
 | --- | ---: | ---: | ---: |
 | Top-5 Evidence Hit Rate | 100.0% | 100.0% | >= 80% |
+| Precision@5 | 20.0% | 20.0% | compare |
+| Recall@5 | 100.0% | 100.0% | >= 80% |
+| NDCG@5 | 95.1% | 98.8% | compare |
 | MRR@5 | 93.3% | 98.3% | observe |
 | Empty Result Accuracy | 0.0% | 100.0% | observe |
 | Evidence Location Completeness | 100.0% | 100.0% | 100% |
 | Context Reduction Rate | 75.1% | 77.8% | >= 40% |
-| Query p50 | 150.86 ms | 27.04 ms | observe |
-| Query p95 | 317.61 ms | 52.76 ms | observe |
+| Query p50 | 141.08 ms | 4.91 ms | observe |
+| Query p95 | 186.23 ms | 5.79 ms | observe |
 
 ## Failure Analysis
 

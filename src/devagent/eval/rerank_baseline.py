@@ -350,6 +350,14 @@ def render_rerank_baseline_report(
             _metric_row(
                 "Hit@5", before.evidence_hit_rate, after.evidence_hit_rate, ">= before"
             ),
+            _metric_row(
+                "Precision@5",
+                before.precision_at_5,
+                after.precision_at_5,
+                ">= before",
+            ),
+            _metric_row("Recall@5", before.recall_at_5, after.recall_at_5, ">= before"),
+            _metric_row("NDCG@5", before.ndcg_at_5, after.ndcg_at_5, ">= before"),
             _metric_row("MRR@5", before.mrr_at_5, after.mrr_at_5, ">= before"),
             _metric_row(
                 "Empty accuracy",

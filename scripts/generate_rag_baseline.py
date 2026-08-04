@@ -8,6 +8,7 @@ from devagent.eval import (
     load_rag_eval_cases,
     render_rag_baseline_report,
     run_rag_eval,
+    summarize_rag_baseline_run,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -39,7 +40,17 @@ def main() -> None:
     output = args.output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report, encoding="utf-8")
+    json_output = output.with_suffix(".json")
+    json_output.write_text(
+        summarize_rag_baseline_run(
+            run=run,
+            context_metrics=context_metrics,
+            case_ids=[case.case_id for case in cases],
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
     print(f"RAG baseline 已生成: {output}")
+    print(f"RAG baseline summary 已生成: {json_output}")
 
 
 def _current_revision() -> str:

@@ -208,6 +208,9 @@ def test_hybrid_report_compares_all_strategies_and_costs(tmp_path: Path) -> None
     assert "Hybrid RRF" in report
     assert "BM25" in report
     assert "Vector" in report
+    assert "Precision@5" in report
+    assert "Recall@5" in report
+    assert "NDCG@5" in report
     assert "Candidate source traceability: 100.0%" in report
     assert "Document embedding calls: 1" in report
     assert "Query embedding calls: 2" in report

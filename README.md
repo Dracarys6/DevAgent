@@ -4,11 +4,11 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具、证据驱动诊断、代码合入审查，以及 BM25 研发知识检索与上下文压缩基线。RAG 链路已使用真实 provider 通过 AgentRuntime 完成 8 条正负样本验收；CI Diagnosis、Log Diagnosis 和 Local Code Review 也已通过固定证据完成真实 provider 验收。其余业务链路的真实验收状态单独列出，不用 Mock 结果代替。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求、诊断报告和 GitHub PR 建议状态。
+当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具、证据驱动诊断、代码合入审查，以及 BM25、向量、Hybrid RRF、可降级 Rerank 和上下文压缩。RAG 已完成 36 条路径级固定集对比、两次真实 Agent 正负样本稳定性验收，并将开放式 Agent、领域业务和高价值重排拆分为不同默认策略。CI Diagnosis、Log Diagnosis 和 Local Code Review 也已通过固定证据完成真实 provider 验收。其余业务链路的真实验收状态单独列出，不用 Mock 结果代替。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求、诊断报告和 GitHub PR 建议状态。
 
 ```text
-当前进度：Agent Runtime + Tool/Permission/Event/Trace + Diagnosis/Review + BM25 RAG + ContextManager + 离线/真实 RAG Evaluation + React Console
-当前阶段：第 8 周 RAG / Memory 离线基线和真实 Agent 验收已完成；第 9 周比较向量、混合召回与重排
+当前进度：Agent Runtime + Tool/Permission/Event/Trace + Diagnosis/Review + 分场景 RAG + ContextManager + 离线/真实 Evaluation + React Console
+当前阶段：第 9 周 RAG 增强已完成；开放式 Agent 使用 BM25，领域锚定业务使用 Hybrid，高价值任务显式启用 Rerank
 测试状态：使用 `uv run --locked pytest -q` 执行全量回归
 Python 要求：3.11+
 环境管理：uv + `pyproject.toml` + `uv.lock`
@@ -59,15 +59,16 @@ Python 要求：3.11+
 | Review Evaluation | 固定 case、风险召回率、可行动准确率、误报率、证据与 diff 定位指标 | 已完成基线 |
 | BM25 RAG / Memory | 稳定切片、证据定位、关键词检索和 `knowledge_retrieve` 工具 | 已完成基线 |
 | Agent ContextManager | 保留完整历史，为 LLM 请求生成带原子工具块和关键 evidence 的压缩视图 | 已完成基础版 |
-| RAG Evaluation | 20 条离线检索 case；8 条真实 provider Agent case 验证工具、答案、引用、拒答与端到端延迟 | 已完成基线 |
+| RAG Evaluation | 36 条路径级离线 case 统计 Hit、Precision、Recall、NDCG、MRR、拒答、上下文与延迟；8 条真实 Agent case 重复 2 次 | 已完成第 9 周验收 |
+| RAG 检索策略 | BM25、Vector、Hybrid RRF 与可降级 LLM Rerank；使用硬门槛与软排序选择分场景默认 | 已完成增强版 |
 | 可视化控制台 | React 页面展示任务、事件、Trace、权限和诊断结果 | 已完成初版 |
 | Agent Skills | 面向业务组合 ToolRegistry 工具能力，预留 MCP 扩展 | 规划中 |
 | 权限审批 | 高风险工具审批、策略管理、危险命令防护和审批 API | 已完成基础版 |
 | Trace 与事件流 | 统一事件协议、EventBus、SSE/WebSocket、执行回放 | 已完成基础版 |
 | 研发诊断 | CI 失败诊断契约与 API、日志根因分析契约、Git diff 分析 | 已完成基础版 |
 | 代码合入审查 | base/head 变更审查、结构化建议和 Review Evaluation | 自动化闭环完成 |
-| RAG / Memory | 代码、日志、CI、文档和历史案例的 BM25 检索与上下文压缩 | 已完成基线 |
-| Evaluation | Review 与 RAG 固定基线、质量/上下文/延迟报告 | 已完成基线 |
+| RAG / Memory | 代码、日志、CI、文档和历史案例的关键词、向量、混合检索、重排与上下文压缩 | 已完成增强版 |
+| Evaluation | Review 与 RAG 固定基线、分级排序质量、拒答、上下文、延迟和真实稳定性报告 | 已完成增强版 |
 | 多 Agent 编排 | 子任务拆分、并发、预算限制、取消传播 | 规划中 |
 
 ---
@@ -78,7 +79,7 @@ Mock、固定响应和 Fake HTTP Client 只用于可重复测试。下面单独�
 
 | 业务链路 | 确定性自动化 | 真实端到端 | 当前证据 |
 | --- | --- | --- | --- |
-| RAG Agent | 已完成 | 已完成 8 条代表性 case | `rag_live_provider.md/json` |
+| RAG Agent | 已完成 | 同配置 8 条代表性 case 完成 2 次稳定性验收 | `rag_optimization.md/json` + 单次 MD/JSON |
 | CI Diagnosis API | 已完成 | 修复后连续 3 次通过 | `ci_diagnosis_live_summary.md` + 单次 MD/JSON |
 | Log Diagnosis | 已完成 | 固定结构化日志真实 API 与 runner 验收通过 | `log_diagnosis_live_summary.md` + MD/JSON |
 | Local Code Review | 已完成 | 固定本地变更真实 provider 验收通过 | `code_review_live_summary.md` + 单次 MD/JSON |
@@ -476,6 +477,7 @@ flowchart TD
 - [开发学习计划](learning_plan.md)
 - [Evaluation 指标与基线](docs/evaluation.md)
 - [RAG Evaluation Baseline](eval/reports/rag_baseline.md)
+- [RAG 第 9 周优化与策略验收](eval/reports/rag_optimization.md)
 - [真实 RAG Agent Evaluation](eval/reports/rag_live_provider.md)
 - [真实 CI Diagnosis 验收汇总](eval/reports/ci_diagnosis_live_summary.md)
 - [真实 Log Diagnosis 验收汇总](eval/reports/log_diagnosis_live_summary.md)

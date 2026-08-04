@@ -1646,13 +1646,13 @@ ContextManager 固定长历史压缩率：87.36%
 
 第 9 周增强：
 
-* [ ] 将固定 RAG eval cases 扩充到 30 到 50 条，并冻结统一统计口径。
-* [ ] 定义 EmbeddingProvider 和 VectorRetriever 接口，实现向量检索基线。
-* [ ] 实现 BM25 + 向量混合召回，并保留候选来源和稳定 tie-break。
-* [ ] 实现 evidence rerank 的可替换接口，失败时降级到混合召回。
-* [ ] 对比 BM25、向量、混合召回和混合召回 + rerank。
-* [ ] 统计 Evidence Hit Rate、MRR@5、Context Reduction Rate、Retrieval p95 Latency。
-* [ ] 在 CI 诊断、日志根因分析和代码合入审查中接入检索 evidence。
+* [x] 将固定 RAG eval cases 扩充到 36 条，并冻结路径级相关性与统一统计口径。
+* [x] 定义 EmbeddingProvider 和 VectorRetriever 接口，实现真实向量检索基线。
+* [x] 实现 BM25 + 向量混合召回，并保留候选来源和稳定 tie-break。
+* [x] 实现 evidence rerank 的可替换接口，失败时降级到混合召回。
+* [x] 对比 BM25、向量、混合召回和混合召回 + rerank。
+* [x] 统计 Hit@5、Precision@5、Recall@5、NDCG@5、MRR@5、Context Reduction 和 Retrieval p95。
+* [x] 在 CI 诊断、日志根因分析和代码合入审查中接入 Hybrid 检索 evidence。
 
 ### 验收标准
 
@@ -1673,13 +1673,17 @@ Agent 应该能够：
 
 ```text
 1. 第 8 周 BM25 基线的 Top-5 Evidence Hit Rate 达到 80% 以上。
-2. 第 9 周混合召回 + rerank 的 Top-5 Evidence Hit Rate 达到 85% 以上，且相比 BM25 基线提升至少 5 个百分点。
-3. 第 9 周 MRR@5 相比 BM25 基线提升 10% 以上。
+2. 完整固定集先通过 Hit@5 >= 80%、Recall@5 >= 80%、负样本准确率 100%、定位完整率 >= 95% 和 p95 < 800 ms 的硬门槛。
+3. 对通过硬门槛的策略比较 NDCG@5、MRR@5、Precision@5、上下文成本和 provider 成本；不要求在已经 100% 的 BM25 Hit@5 上继续获得不可能的固定增量。
 4. 平均上下文输入字符数相比直接注入完整文件 / 日志降低 40% 以上。
 5. CI / 日志诊断任务中的人工证据查找步骤减少 30% 以上。
 6. 本地样例库完整检索链路 p95 延迟低于 800 ms。
 7. 证据引用完整率达到 95%：每条 evidence 包含 source、path、line_range 或等价定位信息。
 ```
+
+第 9 周最终决策：开放式 Agent 默认 BM25；由 CI result、task log 或 Git diff 锚定的领域业务默认
+Hybrid RRF；Hybrid + Rerank 仅在高价值且允许额外模型延迟时显式启用。完整决策与标注边界见
+`eval/reports/rag_optimization.md`。
 
 ---
 

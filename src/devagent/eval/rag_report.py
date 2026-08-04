@@ -8,6 +8,7 @@ from devagent.tools.knowledge_tools import load_workspace_documents
 
 from .runner import (
     RAGEvalCase,
+    RAGEvalMetrics,
     RAGEvalPrediction,
     RAGEvalRun,
     evaluate_rag_predictions,
@@ -76,6 +77,24 @@ class RAGContextMetrics(RAGReportModel):
             raise ValueError("categories 不能重复")
         if sum(item.case_count for item in self.categories) != self.positive_case_count:
             raise ValueError("category case 总数与 positive_case_count 不一致")
+        return self
+
+
+class RAGBaselineSummary(RAGReportModel):
+    """不包含 query、excerpt 或答案正文的 BM25 基线摘要。"""
+
+    case_ids: list[str] = Field(min_length=1)
+    metrics: RAGEvalMetrics
+    context: RAGContextMetrics
+
+    @model_validator(mode="after")
+    def validate_counts(self) -> "RAGBaselineSummary":
+        if len(self.case_ids) != len(set(self.case_ids)):
+            raise ValueError("case_ids 不能重复")
+        if self.metrics.case_count != len(self.case_ids):
+            raise ValueError("metrics case 数量必须等于 case_ids 数量")
+        if self.context.positive_case_count != self.metrics.positive_case_count:
+            raise ValueError("context 与 metrics 正样本数量不一致")
         return self
 
 
@@ -191,6 +210,9 @@ def render_rag_baseline_report(
             "| --- | ---: | ---: |",
             f"| Tool Hit Rate | {percent(quality.tool_hit_rate)} | 100% |",
             f"| Top-5 Evidence Hit Rate | {percent(quality.evidence_hit_rate)} | >= 80% |",
+            f"| Precision@5 | {percent(quality.precision_at_5)} | compare |",
+            f"| Recall@5 | {percent(quality.recall_at_5)} | >= 80% |",
+            f"| NDCG@5 | {percent(quality.ndcg_at_5)} | compare |",
             f"| MRR@5 | {percent(quality.mrr_at_5)} | baseline |",
             f"| Answer Keyword Hit Rate | {percent(quality.answer_keyword_hit_rate)} | >= 80% |",
             f"| Empty Result Accuracy | {percent(quality.empty_result_accuracy)} | 100% |",
@@ -226,11 +248,26 @@ def render_rag_baseline_report(
             "## Interpretation And Boundaries",
             "",
             "This deterministic local baseline compares full-corpus oracle availability with BM25 Top-5 evidence injection.",
-            "Hit@5 measures whether relevant evidence is retrieved; MRR@5 measures how early the first relevant result appears.",
+            "Hit@5 measures whether any relevant path is retrieved; Precision@5 and Recall@5 measure evidence density and coverage; NDCG@5 uses graded relevance; MRR@5 measures how early the first relevant result appears.",
+            "Current fixtures are path-level judgments. Unlisted paths are treated as irrelevant, and legacy expected_paths migrate to relevance grade 3; chunk-level relevance still requires finer annotations.",
             "The report measures retrieval evidence quality, context efficiency, and local tool latency; it does not measure live-LLM answer accuracy or provider network latency.",
             "Negative cases are scored with Empty Result Accuracy and are excluded from Context Reduction Rate.",
             "",
         ]
+    )
+
+
+def summarize_rag_baseline_run(
+    *,
+    run: RAGEvalRun,
+    context_metrics: RAGContextMetrics,
+    case_ids: list[str],
+) -> RAGBaselineSummary:
+    """生成统一优化报告可以安全消费的 BM25 结构化摘要。"""
+    return RAGBaselineSummary(
+        case_ids=case_ids,
+        metrics=run.metrics,
+        context=context_metrics,
     )
 
 

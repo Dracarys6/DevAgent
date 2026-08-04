@@ -1,6 +1,4 @@
 {
-  "provider_name": "openai-compatible:text-embedding-v4",
-  "model": "text-embedding-v4",
   "case_ids": [
     "event-bus-publish",
     "event-store-task-events",
@@ -39,184 +37,7 @@
     "negative-swiftui-keychain",
     "negative-kafka-rebalance"
   ],
-  "vector_dimensions": 1024,
-  "document_count": 21,
-  "chunk_count": 21,
-  "document_embedding_call_count": 3,
-  "query_embedding_call_count": 36,
-  "input_tokens": 2285,
-  "index_build_ms": 1365.0616660015658,
-  "vector_metrics": {
-    "case_count": 36,
-    "positive_case_count": 30,
-    "negative_case_count": 6,
-    "tool_hit_count": 36,
-    "evidence_hit_count": 30,
-    "matched_answer_keyword_count": 60,
-    "expected_answer_keyword_count": 60,
-    "correct_empty_count": 0,
-    "located_evidence_count": 180,
-    "returned_evidence_count": 180,
-    "reciprocal_rank_sum": 28.0,
-    "precision_at_5": 0.2000000000000001,
-    "recall_at_5": 1.0,
-    "ndcg_at_5": 0.9507906338095277,
-    "tool_hit_rate": 1.0,
-    "evidence_hit_rate": 1.0,
-    "mrr_at_5": 0.9333333333333333,
-    "answer_keyword_hit_rate": 1.0,
-    "empty_result_accuracy": 0.0,
-    "evidence_location_completeness": 1.0,
-    "average_latency_ms": 144.40286691145351,
-    "p50_latency_ms": 141.0774589749053,
-    "p95_latency_ms": 186.2273330334574,
-    "failed_tool_case_ids": [],
-    "missed_evidence_case_ids": [],
-    "missing_answer_keywords": [],
-    "incorrect_non_empty_case_ids": [
-      "negative-payment-billing",
-      "negative-kubernetes-deployment",
-      "negative-graphql-federation",
-      "negative-terraform-aurora",
-      "negative-swiftui-keychain",
-      "negative-kafka-rebalance"
-    ],
-    "incomplete_location_case_ids": []
-  },
-  "vector_context": {
-    "corpus_document_count": 21,
-    "corpus_chars_per_case": 7959,
-    "positive_case_count": 30,
-    "full_context_chars_total": 238770,
-    "retrieved_context_chars_total": 59453,
-    "average_full_context_chars": 7959.0,
-    "average_retrieved_context_chars": 1981.7666666666667,
-    "max_retrieved_context_chars": 2887,
-    "context_reduction_rate": 0.7510030573355111,
-    "categories": [
-      {
-        "category": "api",
-        "case_count": 2,
-        "evidence_hit_count": 2,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1894.5,
-        "context_reduction_rate": 0.76196758386732
-      },
-      {
-        "category": "ci",
-        "case_count": 4,
-        "evidence_hit_count": 4,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1625.75,
-        "context_reduction_rate": 0.7957343887423043
-      },
-      {
-        "category": "context",
-        "case_count": 3,
-        "evidence_hit_count": 3,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 2749.6666666666665,
-        "context_reduction_rate": 0.6545210872387653
-      },
-      {
-        "category": "diagnosis",
-        "case_count": 1,
-        "evidence_hit_count": 1,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 2168.0,
-        "context_reduction_rate": 0.7276039703480337
-      },
-      {
-        "category": "docs",
-        "case_count": 1,
-        "evidence_hit_count": 1,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1423.0,
-        "context_reduction_rate": 0.821208694559618
-      },
-      {
-        "category": "event",
-        "case_count": 2,
-        "evidence_hit_count": 2,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1535.5,
-        "context_reduction_rate": 0.8070737529840433
-      },
-      {
-        "category": "github",
-        "case_count": 3,
-        "evidence_hit_count": 3,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 2380.6666666666665,
-        "context_reduction_rate": 0.7008836956066508
-      },
-      {
-        "category": "log",
-        "case_count": 4,
-        "evidence_hit_count": 4,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1963.5,
-        "context_reduction_rate": 0.7532981530343008
-      },
-      {
-        "category": "memory",
-        "case_count": 3,
-        "evidence_hit_count": 3,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 2337.0,
-        "context_reduction_rate": 0.7063701470033924
-      },
-      {
-        "category": "permission",
-        "case_count": 1,
-        "evidence_hit_count": 1,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1423.0,
-        "context_reduction_rate": 0.821208694559618
-      },
-      {
-        "category": "review",
-        "case_count": 1,
-        "evidence_hit_count": 1,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 2168.0,
-        "context_reduction_rate": 0.7276039703480337
-      },
-      {
-        "category": "security",
-        "case_count": 1,
-        "evidence_hit_count": 1,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1423.0,
-        "context_reduction_rate": 0.821208694559618
-      },
-      {
-        "category": "task",
-        "case_count": 1,
-        "evidence_hit_count": 1,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 2030.0,
-        "context_reduction_rate": 0.7449428320140721
-      },
-      {
-        "category": "tool",
-        "case_count": 2,
-        "evidence_hit_count": 2,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1932.0,
-        "context_reduction_rate": 0.7572559366754618
-      },
-      {
-        "category": "trace",
-        "case_count": 1,
-        "evidence_hit_count": 1,
-        "evidence_hit_rate": 1.0,
-        "average_retrieved_context_chars": 1335.0,
-        "context_reduction_rate": 0.8322653599698455
-      }
-    ]
-  },
-  "bm25_metrics": {
+  "metrics": {
     "case_count": 36,
     "positive_case_count": 30,
     "negative_case_count": 6,
@@ -237,16 +58,16 @@
     "answer_keyword_hit_rate": 1.0,
     "empty_result_accuracy": 1.0,
     "evidence_location_completeness": 1.0,
-    "average_latency_ms": 4.998166631493303,
-    "p50_latency_ms": 4.910457995720208,
-    "p95_latency_ms": 5.788290989585221,
+    "average_latency_ms": 5.177704889016847,
+    "p50_latency_ms": 5.0394999561831355,
+    "p95_latency_ms": 5.55358303245157,
     "failed_tool_case_ids": [],
     "missed_evidence_case_ids": [],
     "missing_answer_keywords": [],
     "incorrect_non_empty_case_ids": [],
     "incomplete_location_case_ids": []
   },
-  "bm25_context": {
+  "context": {
     "corpus_document_count": 21,
     "corpus_chars_per_case": 7959,
     "positive_case_count": 30,

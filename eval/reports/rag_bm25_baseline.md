@@ -1,7 +1,7 @@
 # RAG Evaluation Baseline
 
-- Generated at: `2026-08-01T03:59:40.927314+00:00`
-- Commit: `45e5614 + working tree`
+- Generated at: `2026-08-04T14:13:01.638883+00:00`
+- Commit: `14f112a + working tree`
 - Cases: 36
 - Positive / negative: 30 / 6
 - Corpus documents: 21
@@ -12,12 +12,15 @@
 | --- | ---: | ---: |
 | Tool Hit Rate | 100.0% | 100% |
 | Top-5 Evidence Hit Rate | 100.0% | >= 80% |
+| Precision@5 | 20.0% | compare |
+| Recall@5 | 100.0% | >= 80% |
+| NDCG@5 | 98.8% | compare |
 | MRR@5 | 98.3% | baseline |
 | Answer Keyword Hit Rate | 100.0% | >= 80% |
 | Empty Result Accuracy | 100.0% | 100% |
 | Evidence Location Completeness | 100.0% | >= 90% |
 | Context Reduction Rate | 77.8% | >= 40% |
-| Retrieval p95 | 7.31 ms | < 800 ms |
+| Retrieval p95 | 5.55 ms | < 800 ms |
 
 ## Context Efficiency
 
@@ -50,6 +53,7 @@
 ## Interpretation And Boundaries
 
 This deterministic local baseline compares full-corpus oracle availability with BM25 Top-5 evidence injection.
-Hit@5 measures whether relevant evidence is retrieved; MRR@5 measures how early the first relevant result appears.
+Hit@5 measures whether any relevant path is retrieved; Precision@5 and Recall@5 measure evidence density and coverage; NDCG@5 uses graded relevance; MRR@5 measures how early the first relevant result appears.
+Current fixtures are path-level judgments. Unlisted paths are treated as irrelevant, and legacy expected_paths migrate to relevance grade 3; chunk-level relevance still requires finer annotations.
 The report measures retrieval evidence quality, context efficiency, and local tool latency; it does not measure live-LLM answer accuracy or provider network latency.
 Negative cases are scored with Empty Result Accuracy and are excluded from Context Reduction Rate.

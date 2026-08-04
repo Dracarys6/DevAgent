@@ -1,0 +1,860 @@
+{
+  "provider": "openai-compatible-live",
+  "model": "gpt-5.6-terra",
+  "api_mode": "responses",
+  "metrics": {
+    "case_count": 8,
+    "positive_case_count": 6,
+    "negative_case_count": 2,
+    "valid_answer_count": 8,
+    "tool_hit_count": 8,
+    "tool_success_count": 8,
+    "evidence_hit_count": 6,
+    "matched_answer_keyword_count": 10,
+    "expected_answer_keyword_count": 12,
+    "expected_path_citation_count": 6,
+    "grounded_citation_count": 9,
+    "returned_citation_count": 9,
+    "correct_abstention_count": 2,
+    "end_to_end_success_count": 7,
+    "valid_answer_rate": 1.0,
+    "tool_hit_rate": 1.0,
+    "tool_success_rate": 1.0,
+    "evidence_hit_rate": 1.0,
+    "answer_keyword_hit_rate": 0.8333333333333334,
+    "expected_path_citation_rate": 1.0,
+    "grounded_citation_rate": 1.0,
+    "abstention_accuracy": 1.0,
+    "end_to_end_success_rate": 0.875,
+    "average_latency_ms": 13457.696062367177,
+    "p95_latency_ms": 16906.073875026777,
+    "failed_case_ids": [
+      "ci-upload-timeout"
+    ],
+    "failure_reasons": {
+      "ci-upload-timeout": [
+        "missing_answer_keyword=expected_seconds",
+        "missing_answer_keyword=actual_seconds"
+      ]
+    }
+  },
+  "predictions": [
+    {
+      "case_id": "event-bus-publish",
+      "run_success": true,
+      "run_status": "success",
+      "tool_called": true,
+      "tool_success": true,
+      "retrieval_result": {
+        "query": "EventBus publish AgentEvent subscribers",
+        "top_k": 5,
+        "total_candidates": 11,
+        "items": [
+          {
+            "chunk_id": "chk_f880e4b27e28d5dce0aa2860",
+            "document_id": "doc_1deb0b92dc9fc65db45f0bd9",
+            "source": "workspace",
+            "path": "src/event/bus.py",
+            "line_range": {
+              "start": 1,
+              "end": 6
+            },
+            "excerpt": "class EventBus:\n    \"\"\"Publish each AgentEvent to current subscribers.\"\"\"\n\n    def publish(self, event: \"AgentEvent\") -> None:\n        for subscriber in self.subscribers:\n            subscriber(event)\n",
+            "score": 22.331212991997216,
+            "rank": 1,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "201"
+            }
+          },
+          {
+            "chunk_id": "chk_eb3a05cc6da266f0a95756ac",
+            "document_id": "doc_2265bd0dd98c265bc5024566",
+            "source": "workspace",
+            "path": "src/api/stream.py",
+            "line_range": {
+              "start": 1,
+              "end": 13
+            },
+            "excerpt": "from asyncio import Queue\n\n\nasync def stream_events(event_bus: \"EventBus\"):\n    queue: Queue[\"AgentEvent\"] = Queue()\n    subscription = event_bus.subscribe(queue.put_nowait)\n    try:\n        while True:\n            yield await queue.get()\n    finally:\n        event_bus.unsubscribe(subscription)\n\n# StreamingResponse consumes this async generator as an SSE response body.\n",
+            "score": 10.701772777532689,
+            "rank": 2,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "372"
+            }
+          },
+          {
+            "chunk_id": "chk_ba7e75d27d7c78418e5d7598",
+            "document_id": "doc_bb3286c8eb4a911d64f7c611",
+            "source": "workspace",
+            "path": "src/api/websocket.py",
+            "line_range": {
+              "start": 1,
+              "end": 10
+            },
+            "excerpt": "async def websocket_events(websocket: \"WebSocket\", event_bus: \"EventBus\") -> None:\n    await websocket.accept()\n    subscription = event_bus.subscribe()\n    try:\n        async for event in subscription:\n            await websocket.send_json(event.model_dump(mode=\"json\"))\n    finally:\n        event_bus.unsubscribe(subscription)\n\n# A disconnect exits iteration and releases the subscription.\n",
+            "score": 7.846542476355027,
+            "rank": 3,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "392"
+            }
+          },
+          {
+            "chunk_id": "chk_a2fce3fdf993cd390a0fc978",
+            "document_id": "doc_087ed9aadbb48bab9322424f",
+            "source": "workspace",
+            "path": "src/event/store.py",
+            "line_range": {
+              "start": 1,
+              "end": 6
+            },
+            "excerpt": "class EventStore:\n    def append(self, task_id: str, event: \"AgentEvent\") -> None:\n        self.events_by_task.setdefault(task_id, []).append(event)\n\n    def list_by_task(self, task_id: str) -> list[\"AgentEvent\"]:\n        return list(self.events_by_task.get(task_id, []))\n",
+            "score": 6.7023777214762195,
+            "rank": 4,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "272"
+            }
+          },
+          {
+            "chunk_id": "chk_2698b17521ec2401c0ca3d10",
+            "document_id": "doc_30394447c9450f0505ac1fb5",
+            "source": "workspace",
+            "path": "src/trace/service.py",
+            "line_range": {
+              "start": 1,
+              "end": 5
+            },
+            "excerpt": "class TraceService:\n    def build_trace(self, task_id: str) -> \"TaskTrace\":\n        \"\"\"Build an ordered trace from every event belonging to task_id.\"\"\"\n        events = self.event_store.list_by_task(task_id)\n        return TaskTrace(task_id=task_id, events=sorted(events, key=lambda item: item.sequence_id))\n",
+            "score": 1.7656378684166742,
+            "rank": 5,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "308"
+            }
+          }
+        ],
+        "retrieval_ms": 0.20937505178153515,
+        "truncated": true
+      },
+      "answer": {
+        "answer": "EventBus.publish(event) iterates over the current `self.subscribers` collection and invokes each subscriber with the `AgentEvent`: `subscriber(event)`. The bus documentation states that it publishes each AgentEvent to current subscribers.",
+        "cited_paths": [
+          "src/event/bus.py"
+        ],
+        "insufficient_evidence": false
+      },
+      "raw_final_answer": "{\"answer\":\"EventBus.publish(event) iterates over the current `self.subscribers` collection and invokes each subscriber with the `AgentEvent`: `subscriber(event)`. The bus documentation states that it publishes each AgentEvent to current subscribers.\",\"insufficient_evidence\":false,\"cited_paths\":[\"src/event/bus.py\"]}",
+      "latency_ms": 14710.77212493401,
+      "steps": 2,
+      "tool_call_count": 1,
+      "attempt_count": 1,
+      "attempt_errors": []
+    },
+    {
+      "case_id": "ci-upload-timeout",
+      "run_success": true,
+      "run_status": "success",
+      "tool_called": true,
+      "tool_success": true,
+      "retrieval_result": {
+        "query": "CI test_large_upload dynamic timeout expected_seconds actual_seconds",
+        "top_k": 5,
+        "total_candidates": 4,
+        "items": [
+          {
+            "chunk_id": "chk_2ca4d68a468300e0485f14f8",
+            "document_id": "doc_8b00b6443a928bc29334209e",
+            "source": "workspace",
+            "path": "ci/failed.json",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "{\n  \"status\": \"failed\",\n  \"test\": \"test_large_upload_uses_dynamic_timeout\",\n  \"expected_seconds\": 12,\n  \"actual_seconds\": 3,\n  \"message\": \"dynamic timeout was lower than the required upload duration\"\n}\n",
+            "score": 36.44929008978158,
+            "rank": 1,
+            "metadata": {
+              "file_suffix": ".json",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "202"
+            }
+          },
+          {
+            "chunk_id": "chk_adfa65af7b0b0eedf4fb6812",
+            "document_id": "doc_9acbd976fba274cf3fd7d136",
+            "source": "workspace",
+            "path": "observability/upload_retry.jsonl",
+            "line_range": {
+              "start": 1,
+              "end": 5
+            },
+            "excerpt": "{\"timestamp\":\"2026-07-13T09:00:00Z\",\"sequence_id\":1,\"level\":\"INFO\",\"service\":\"api\",\"message\":\"large upload accepted\",\"context\":{\"upload_id\":\"up-100\",\"size_mb\":100}}\n{\"timestamp\":\"2026-07-13T09:00:04Z\",\"sequence_id\":2,\"level\":\"ERROR\",\"service\":\"uploader\",\"message\":\"UploadTimeoutError after 3 seconds\",\"context\":{\"upload_id\":\"up-100\",\"timeout_seconds\":3,\"expected_seconds\":12}}\n{\"timestamp\":\"2026-07-13T09:00:05Z\",\"sequence_id\":3,\"level\":\"WARNING\",\"service\":\"retry\",\"message\":\"retry scheduled\",\"context\":{\"upload_id\":\"up-100\",\"attempt\":1}}\n{\"timestamp\":\"2026-07-13T09:00:09Z\",\"sequence_id\":4,\"level\":\"ERROR\",\"service\":\"retry\",\"message\":\"RetryExhaustedError\",\"context\":{\"upload_id\":\"up-100\",\"attempt\":1}}\n{\"timestamp\":\"2026-07-13T09:00:10Z\",\"sequence_id\":5,\"level\":\"CRITICAL\",\"service\":\"task\",\"message\":\"upload task finished\",\"context\":{\"upload_id\":\"up-100\",\"status\":\"failed\"}}\n",
+            "score": 11.289643607751472,
+            "rank": 2,
+            "metadata": {
+              "file_suffix": ".jsonl",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "876"
+            }
+          },
+          {
+            "chunk_id": "chk_3cb5d5d0c81e9115cf22480a",
+            "document_id": "doc_6c659ca95125f4b3fae1bef6",
+            "source": "workspace",
+            "path": "logs/task.log",
+            "line_range": {
+              "start": 1,
+              "end": 2
+            },
+            "excerpt": "2026-07-20T09:10:00Z INFO upload_id=upload-42 started size_mb=100 bandwidth=10\n2026-07-20T09:10:03Z ERROR UploadTimeoutError upload_id=upload-42 elapsed_seconds=3 bandwidth=10\n",
+            "score": 7.842079387426082,
+            "rank": 3,
+            "metadata": {
+              "file_suffix": ".log",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "176"
+            }
+          },
+          {
+            "chunk_id": "chk_eca2a38770da4214a4bb7579",
+            "document_id": "doc_bf76456224e8b3b9478036f7",
+            "source": "workspace",
+            "path": "ci/permission_failure.json",
+            "line_range": {
+              "start": 1,
+              "end": 12
+            },
+            "excerpt": "{\n  \"pipeline_id\": \"pipeline-guard-42\",\n  \"status\": \"failed\",\n  \"job\": \"agent-security-tests\",\n  \"failed_test\": \"tests/security/test_command_guard.py::test_blocks_recursive_root_delete\",\n  \"error_type\": \"PermissionDeniedError\",\n  \"error_message\": \"high-risk shell command was blocked before execution\",\n  \"location\": \"src/security/command_guard.py:88\",\n  \"command\": \"rm -rf /\",\n  \"risk_level\": \"critical\",\n  \"policy_decision\": \"deny\"\n}\n",
+            "score": 5.710824091822655,
+            "rank": 4,
+            "metadata": {
+              "file_suffix": ".json",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "436"
+            }
+          }
+        ],
+        "retrieval_ms": 0.13724993914365768,
+        "truncated": false
+      },
+      "answer": {
+        "answer": "CI 测试 `test_large_upload_uses_dynamic_timeout` 失败：期望超时时间为 12 秒，实际超时时间为 3 秒。失败原因是动态超时时间低于所需的上传持续时间。",
+        "cited_paths": [
+          "ci/failed.json",
+          "observability/upload_retry.jsonl"
+        ],
+        "insufficient_evidence": false
+      },
+      "raw_final_answer": "{\"answer\":\"CI 测试 `test_large_upload_uses_dynamic_timeout` 失败：期望超时时间为 12 秒，实际超时时间为 3 秒。失败原因是动态超时时间低于所需的上传持续时间。\",\"cited_paths\":[\"ci/failed.json\",\"observability/upload_retry.jsonl\"],\"insufficient_evidence\":false}",
+      "latency_ms": 11960.091832908802,
+      "steps": 2,
+      "tool_call_count": 1,
+      "attempt_count": 1,
+      "attempt_errors": []
+    },
+    {
+      "case_id": "log-upload-timeout",
+      "run_success": true,
+      "run_status": "success",
+      "tool_called": true,
+      "tool_success": true,
+      "retrieval_result": {
+        "query": "UploadTimeoutError upload_id elapsed_seconds bandwidth",
+        "top_k": 5,
+        "total_candidates": 9,
+        "items": [
+          {
+            "chunk_id": "chk_3cb5d5d0c81e9115cf22480a",
+            "document_id": "doc_6c659ca95125f4b3fae1bef6",
+            "source": "workspace",
+            "path": "logs/task.log",
+            "line_range": {
+              "start": 1,
+              "end": 2
+            },
+            "excerpt": "2026-07-20T09:10:00Z INFO upload_id=upload-42 started size_mb=100 bandwidth=10\n2026-07-20T09:10:03Z ERROR UploadTimeoutError upload_id=upload-42 elapsed_seconds=3 bandwidth=10\n",
+            "score": 27.850332743445207,
+            "rank": 1,
+            "metadata": {
+              "file_suffix": ".log",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "176"
+            }
+          },
+          {
+            "chunk_id": "chk_adfa65af7b0b0eedf4fb6812",
+            "document_id": "doc_9acbd976fba274cf3fd7d136",
+            "source": "workspace",
+            "path": "observability/upload_retry.jsonl",
+            "line_range": {
+              "start": 1,
+              "end": 5
+            },
+            "excerpt": "{\"timestamp\":\"2026-07-13T09:00:00Z\",\"sequence_id\":1,\"level\":\"INFO\",\"service\":\"api\",\"message\":\"large upload accepted\",\"context\":{\"upload_id\":\"up-100\",\"size_mb\":100}}\n{\"timestamp\":\"2026-07-13T09:00:04Z\",\"sequence_id\":2,\"level\":\"ERROR\",\"service\":\"uploader\",\"message\":\"UploadTimeoutError after 3 seconds\",\"context\":{\"upload_id\":\"up-100\",\"timeout_seconds\":3,\"expected_seconds\":12}}\n{\"timestamp\":\"2026-07-13T09:00:05Z\",\"sequence_id\":3,\"level\":\"WARNING\",\"service\":\"retry\",\"message\":\"retry scheduled\",\"context\":{\"upload_id\":\"up-100\",\"attempt\":1}}\n{\"timestamp\":\"2026-07-13T09:00:09Z\",\"sequence_id\":4,\"level\":\"ERROR\",\"service\":\"retry\",\"message\":\"RetryExhaustedError\",\"context\":{\"upload_id\":\"up-100\",\"attempt\":1}}\n{\"timestamp\":\"2026-07-13T09:00:10Z\",\"sequence_id\":5,\"level\":\"CRITICAL\",\"service\":\"task\",\"message\":\"upload task finished\",\"context\":{\"upload_id\":\"up-100\",\"status\":\"failed\"}}\n",
+            "score": 16.023998736576807,
+            "rank": 2,
+            "metadata": {
+              "file_suffix": ".jsonl",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "876"
+            }
+          },
+          {
+            "chunk_id": "chk_2ca4d68a468300e0485f14f8",
+            "document_id": "doc_8b00b6443a928bc29334209e",
+            "source": "workspace",
+            "path": "ci/failed.json",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "{\n  \"status\": \"failed\",\n  \"test\": \"test_large_upload_uses_dynamic_timeout\",\n  \"expected_seconds\": 12,\n  \"actual_seconds\": 3,\n  \"message\": \"dynamic timeout was lower than the required upload duration\"\n}\n",
+            "score": 9.518167488975454,
+            "rank": 3,
+            "metadata": {
+              "file_suffix": ".json",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "202"
+            }
+          },
+          {
+            "chunk_id": "chk_eca2a38770da4214a4bb7579",
+            "document_id": "doc_bf76456224e8b3b9478036f7",
+            "source": "workspace",
+            "path": "ci/permission_failure.json",
+            "line_range": {
+              "start": 1,
+              "end": 12
+            },
+            "excerpt": "{\n  \"pipeline_id\": \"pipeline-guard-42\",\n  \"status\": \"failed\",\n  \"job\": \"agent-security-tests\",\n  \"failed_test\": \"tests/security/test_command_guard.py::test_blocks_recursive_root_delete\",\n  \"error_type\": \"PermissionDeniedError\",\n  \"error_message\": \"high-risk shell command was blocked before execution\",\n  \"location\": \"src/security/command_guard.py:88\",\n  \"command\": \"rm -rf /\",\n  \"risk_level\": \"critical\",\n  \"policy_decision\": \"deny\"\n}\n",
+            "score": 3.544707185474312,
+            "rank": 4,
+            "metadata": {
+              "file_suffix": ".json",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "436"
+            }
+          },
+          {
+            "chunk_id": "chk_a2caf0efa04314b0101549c1",
+            "document_id": "doc_9ac2f89af1ecd2c3de23e3b5",
+            "source": "workspace",
+            "path": "src/diagnosis/service.py",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "class DiagnosisService:\n    def validate_report(self, report: \"DiagnosisReport\") -> None:\n        \"\"\"Every finding evidence_ids entry must reference known Evidence.\"\"\"\n        known_ids = {item.evidence_id for item in report.evidence}\n        for finding in report.findings:\n            if not set(finding.evidence_ids) <= known_ids:\n                raise ValueError(\"DiagnosisReport contains an unknown evidence reference\")\n",
+            "score": 2.534689428431843,
+            "rank": 5,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "425"
+            }
+          }
+        ],
+        "retrieval_ms": 0.094209099188447,
+        "truncated": true
+      },
+      "answer": {
+        "answer": "UploadTimeoutError 发生在 upload_id=upload-42：上传耗时 elapsed_seconds=3，带宽 bandwidth=10，日志显示上传大小为 100 MB。相关记录表明，100 MB 上传的实际预期耗时为 12 秒，而动态超时仅设置为 3 秒，因此超时阈值不足，导致上传失败。",
+        "cited_paths": [
+          "logs/task.log",
+          "observability/upload_retry.jsonl",
+          "ci/failed.json"
+        ],
+        "insufficient_evidence": false
+      },
+      "raw_final_answer": "{\"answer\":\"UploadTimeoutError 发生在 upload_id=upload-42：上传耗时 elapsed_seconds=3，带宽 bandwidth=10，日志显示上传大小为 100 MB。相关记录表明，100 MB 上传的实际预期耗时为 12 秒，而动态超时仅设置为 3 秒，因此超时阈值不足，导致上传失败。\",\"cited_paths\":[\"logs/task.log\",\"observability/upload_retry.jsonl\",\"ci/failed.json\"],\"insufficient_evidence\":false}",
+      "latency_ms": 8683.986707939766,
+      "steps": 2,
+      "tool_call_count": 1,
+      "attempt_count": 1,
+      "attempt_errors": []
+    },
+    {
+      "case_id": "diagnosis-evidence-binding",
+      "run_success": true,
+      "run_status": "success",
+      "tool_called": true,
+      "tool_success": true,
+      "retrieval_result": {
+        "query": "DiagnosisReport findings evidence_ids Evidence validate references",
+        "top_k": 5,
+        "total_candidates": 4,
+        "items": [
+          {
+            "chunk_id": "chk_a2caf0efa04314b0101549c1",
+            "document_id": "doc_9ac2f89af1ecd2c3de23e3b5",
+            "source": "workspace",
+            "path": "src/diagnosis/service.py",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "class DiagnosisService:\n    def validate_report(self, report: \"DiagnosisReport\") -> None:\n        \"\"\"Every finding evidence_ids entry must reference known Evidence.\"\"\"\n        known_ids = {item.evidence_id for item in report.evidence}\n        for finding in report.findings:\n            if not set(finding.evidence_ids) <= known_ids:\n                raise ValueError(\"DiagnosisReport contains an unknown evidence reference\")\n",
+            "score": 31.32404444436437,
+            "rank": 1,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "425"
+            }
+          },
+          {
+            "chunk_id": "chk_79afcdf491285da6b3d6acab",
+            "document_id": "doc_0a116b0e60e6964a1fd44ac7",
+            "source": "workspace",
+            "path": "src/memory/chunker.py",
+            "line_range": {
+              "start": 1,
+              "end": 11
+            },
+            "excerpt": "def chunk_document(document: \"Document\") -> list[\"Chunk\"]:\n    \"\"\"Split Document content into overlapping Chunk windows.\"\"\"\n    return [\n        Chunk(\n            document_id=document.document_id,\n            line_range=LineRange(start=1, end=20),\n            content=document.content,\n        )\n    ]\n\n# EvidenceSnippet preserves source, path, and line_range so Agent answers are auditable.\n",
+            "score": 1.982631446563951,
+            "rank": 2,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "393"
+            }
+          },
+          {
+            "chunk_id": "chk_f566fc02b23d8abd4b2dcb61",
+            "document_id": "doc_3ebc90af7c605b30d53a81f3",
+            "source": "workspace",
+            "path": "src/tools/knowledge_tools.py",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "def knowledge_retrieve(query: str, workspace: str, top_k: int = 5):\n    \"\"\"Resolve workspace before indexing and enforce file and character limits.\"\"\"\n    root = resolve_workspace(workspace)\n    files = discover_files(root, follow_symlink=False)\n    return retrieve_bounded_evidence(query, files, top_k)\n\n# Resolved paths prevent path traversal; every symlink is skipped at the workspace boundary.\n",
+            "score": 1.8483578437400765,
+            "rank": 3,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "398"
+            }
+          },
+          {
+            "chunk_id": "chk_af187e1330582e974a14aea5",
+            "document_id": "doc_ed0f9d15d386f75cba84e65e",
+            "source": "workspace",
+            "path": "docs/github_webhook.md",
+            "line_range": {
+              "start": 1,
+              "end": 14
+            },
+            "excerpt": "# GitHub Pull Request Review\n\nGitHub sends a `pull_request` webhook with an `X-Hub-Signature-256` header. DevAgent\ncomputes HMAC-SHA256 over the raw request body and uses a constant-time comparison\nbefore parsing JSON.\n\nEach accepted request also carries an `X-GitHub-Delivery` identifier. The delivery\nstore rejects redelivery as `duplicate`, preventing another model call or comment.\n\nGitHub App authentication exchanges an App JWT for a short-lived installation token.\nThe App uses Metadata read, Contents read, and Pull requests write permissions.\n\nReview findings are published with diff `line` and `side`. When a line cannot be\nmapped reliably, the publisher falls back to the single updatable summary comment.\n",
+            "score": 1.5548585447255983,
+            "rank": 4,
+            "metadata": {
+              "file_suffix": ".md",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "717"
+            }
+          }
+        ],
+        "retrieval_ms": 0.11370796710252762,
+        "truncated": false
+      },
+      "answer": {
+        "answer": "DiagnosisService.validate_report 校验每个 finding 的 evidence_ids 是否都引用了 DiagnosisReport.evidence 中已知的 Evidence.evidence_id。只要存在未知引用，就会抛出 ValueError：\"DiagnosisReport contains an unknown evidence reference\"。",
+        "cited_paths": [
+          "src/diagnosis/service.py"
+        ],
+        "insufficient_evidence": false
+      },
+      "raw_final_answer": "{\"answer\":\"DiagnosisService.validate_report 校验每个 finding 的 evidence_ids 是否都引用了 DiagnosisReport.evidence 中已知的 Evidence.evidence_id。只要存在未知引用，就会抛出 ValueError：\\\"DiagnosisReport contains an unknown evidence reference\\\"。\",\"cited_paths\":[\"src/diagnosis/service.py\"],\"insufficient_evidence\":false}",
+      "latency_ms": 13048.12408296857,
+      "steps": 2,
+      "tool_call_count": 1,
+      "attempt_count": 1,
+      "attempt_errors": []
+    },
+    {
+      "case_id": "review-diff-location",
+      "run_success": true,
+      "run_status": "success",
+      "tool_called": true,
+      "tool_success": true,
+      "retrieval_result": {
+        "query": "ReviewFinding diff file_path line_start side HEAD",
+        "top_k": 5,
+        "total_candidates": 5,
+        "items": [
+          {
+            "chunk_id": "chk_a03de0ab7940576de7165550",
+            "document_id": "doc_6854a379d63a735885b2434f",
+            "source": "workspace",
+            "path": "src/review/service.py",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "class ReviewFinding:\n    \"\"\"A finding points back to an exact changed diff location.\"\"\"\n\n    file_path: str\n    line_start: int\n    line_end: int | None\n    side: str  # HEAD identifies a line added or modified by the proposed change.\n",
+            "score": 35.471549273082715,
+            "rank": 1,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "235"
+            }
+          },
+          {
+            "chunk_id": "chk_af187e1330582e974a14aea5",
+            "document_id": "doc_ed0f9d15d386f75cba84e65e",
+            "source": "workspace",
+            "path": "docs/github_webhook.md",
+            "line_range": {
+              "start": 1,
+              "end": 14
+            },
+            "excerpt": "# GitHub Pull Request Review\n\nGitHub sends a `pull_request` webhook with an `X-Hub-Signature-256` header. DevAgent\ncomputes HMAC-SHA256 over the raw request body and uses a constant-time comparison\nbefore parsing JSON.\n\nEach accepted request also carries an `X-GitHub-Delivery` identifier. The delivery\nstore rejects redelivery as `duplicate`, preventing another model call or comment.\n\nGitHub App authentication exchanges an App JWT for a short-lived installation token.\nThe App uses Metadata read, Contents read, and Pull requests write permissions.\n\nReview findings are published with diff `line` and `side`. When a line cannot be\nmapped reliably, the publisher falls back to the single updatable summary comment.\n",
+            "score": 7.571909463293596,
+            "rank": 2,
+            "metadata": {
+              "file_suffix": ".md",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "717"
+            }
+          },
+          {
+            "chunk_id": "chk_79afcdf491285da6b3d6acab",
+            "document_id": "doc_0a116b0e60e6964a1fd44ac7",
+            "source": "workspace",
+            "path": "src/memory/chunker.py",
+            "line_range": {
+              "start": 1,
+              "end": 11
+            },
+            "excerpt": "def chunk_document(document: \"Document\") -> list[\"Chunk\"]:\n    \"\"\"Split Document content into overlapping Chunk windows.\"\"\"\n    return [\n        Chunk(\n            document_id=document.document_id,\n            line_range=LineRange(start=1, end=20),\n            content=document.content,\n        )\n    ]\n\n# EvidenceSnippet preserves source, path, and line_range so Agent answers are auditable.\n",
+            "score": 7.5211077414928935,
+            "rank": 3,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "393"
+            }
+          },
+          {
+            "chunk_id": "chk_f566fc02b23d8abd4b2dcb61",
+            "document_id": "doc_3ebc90af7c605b30d53a81f3",
+            "source": "workspace",
+            "path": "src/tools/knowledge_tools.py",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "def knowledge_retrieve(query: str, workspace: str, top_k: int = 5):\n    \"\"\"Resolve workspace before indexing and enforce file and character limits.\"\"\"\n    root = resolve_workspace(workspace)\n    files = discover_files(root, follow_symlink=False)\n    return retrieve_bounded_evidence(query, files, top_k)\n\n# Resolved paths prevent path traversal; every symlink is skipped at the workspace boundary.\n",
+            "score": 4.035032631601386,
+            "rank": 4,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "398"
+            }
+          },
+          {
+            "chunk_id": "chk_a2caf0efa04314b0101549c1",
+            "document_id": "doc_9ac2f89af1ecd2c3de23e3b5",
+            "source": "workspace",
+            "path": "src/diagnosis/service.py",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "class DiagnosisService:\n    def validate_report(self, report: \"DiagnosisReport\") -> None:\n        \"\"\"Every finding evidence_ids entry must reference known Evidence.\"\"\"\n        known_ids = {item.evidence_id for item in report.evidence}\n        for finding in report.findings:\n            if not set(finding.evidence_ids) <= known_ids:\n                raise ValueError(\"DiagnosisReport contains an unknown evidence reference\")\n",
+            "score": 3.622004588369275,
+            "rank": 5,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "425"
+            }
+          }
+        ],
+        "retrieval_ms": 0.14095904771238565,
+        "truncated": false
+      },
+      "answer": {
+        "answer": "`ReviewFinding` represents a finding anchored to an exact changed diff location. Its `file_path` identifies the changed file, `line_start` identifies the relevant line, and `side` identifies the diff side; `HEAD` denotes a line added or modified by the proposed change. The class also has an optional `line_end` for a range.",
+        "cited_paths": [
+          "src/review/service.py"
+        ],
+        "insufficient_evidence": false
+      },
+      "raw_final_answer": "{\"answer\":\"`ReviewFinding` represents a finding anchored to an exact changed diff location. Its `file_path` identifies the changed file, `line_start` identifies the relevant line, and `side` identifies the diff side; `HEAD` denotes a line added or modified by the proposed change. The class also has an optional `line_end` for a range.\",\"insufficient_evidence\":false,\"cited_paths\":[\"src/review/service.py\"]}",
+      "latency_ms": 13575.442500063218,
+      "steps": 2,
+      "tool_call_count": 1,
+      "attempt_count": 1,
+      "attempt_errors": []
+    },
+    {
+      "case_id": "bm25-ranking",
+      "run_success": true,
+      "run_status": "success",
+      "tool_called": true,
+      "tool_success": true,
+      "retrieval_result": {
+        "query": "BM25 KeywordRetriever term frequency inverse document frequency rank implementation and scoring",
+        "top_k": 5,
+        "total_candidates": 7,
+        "items": [
+          {
+            "chunk_id": "chk_aea665c56d608df0dccf5e62",
+            "document_id": "doc_468558a6d1b8a38d313fb768",
+            "source": "workspace",
+            "path": "src/memory/retriever.py",
+            "line_range": {
+              "start": 1,
+              "end": 8
+            },
+            "excerpt": "class KeywordRetriever:\n    \"\"\"Rank chunks with deterministic BM25 keyword relevance.\"\"\"\n\n    def score(self, term_frequency: float, document_frequency: int) -> float:\n        inverse_document_frequency = self.idf(document_frequency)\n        return term_frequency * inverse_document_frequency\n\n# BM25 combines term frequency, inverse document frequency, and length normalization.\n",
+            "score": 42.53788162839885,
+            "rank": 1,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "380"
+            }
+          },
+          {
+            "chunk_id": "chk_79afcdf491285da6b3d6acab",
+            "document_id": "doc_0a116b0e60e6964a1fd44ac7",
+            "source": "workspace",
+            "path": "src/memory/chunker.py",
+            "line_range": {
+              "start": 1,
+              "end": 11
+            },
+            "excerpt": "def chunk_document(document: \"Document\") -> list[\"Chunk\"]:\n    \"\"\"Split Document content into overlapping Chunk windows.\"\"\"\n    return [\n        Chunk(\n            document_id=document.document_id,\n            line_range=LineRange(start=1, end=20),\n            content=document.content,\n        )\n    ]\n\n# EvidenceSnippet preserves source, path, and line_range so Agent answers are auditable.\n",
+            "score": 5.828505132448158,
+            "rank": 2,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "393"
+            }
+          },
+          {
+            "chunk_id": "chk_f566fc02b23d8abd4b2dcb61",
+            "document_id": "doc_3ebc90af7c605b30d53a81f3",
+            "source": "workspace",
+            "path": "src/tools/knowledge_tools.py",
+            "line_range": {
+              "start": 1,
+              "end": 7
+            },
+            "excerpt": "def knowledge_retrieve(query: str, workspace: str, top_k: int = 5):\n    \"\"\"Resolve workspace before indexing and enforce file and character limits.\"\"\"\n    root = resolve_workspace(workspace)\n    files = discover_files(root, follow_symlink=False)\n    return retrieve_bounded_evidence(query, files, top_k)\n\n# Resolved paths prevent path traversal; every symlink is skipped at the workspace boundary.\n",
+            "score": 1.5433529674589659,
+            "rank": 3,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "398"
+            }
+          },
+          {
+            "chunk_id": "chk_af187e1330582e974a14aea5",
+            "document_id": "doc_ed0f9d15d386f75cba84e65e",
+            "source": "workspace",
+            "path": "docs/github_webhook.md",
+            "line_range": {
+              "start": 1,
+              "end": 14
+            },
+            "excerpt": "# GitHub Pull Request Review\n\nGitHub sends a `pull_request` webhook with an `X-Hub-Signature-256` header. DevAgent\ncomputes HMAC-SHA256 over the raw request body and uses a constant-time comparison\nbefore parsing JSON.\n\nEach accepted request also carries an `X-GitHub-Delivery` identifier. The delivery\nstore rejects redelivery as `duplicate`, preventing another model call or comment.\n\nGitHub App authentication exchanges an App JWT for a short-lived installation token.\nThe App uses Metadata read, Contents read, and Pull requests write permissions.\n\nReview findings are published with diff `line` and `side`. When a line cannot be\nmapped reliably, the publisher falls back to the single updatable summary comment.\n",
+            "score": 1.4683429362907072,
+            "rank": 4,
+            "metadata": {
+              "file_suffix": ".md",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "717"
+            }
+          },
+          {
+            "chunk_id": "chk_4d7ce9ff7d283451b14fa589",
+            "document_id": "doc_1cd0b5a9b6410f5ed2a13efc",
+            "source": "workspace",
+            "path": "src/permission/manager.py",
+            "line_range": {
+              "start": 1,
+              "end": 4
+            },
+            "excerpt": "class PermissionManager:\n    def match_policy(self, tool_name: str, risk_level: str) -> str:\n        \"\"\"Return the first matching policy decision for tool_name and risk_level.\"\"\"\n        return self.policy_store.resolve(tool_name, risk_level).decision\n",
+            "score": 1.2228262932217702,
+            "rank": 5,
+            "metadata": {
+              "file_suffix": ".py",
+              "chunk_index": "1",
+              "chunk_count": "1",
+              "retrieval_method": "bm25",
+              "excerpt_start_char": "0",
+              "excerpt_end_char": "252"
+            }
+          }
+        ],
+        "retrieval_ms": 0.24991703685373068,
+        "truncated": true
+      },
+      "answer": {
+        "answer": "KeywordRetriever deterministically ranks chunks by BM25 keyword relevance. Its score method calculates inverse document frequency from document frequency, then returns term_frequency × inverse_document_frequency. The source comment states that BM25 also combines term frequency, inverse document frequency, and length normalization, although the shown score method explicitly performs only the term-frequency/IDF multiplication.",
+        "cited_paths": [
+          "src/memory/retriever.py"
+        ],
+        "insufficient_evidence": false
+      },
+      "raw_final_answer": "{\"answer\":\"KeywordRetriever deterministically ranks chunks by BM25 keyword relevance. Its score method calculates inverse document frequency from document frequency, then returns term_frequency × inverse_document_frequency. The source comment states that BM25 also combines term frequency, inverse document frequency, and length normalization, although the shown score method explicitly performs only the term-frequency/IDF multiplication.\",\"insufficient_evidence\":false,\"cited_paths\":[\"src/memory/retriever.py\"]}",
+      "latency_ms": 13582.830041996203,
+      "steps": 2,
+      "tool_call_count": 1,
+      "attempt_count": 1,
+      "attempt_errors": []
+    },
+    {
+      "case_id": "negative-payment-billing",
+      "run_success": true,
+      "run_status": "success",
+      "tool_called": true,
+      "tool_success": true,
+      "retrieval_result": {
+        "query": "payment billing invoice settlement",
+        "top_k": 5,
+        "total_candidates": 0,
+        "items": [],
+        "retrieval_ms": 0.042208004742860794,
+        "truncated": false
+      },
+      "answer": {
+        "answer": "缺少与 payment、billing、invoice 或 settlement 相关的证据，无法回答具体项目问题。",
+        "cited_paths": [],
+        "insufficient_evidence": true
+      },
+      "raw_final_answer": "{\"answer\":\"缺少与 payment、billing、invoice 或 settlement 相关的证据，无法回答具体项目问题。\",\"insufficient_evidence\":true,\"cited_paths\":[]}",
+      "latency_ms": 15194.247333100066,
+      "steps": 2,
+      "tool_call_count": 1,
+      "attempt_count": 1,
+      "attempt_errors": []
+    },
+    {
+      "case_id": "negative-kubernetes-deployment",
+      "run_success": true,
+      "run_status": "success",
+      "tool_called": true,
+      "tool_success": true,
+      "retrieval_result": {
+        "query": "kubernetes helm deployment ingress",
+        "top_k": 5,
+        "total_candidates": 0,
+        "items": [],
+        "retrieval_ms": 0.023499946109950542,
+        "truncated": false
+      },
+      "answer": {
+        "answer": "缺少与 Kubernetes、Helm、Deployment 或 Ingress 相关的证据，无法基于工作区内容回答。",
+        "cited_paths": [],
+        "insufficient_evidence": true
+      },
+      "raw_final_answer": "{\"answer\":\"缺少与 Kubernetes、Helm、Deployment 或 Ingress 相关的证据，无法基于工作区内容回答。\",\"insufficient_evidence\":true,\"cited_paths\":[]}",
+      "latency_ms": 16906.073875026777,
+      "steps": 2,
+      "tool_call_count": 1,
+      "attempt_count": 1,
+      "attempt_errors": []
+    }
+  ]
+}
