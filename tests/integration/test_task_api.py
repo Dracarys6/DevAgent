@@ -63,12 +63,12 @@ def test_task_events_are_isolated_by_task_id():
     assert "run_end" in A_event_types, "任务 A 应该有 run_end 事件"
     assert "run_end" in B_event_types, "任务 B 应该有 run_end 事件"
 
-    A_run_start = [
+    A_run_start = next(
         event for event in A_events["events"] if event["type"] == "run_start"
-    ][0]
-    B_run_start = [
+    )
+    B_run_start = next(
         event for event in B_events["events"] if event["type"] == "run_start"
-    ][0]
+    )
 
     assert (
         A_run_start["metadata"]["user_input"] == "任务 A"

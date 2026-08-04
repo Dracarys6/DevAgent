@@ -6,28 +6,28 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from devagent.llm import (
-    OPENAI_REASONING_EFFORTS,
-    OpenAIAPIMode,
-    create_openai_llm_client,
-    tool_registry_to_openai_tools,
-    LLMClient,
-    MockLLMClient,
-    LLMResponse,
-    ToolCall,
-)
 from devagent.agent import (
-    AgentRuntime,
     AgentEvent,
     AgentEventType,
     AgentRunResult,
+    AgentRuntime,
+)
+from devagent.llm import (
+    OPENAI_REASONING_EFFORTS,
+    LLMClient,
+    LLMResponse,
+    MockLLMClient,
+    OpenAIAPIMode,
+    ToolCall,
+    create_openai_llm_client,
+    tool_registry_to_openai_tools,
 )
 from devagent.tools import (
     ReadFileTool,
-    SearchCodeTool,
-    create_builtin_registry,
     RiskLevel,
+    SearchCodeTool,
     ToolRegistry,
+    create_builtin_registry,
 )
 
 
@@ -235,7 +235,8 @@ def main(argv: list[str] | None = None) -> int:
         output = render_result(result, args.show_messages)
         print(output)
         return 0 if result.success else 1
-    except Exception as exc:
+    # ! CLI 是最终故障边界，任何未分类异常都必须转成稳定退出码。
+    except Exception as exc:  # noqa: BLE001
         print(f"DevAgent 运行失败: {exc}")
         return 2
 

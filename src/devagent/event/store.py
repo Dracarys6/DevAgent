@@ -1,6 +1,10 @@
-from copy import deepcopy
+from __future__ import annotations
 
-from devagent.agent import AgentEvent
+from copy import deepcopy
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from devagent.agent.models import AgentEvent
 
 
 class InMemoryEventStore:

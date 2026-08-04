@@ -1,6 +1,6 @@
+import threading
 from dataclasses import dataclass
 from enum import Enum
-import threading
 from typing import Protocol
 from uuid import uuid4
 
@@ -148,7 +148,7 @@ class GitHubReviewTaskManager:
             task.report_id = report.review_id
             ports.publisher.publish(pull_request=snapshot, report=report)
             self._delivery_store.mark_completed(task.delivery_id)
-        except Exception:
+        except Exception:  # noqa: BLE001
             # ! 外部异常可能包含 token 或响应正文，任务只保存固定脱敏信息。
             self._delivery_store.release(task.delivery_id)
             with self._lock:

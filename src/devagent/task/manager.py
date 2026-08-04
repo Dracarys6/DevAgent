@@ -180,7 +180,8 @@ class TaskManager:
         try:
             runtime = self._runtime_factory(task)
             result: AgentRunResult = runtime.run(task.question)
-        except Exception as exc:
+        # ! Runtime 工厂和运行循环是任务状态机的故障边界。
+        except Exception as exc:  # noqa: BLE001
             return self._fail_task(task_id, exc)
 
         return self._apply_runtime_result(task_id, runtime, result)
@@ -204,7 +205,8 @@ class TaskManager:
         self.repository.update_status(task_id, TaskStatus.RUNNING)
         try:
             result = runtime.resume(permission_request_id)
-        except Exception as exc:
+        # ! 恢复路径必须把任意运行时故障收敛为 FAILED 并清理暂停态。
+        except Exception as exc:  # noqa: BLE001
             self._suspended_runtimes.pop(task_id, None)
             return self._fail_task(task_id, exc)
         return self._apply_runtime_result(task_id, runtime, result)

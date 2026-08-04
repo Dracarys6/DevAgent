@@ -1,8 +1,8 @@
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
-from datetime import datetime, timezone
 
 
 class AgentEventType(str, Enum):
@@ -22,7 +22,7 @@ class AgentEvent(BaseModel):
     tool_call_id: str | None = None
     tool_name: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AgentRunStatus(str, Enum):

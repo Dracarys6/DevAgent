@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from math import isclose
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from devagent.memory import RetrievalResult
 from devagent.tools.models import ErrorCode, ToolResult
@@ -288,7 +288,7 @@ def _inspect_block(messages: list[dict[str, Any]]) -> tuple[bool, bool, int]:
             continue
         try:
             retrieval = RetrievalResult.model_validate_json(result.content)
-        except Exception:
+        except ValidationError:
             contains_failure = True
             continue
         contains_evidence = True
@@ -302,7 +302,7 @@ def _parse_tool_result(message: dict[str, Any]) -> ToolResult | None:
         return None
     try:
         return ToolResult.model_validate_json(content)
-    except Exception:
+    except ValidationError:
         return None
 
 
@@ -389,7 +389,7 @@ def _compact_knowledge_result(
 ) -> ToolResult:
     try:
         retrieval = RetrievalResult.model_validate_json(result.content)
-    except Exception:
+    except ValidationError:
         return _compact_generic_result(result, max_chars)
 
     items = [item.model_copy(deep=True) for item in retrieval.items]

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from uuid import uuid4
 
@@ -48,8 +48,8 @@ class AgentTask(BaseModel):
     max_tool_calls: int = 20
     status: TaskStatus = TaskStatus.PENDING
     error_message: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def transition_to(
         self,
@@ -62,4 +62,4 @@ class AgentTask(BaseModel):
             )
         self.status = new_status
         self.error_message = error_message
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)

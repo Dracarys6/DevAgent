@@ -274,12 +274,18 @@ def render_live_ci_diagnosis_report(
         [
             "## Acceptance Boundary",
             "",
-            "This report was produced by a live LLM provider through DiagnosisService, "
-            "the real CI fixture reader, and a code-only Git diff.",
-            "The fixed case checks structured output, evidence coverage, grounded "
-            "references, root-cause facts, recommendations, retries, and latency.",
-            "It validates this listed case and provider run; it does not claim universal "
-            "diagnosis accuracy.",
+            (
+                "This report was produced by a live LLM provider through "
+                "DiagnosisService, the real CI fixture reader, and a code-only Git diff."
+            ),
+            (
+                "The fixed case checks structured output, evidence coverage, grounded "
+                "references, root-cause facts, recommendations, retries, and latency."
+            ),
+            (
+                "It validates this listed case and provider run; it does not claim "
+                "universal diagnosis accuracy."
+            ),
             "",
         ]
     )

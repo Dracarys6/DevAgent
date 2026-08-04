@@ -5,8 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from devagent.llm import LLMClient
 from devagent.review import LocalCodeReviewEvidenceCollector
-from devagent.review.service import CodeReviewService
 from devagent.review.ports import WebhookDeliveryStore
+from devagent.review.service import CodeReviewService
 
 from .adapters import GitHubPullRequestSource, GitHubReviewPublisher
 from .auth import (

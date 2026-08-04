@@ -310,13 +310,19 @@ def render_live_code_review_report(
         [
             "## Acceptance Boundary",
             "",
-            "This report was produced by a live LLM provider through CodeReviewService, "
-            "git_compare, and read_file.",
-            "The fixed case excludes narrative answer files and comment-only answer lines, "
-            "then scores evidence grounding, severity, category, diff location, keywords, "
-            "unexpected findings, retries, and latency.",
-            "It validates this listed local change and provider run rather than universal "
-            "review accuracy or a real GitHub publication path.",
+            (
+                "This report was produced by a live LLM provider through "
+                "CodeReviewService, git_compare, and read_file."
+            ),
+            (
+                "The fixed case excludes narrative answer files and comment-only answer "
+                "lines, then scores evidence grounding, severity, category, diff location, "
+                "keywords, unexpected findings, retries, and latency."
+            ),
+            (
+                "It validates this listed local change and provider run rather than "
+                "universal review accuracy or a real GitHub publication path."
+            ),
             "",
         ]
     )

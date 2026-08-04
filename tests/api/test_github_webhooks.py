@@ -17,8 +17,8 @@ from devagent.api.routes.github_webhooks import (
     get_github_webhook_secret,
     receive_github_webhook,
 )
-from devagent.review import DeterministicCodeReviewLLMClient
 from devagent.integrations.github import InMemoryWebhookDeliveryStore
+from devagent.review import DeterministicCodeReviewLLMClient
 
 WEBHOOK_SECRET = "fixed-webhook-secret"
 WEBHOOK_URL = "/api/v1/integrations/github/webhooks"

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from devagent.task import TaskNotFoundError
 from devagent.trace import TraceService
+
 from .tasks import event_bus, task_repository
 
 router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-traces"])

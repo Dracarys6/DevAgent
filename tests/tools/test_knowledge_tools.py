@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-import devagent.tools.knowledge_tools as knowledge_tools
 from devagent.memory import ChunkType
+from devagent.tools import knowledge_tools
 from devagent.tools.knowledge_tools import (
     KnowledgeRetrieveArgs,
     KnowledgeRetrieveError,

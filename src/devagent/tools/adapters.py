@@ -204,7 +204,8 @@ def _to_tool_result(
 ) -> ToolResult:
     try:
         return ToolResult.ok(content=action(), metadata=metadata)
-    except Exception as exc:
+    # ! 适配器契约要求底层任意异常都转换成统一 ToolResult。
+    except Exception as exc:  # noqa: BLE001
         mapper = error_code_mapper or (
             lambda error: _error_code_from_exception(error, default_error_code)
         )
@@ -254,7 +255,7 @@ def search_code_as_tool_result(
     max_chars: int = MAX_SEARCH_CHARS,
     timeout: float = DEFAULT_SEARCH_TIMEOUT,
 ) -> ToolResult:
-    """"""
+    """执行代码搜索并把异常统一转换为 ``ToolResult``。"""
     metadata = {
         "query": query,
         "workspace": str(workspace),

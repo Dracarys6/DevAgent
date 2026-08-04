@@ -7,7 +7,6 @@ from devagent.api.routes.tasks import event_bus, task_manager
 from devagent.api.routes.websocket import format_websocket_event
 from devagent.event import AgentFinished, AgentStarted, EventType
 
-
 client = TestClient(app)
 
 
@@ -126,19 +125,20 @@ def test_websocket_receives_new_event_after_connect():
 
 
 def test_websocket_missing_task_closes_connection():
-    with pytest.raises(WebSocketDisconnect) as exc_info:
-        with client.websocket_connect(
-            connect_path("session_missing", "missing-task")
-        ):
-            pass
+    with pytest.raises(WebSocketDisconnect) as exc_info, client.websocket_connect(
+        connect_path("session_missing", "missing-task")
+    ):
+        pass
 
     assert exc_info.value.code == 4404
 
 
 def test_websocket_requires_task_id():
-    with pytest.raises(WebSocketDisconnect):
-        with client.websocket_connect("/api/v1/sessions/session_missing_task/stream"):
-            pass
+    with (
+        pytest.raises(WebSocketDisconnect),
+        client.websocket_connect("/api/v1/sessions/session_missing_task/stream"),
+    ):
+        pass
 
 
 def test_websocket_unsubscribes_on_disconnect():

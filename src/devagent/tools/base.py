@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ValidationError
+
+from .models import ErrorCode, RiskLevel, ToolResult
 from .schema import tool_to_schema
-from .models import ToolResult, ErrorCode, RiskLevel
 
 ArgsT = TypeVar("ArgsT", bound=BaseModel)
 
@@ -36,7 +37,8 @@ class BaseTool(ABC, Generic[ArgsT]):
                 error_message="工具参数校验失败",
                 metadata={**metadata, "validation_errors": exc.errors()},
             )
-        except Exception as exc:
+        # ! 工具边界不得向 AgentRuntime 泄漏原始实现异常。
+        except Exception as exc:  # noqa: BLE001
             return ToolResult.fail(
                 ErrorCode.TOOL_EXECUTION_ERROR,
                 error_message=f"工具执行失败: {exc}",

@@ -4,8 +4,8 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from devagent.llm import ToolCall
 from devagent.event import EventType, InMemoryEventBus, InMemorySequenceAllocator
+from devagent.llm import ToolCall
 from devagent.permission import (
     InMemoryPermissionManager,
     InMemoryPermissionPolicyStore,
@@ -13,17 +13,17 @@ from devagent.permission import (
     RiskLevel,
 )
 from devagent.security import CommandGuard
-from devagent.tools.executor import PermissionResumeError
 from devagent.tools import (
     BaseTool,
     ErrorCode,
-    ToolExecutor,
     ToolExecutionContext,
     ToolExecutionStatus,
+    ToolExecutor,
     ToolRegistry,
     ToolResult,
 )
 from devagent.tools.builtin import RunShellArgs
+from devagent.tools.executor import PermissionResumeError
 
 
 class EchoArgs(BaseModel):

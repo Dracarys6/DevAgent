@@ -5,7 +5,14 @@ from pathlib import Path, PurePosixPath
 from time import perf_counter
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from devagent.agent import AgentRunStatus, AgentRuntime
 from devagent.llm import LLMClient, tool_registry_to_openai_tools
@@ -436,7 +443,7 @@ def _run_live_case(
         if result.success:
             try:
                 answer = RAGAgentAnswer.model_validate_json(result.final_answer)
-            except Exception:
+            except ValidationError:
                 parse_error = "INVALID_FINAL_ANSWER"
         else:
             parse_error = result.status.value
@@ -506,7 +513,7 @@ def _extract_retrieval_result(
             if not result.success:
                 return None, tool_called
             return RetrievalResult.model_validate_json(result.content), tool_called
-        except Exception:
+        except (KeyError, TypeError, ValidationError):
             return None, tool_called
     return None, tool_called
 

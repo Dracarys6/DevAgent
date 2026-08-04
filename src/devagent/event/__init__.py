@@ -1,7 +1,13 @@
 """event module for DevAgent."""
 
-from .store import InMemoryEventStore
+from .bus import (
+    EventBusDeliveryError,
+    EventSubscriberError,
+    EventSubscription,
+    InMemoryEventBus,
+)
 from .models import (
+    REDACTED_VALUE,
     AgentError,
     AgentFinished,
     AgentStarted,
@@ -12,38 +18,32 @@ from .models import (
     LLMCallStarted,
     PermissionRequested,
     PermissionResolved,
-    REDACTED_VALUE,
-    ToolCallStarted,
     ToolCallFailed,
     ToolCallFinished,
+    ToolCallStarted,
     redact_sensitive_values,
 )
-from .bus import (
-    InMemoryEventBus,
-    EventSubscription,
-    EventSubscriberError,
-    EventBusDeliveryError,
-)
+from .store import InMemoryEventStore
 
 __all__ = [
-    "InMemoryEventStore",
+    "REDACTED_VALUE",
     "AgentError",
     "AgentFinished",
     "AgentStarted",
     "BaseEvent",
+    "EventBusDeliveryError",
+    "EventSubscriberError",
+    "EventSubscription",
     "EventType",
+    "InMemoryEventBus",
+    "InMemoryEventStore",
     "InMemorySequenceAllocator",
     "LLMCallFinished",
     "LLMCallStarted",
     "PermissionRequested",
     "PermissionResolved",
-    "REDACTED_VALUE",
     "ToolCallFailed",
     "ToolCallFinished",
     "ToolCallStarted",
     "redact_sensitive_values",
-    "InMemoryEventBus",
-    "EventSubscription",
-    "EventSubscriberError",
-    "EventBusDeliveryError",
 ]

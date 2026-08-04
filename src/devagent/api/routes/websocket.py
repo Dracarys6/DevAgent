@@ -1,6 +1,6 @@
 import asyncio
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from devagent.event import BaseEvent
 from devagent.task import TaskNotFoundError

@@ -1,3 +1,3 @@
-from .uploader import UploadManager, UploadConfig
+from .uploader import UploadConfig, UploadManager
 
-__all__ = ["UploadManager", "UploadConfig"]
+__all__ = ["UploadConfig", "UploadManager"]

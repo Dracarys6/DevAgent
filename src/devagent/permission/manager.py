@@ -1,7 +1,6 @@
 from copy import deepcopy
 from typing import Any
 
-from devagent.tools.models import RiskLevel
 from devagent.event import (
     BaseEvent,
     EventBusDeliveryError,
@@ -10,13 +9,14 @@ from devagent.event import (
     PermissionRequested,
     PermissionResolved,
 )
+from devagent.tools.models import RiskLevel
+
 from .models import PermissionDecision, PermissionRequest, PermissionStatus
 
 
 class PermissionRequestNotFoundError(KeyError):
     """查询的权限请求不存在。"""
 
-    pass
 
 
 class InMemoryPermissionManager:

@@ -2,16 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from devagent.api.routes import (
-    tasks_router,
-    permissions_router,
-    stream_router,
-    websocket_router,
-    traces_router,
     diagnoses_router,
-    reviews_router,
     git_commits_router,
     github_webhooks_router,
     knowledge_router,
+    permissions_router,
+    reviews_router,
+    stream_router,
+    tasks_router,
+    traces_router,
+    websocket_router,
 )
 from devagent.config import get_config
 

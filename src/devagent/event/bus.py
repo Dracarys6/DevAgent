@@ -53,7 +53,8 @@ class InMemoryEventBus:
         for subscriber in subscribers:
             try:
                 subscriber.handler(deepcopy(event))
-            except Exception as exc:
+            # ! 订阅者是任意回调，事件总线必须隔离并汇总其所有异常。
+            except Exception as exc:  # noqa: BLE001
                 failures.append(
                     EventSubscriberError(
                         subscription_id=subscriber.subscription_id,

@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from devagent.review import ReviewSeverity
-
 from scripts.run_live_code_review import (
     DEFAULT_BASE_REF,
     DEFAULT_EXPECTED_FINDING,

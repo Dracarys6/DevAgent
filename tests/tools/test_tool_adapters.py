@@ -1,24 +1,23 @@
 import json
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
+from devagent.memory import RetrievalResult
 from devagent.tools.adapters import (
     get_ci_result_as_tool_result,
+    git_compare_as_tool_result,
+    git_diff_as_tool_result,
+    knowledge_retrieve_as_tool_result,
     read_file_as_tool_result,
     run_shell_as_tool_result,
     search_code_as_tool_result,
-    git_compare_as_tool_result,
-    git_diff_as_tool_result,
     search_log_as_tool_result,
-    knowledge_retrieve_as_tool_result,
 )
-
-from devagent.tools.models import ErrorCode
 from devagent.tools.git_tools import GitCompareResult
-from devagent.memory import RetrievalResult
+from devagent.tools.models import ErrorCode
 
 
 def test_read_file_as_tool_result_success(tmp_path: Path):

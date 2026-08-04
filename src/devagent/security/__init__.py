@@ -1,4 +1,4 @@
-from .command_guard import GuardDecision, GuardResult, CommandGuard
+from .command_guard import CommandGuard, GuardDecision, GuardResult
 
 __all__ = [
     "CommandGuard",

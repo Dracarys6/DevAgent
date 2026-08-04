@@ -2,9 +2,9 @@ from devagent.tools import (
     GetCIResultTool,
     GitCompareTool,
     GitDiffTool,
-    SearchLogTool,
     KnowledgeRetrieveTool,
     RunShellTool,
+    SearchLogTool,
 )
 
 

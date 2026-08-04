@@ -1,24 +1,8 @@
 import json
-from copy import deepcopy
 from collections.abc import Generator
+from copy import deepcopy
 from typing import Any
 
-from .models import (
-    AgentRunResult,
-    AgentRunStatus,
-    AgentEvent,
-    AgentEventType,
-)
-from devagent.llm.base import LLMClient
-from devagent.llm.models import LLMResponse, LLMResponseType, ToolCall
-from devagent.tools.executor import (
-    ToolExecutionContext,
-    ToolExecutionResult,
-    ToolExecutionStatus,
-    ToolExecutor,
-)
-from devagent.tools.models import ToolResult
-from devagent.tools.registry import ToolRegistry
 from devagent.event import (
     AgentError,
     AgentFinished,
@@ -30,10 +14,27 @@ from devagent.event import (
     LLMCallFinished,
     LLMCallStarted,
 )
+from devagent.llm.base import LLMClient
+from devagent.llm.models import LLMResponse, LLMResponseType, ToolCall
+from devagent.tools.executor import (
+    ToolExecutionContext,
+    ToolExecutionResult,
+    ToolExecutionStatus,
+    ToolExecutor,
+)
+from devagent.tools.models import ToolResult
+from devagent.tools.registry import ToolRegistry
+
 from .context_manager import (
     ContextCompressionError,
     ContextCompressionResult,
     ContextManager,
+)
+from .models import (
+    AgentEvent,
+    AgentEventType,
+    AgentRunResult,
+    AgentRunStatus,
 )
 
 
@@ -196,7 +197,8 @@ class AgentRuntime:
                     )
                 )
                 response: LLMResponse = self.llm_client.chat(request_messages)
-            except Exception as exc:
+            # ! Provider 与上下文构造错误必须在运行时边界转换成稳定的 Agent 状态。
+            except Exception as exc:  # noqa: BLE001
                 error_prefix = (
                     "构造 LLM 上下文失败"
                     if isinstance(exc, ContextCompressionError)

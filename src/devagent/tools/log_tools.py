@@ -7,7 +7,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 
-
 TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 DEFAULT_LOG_DATA_DIR = Path("examples/sample_logs")
 DEFAULT_MAX_LOG_ENTRIES = 50

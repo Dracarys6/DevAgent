@@ -1,6 +1,6 @@
+import threading
 from collections import OrderedDict
 from enum import Enum
-import threading
 
 DELIVERY_MAX_ENTRIES = 1000
 

@@ -1,6 +1,6 @@
+import json
 from dataclasses import dataclass
 from hashlib import sha256
-import json
 
 from devagent.memory.models import Chunk, ChunkType, Document, LineRange
 
@@ -21,19 +21,19 @@ class ChunkingConfig:
 
     def __post_init__(self) -> None:
         if isinstance(self.max_lines, bool) or not isinstance(self.max_lines, int):
-            raise ValueError("max_lines 必须是整数")
+            raise TypeError("max_lines 必须是整数")
         if self.max_lines < 1:
             raise ValueError("max_lines 必须大于 0")
         if isinstance(self.overlap_lines, bool) or not isinstance(
             self.overlap_lines, int
         ):
-            raise ValueError("overlap_lines 必须是整数")
+            raise TypeError("overlap_lines 必须是整数")
         if self.overlap_lines < 0:
             raise ValueError("overlap_lines 不能小于 0")
         if self.overlap_lines >= self.max_lines:
             raise ValueError("overlap_lines 必须小于 max_lines")
         if isinstance(self.max_chars, bool) or not isinstance(self.max_chars, int):
-            raise ValueError("max_chars 必须是整数")
+            raise TypeError("max_chars 必须是整数")
         if self.max_chars < 1:
             raise ValueError("max_chars 必须大于 0")
 

@@ -1,3 +1,3 @@
-from .service import TraceService, TaskTrace, TraceStep, TraceSummary
+from .service import TaskTrace, TraceService, TraceStep, TraceSummary
 
-__all__ = ["TraceService", "TaskTrace", "TraceStep", "TraceSummary"]
+__all__ = ["TaskTrace", "TraceService", "TraceStep", "TraceSummary"]

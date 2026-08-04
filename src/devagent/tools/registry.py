@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .base import BaseTool
-from .models import ToolResult, ErrorCode
+from .models import ErrorCode, ToolResult
 from .schema import tools_to_schemas
 
 

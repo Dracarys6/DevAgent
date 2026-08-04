@@ -2,21 +2,21 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from devagent.agent import AgentEvent
 from devagent.api.schemas import (
+    AgentEventResponse,
     AgentTaskCreateRequest,
     AgentTaskCreateResponse,
+    AgentTaskEventsResponse,
     AgentTaskListResponse,
     AgentTaskResponse,
-    AgentEventResponse,
-    AgentTaskEventsResponse,
 )
-from devagent.task.manager import TaskManager
-from devagent.task.models import AgentTask, InvalidTaskTransitionError
-from devagent.task.repository import InMemoryTaskRepository, TaskNotFoundError
 from devagent.event import InMemoryEventBus, InMemorySequenceAllocator
 from devagent.permission import (
     InMemoryPermissionManager,
     InMemoryPermissionPolicyStore,
 )
+from devagent.task.manager import TaskManager
+from devagent.task.models import AgentTask, InvalidTaskTransitionError
+from devagent.task.repository import InMemoryTaskRepository, TaskNotFoundError
 
 router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-tasks"])
 

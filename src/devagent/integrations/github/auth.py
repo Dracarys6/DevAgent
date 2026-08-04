@@ -1,7 +1,7 @@
+import threading
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-import threading
 from typing import Any, Protocol
 
 import jwt
@@ -137,7 +137,7 @@ class GitHubInstallationTokenProvider:
                 raise ValueError("token 不能为空")
             if not isinstance(raw_expiry, str):
                 raise TypeError("expires_at 必须是字符串")
-            expires_at = datetime.fromisoformat(raw_expiry.replace("Z", "+00:00"))
+            expires_at = datetime.fromisoformat(raw_expiry)
             token = InstallationToken(
                 token=SecretStr(raw_token),
                 expires_at=expires_at,

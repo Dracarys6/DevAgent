@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 from pydantic import SecretStr
 from unidiff import PatchSet
+from unidiff.errors import UnidiffParseError
 
 from .auth import GITHUB_API_VERSION, GitHubHTTPClient
 from .client import (
@@ -235,7 +236,7 @@ def _extract_diff_lines(files: list[object]) -> list[GitHubDiffLine]:
             continue
         try:
             parsed = PatchSet(f"--- a/{path}\n+++ b/{path}\n{patch}\n")
-        except Exception:
+        except UnidiffParseError:
             # * GitHub 可能省略二进制或过大 patch；对应 finding 将降级到摘要。
             continue
         for patched_file in parsed:

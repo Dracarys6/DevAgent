@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from devagent.event import InMemoryEventBus, BaseEvent
+from devagent.event import BaseEvent, InMemoryEventBus
 
 
 class TraceStep(BaseModel):

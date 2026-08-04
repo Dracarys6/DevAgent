@@ -1,11 +1,10 @@
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
-
 
 REDACTED_VALUE = "[REDACTED]"
 SENSITIVE_KEYS = {
@@ -39,7 +38,7 @@ class BaseEvent(BaseModel):
     sequence_id: int = Field(ge=1)
     message: str
     payload: dict[str, Any] = Field(default_factory=dict)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @model_validator(mode="after")
     def redact_payload(self) -> "BaseEvent":

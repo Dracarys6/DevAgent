@@ -1,4 +1,5 @@
 from enum import Enum
+from itertools import pairwise
 from pathlib import PurePosixPath
 from typing import Annotated
 
@@ -150,6 +151,6 @@ class RetrievalResult(MemoryModel):
             raise ValueError("items 的 rank 必须从 1 开始连续递增")
 
         scores = [item.score for item in self.items]
-        if any(previous < current for previous, current in zip(scores, scores[1:])):
+        if any(previous < current for previous, current in pairwise(scores)):
             raise ValueError("items 必须按 score 从高到低排列")
         return self

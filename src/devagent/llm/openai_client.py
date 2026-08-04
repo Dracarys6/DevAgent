@@ -185,7 +185,7 @@ def _parse_tool_arguments(raw_arguments: Any, tool_name: str) -> dict[str, Any]:
     if isinstance(raw_arguments, dict):
         return raw_arguments
     if not isinstance(raw_arguments, str):
-        raise ValueError(f"工具参数类型不支持: {tool_name}")
+        raise TypeError(f"工具参数类型不支持: {tool_name}")
 
     try:
         arguments = json.loads(raw_arguments)
@@ -193,7 +193,7 @@ def _parse_tool_arguments(raw_arguments: Any, tool_name: str) -> dict[str, Any]:
         raise ValueError(f"工具参数不是合法 JSON: {tool_name}") from exc
 
     if not isinstance(arguments, dict):
-        raise ValueError(f"工具参数必须是 JSON object: {tool_name}")
+        raise TypeError(f"工具参数必须是 JSON object: {tool_name}")
     return arguments
 
 
@@ -205,7 +205,7 @@ def _serialize_response_output(output: list[Any]) -> list[dict[str, Any]]:
             continue
         model_dump = getattr(item, "model_dump", None)
         if not callable(model_dump):
-            raise ValueError("LLM Responses output item 无法序列化")
+            raise TypeError("LLM Responses output item 无法序列化")
         serialized.append(model_dump(exclude_none=True))
     return serialized
 
@@ -247,7 +247,7 @@ def parse_openai_message(message: Any) -> LLMResponse:
 def parse_openai_response(response: Any) -> LLMResponse:
     """解析 OpenAI-compatible Chat Completions 响应对象。"""
     if isinstance(response, str):
-        raise ValueError(
+        raise TypeError(
             "LLM 返回了文本而不是 Chat Completions 对象；"
             "请检查 base_url 是否包含正确 API 前缀（通常为 /v1）"
         )

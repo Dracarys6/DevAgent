@@ -56,13 +56,13 @@ class BM25Config:
 
     def __post_init__(self) -> None:
         if isinstance(self.k1, bool) or not isinstance(self.k1, (int, float)):
-            raise ValueError("k1 必须是数值")
+            raise TypeError("k1 必须是数值")
         if isinstance(self.b, bool) or not isinstance(self.b, (int, float)):
-            raise ValueError("b 必须是数值")
+            raise TypeError("b 必须是数值")
         if isinstance(self.max_excerpt_chars, bool) or not isinstance(
             self.max_excerpt_chars, int
         ):
-            raise ValueError("max_excerpt_chars 必须是整数")
+            raise TypeError("max_excerpt_chars 必须是整数")
         if not isfinite(self.k1) or not isfinite(self.b):
             raise ValueError("k1 和 b 必须是有限数值")
         if self.k1 <= 0:

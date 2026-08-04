@@ -36,7 +36,8 @@ from devagent.tools import (
     create_builtin_registry,
 )
 
-__all__ = [
+# * 顶层公共 API 按领域分组，便于调用方理解入口边界。
+__all__ = [  # noqa: RUF022
     # Agent
     "AgentEvent",
     "AgentEventType",

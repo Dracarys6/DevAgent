@@ -1,7 +1,7 @@
+import subprocess
 from argparse import ArgumentParser
 from datetime import UTC, datetime
 from pathlib import Path
-import subprocess
 
 from devagent.eval import (
     evaluate_review_cases,

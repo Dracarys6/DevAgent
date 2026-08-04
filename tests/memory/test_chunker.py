@@ -1,5 +1,5 @@
-from dataclasses import FrozenInstanceError
 import re
+from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -39,23 +39,24 @@ def test_chunking_config_has_expected_defaults() -> None:
 
 
 @pytest.mark.parametrize(
-    ("overrides", "message"),
+    ("overrides", "message", "expected_exception"),
     [
-        ({"max_lines": 0}, "max_lines"),
-        ({"max_lines": True}, "max_lines"),
-        ({"overlap_lines": -1}, "overlap_lines"),
-        ({"max_lines": 3, "overlap_lines": 3}, "overlap_lines"),
-        ({"max_lines": 3, "overlap_lines": 4}, "overlap_lines"),
-        ({"overlap_lines": False}, "overlap_lines"),
-        ({"max_chars": 0}, "max_chars"),
-        ({"max_chars": True}, "max_chars"),
+        ({"max_lines": 0}, "max_lines", ValueError),
+        ({"max_lines": True}, "max_lines", TypeError),
+        ({"overlap_lines": -1}, "overlap_lines", ValueError),
+        ({"max_lines": 3, "overlap_lines": 3}, "overlap_lines", ValueError),
+        ({"max_lines": 3, "overlap_lines": 4}, "overlap_lines", ValueError),
+        ({"overlap_lines": False}, "overlap_lines", TypeError),
+        ({"max_chars": 0}, "max_chars", ValueError),
+        ({"max_chars": True}, "max_chars", TypeError),
     ],
 )
 def test_chunking_config_rejects_invalid_values(
     overrides: dict[str, object],
     message: str,
+    expected_exception: type[Exception],
 ) -> None:
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises(expected_exception, match=message):
         ChunkingConfig(**overrides)  # type: ignore[arg-type]
 
 

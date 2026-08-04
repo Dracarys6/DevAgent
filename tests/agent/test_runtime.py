@@ -3,19 +3,19 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from devagent.agent.runtime import AgentRuntime
 from devagent.agent.models import AgentEventType, AgentRunStatus
+from devagent.agent.runtime import AgentRuntime
+from devagent.event import (
+    BaseEvent,
+    EventType,
+    InMemoryEventBus,
+    InMemorySequenceAllocator,
+)
 from devagent.llm.mock_client import MockLLMClient
 from devagent.llm.models import LLMResponse, ToolCall
 from devagent.permission import InMemoryPermissionManager, PermissionDecision, RiskLevel
 from devagent.tools import BaseTool, ToolExecutor, ToolRegistry, ToolResult
 from devagent.tools.builtin import create_builtin_registry
-from devagent.event import (
-    EventType,
-    BaseEvent,
-    InMemoryEventBus,
-    InMemorySequenceAllocator,
-)
 
 
 class ApprovalArgs(BaseModel):

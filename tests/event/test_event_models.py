@@ -1,9 +1,10 @@
-from datetime import timezone
+from datetime import UTC
 
 import pytest
 from pydantic import ValidationError
 
 from devagent.event import (
+    REDACTED_VALUE,
     AgentError,
     AgentFinished,
     AgentStarted,
@@ -14,7 +15,6 @@ from devagent.event import (
     LLMCallStarted,
     PermissionRequested,
     PermissionResolved,
-    REDACTED_VALUE,
     ToolCallFailed,
     ToolCallFinished,
     ToolCallStarted,
@@ -33,7 +33,7 @@ def test_base_event_defaults_and_json_serialization():
     dumped = event.model_dump(mode="json")
 
     assert event.event_id
-    assert event.timestamp.tzinfo == timezone.utc
+    assert event.timestamp.tzinfo == UTC
     assert dumped["event_type"] == "agent_started"
     assert isinstance(dumped["timestamp"], str)
     assert dumped["sequence_id"] == 1

@@ -1,12 +1,11 @@
 import json
 
-import pytest
 from fastapi.testclient import TestClient
 
 from devagent.api.app import app
 from devagent.api.routes import stream as stream_module
-from devagent.api.routes.tasks import task_manager
 from devagent.api.routes.stream import format_sse_event, iter_existing_sse_events
+from devagent.api.routes.tasks import task_manager
 from devagent.event import (
     AgentStarted,
     BaseEvent,

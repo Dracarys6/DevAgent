@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Annotated
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -71,7 +72,7 @@ def get_code_review_service() -> CodeReviewService:
 @router.post("/code", response_model=CodeReviewReport)
 def review_code(
     request: CodeReviewRequest,
-    service: CodeReviewService = Depends(get_code_review_service),
+    service: Annotated[CodeReviewService, Depends(get_code_review_service)],
 ) -> CodeReviewReport:
     try:
         return service.review(

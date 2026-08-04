@@ -34,3 +34,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = [".", "src"]
 testpaths = ["tests"]
+
+[tool.ruff.lint.per-file-ignores]
+# * RAG 评测语料是刻意截断的跨模块代码片段，未定义符号用于评测证据检索而非执行。
+"eval/cases/rag/workspace/**/*.py" = ["F821", "UP037"]

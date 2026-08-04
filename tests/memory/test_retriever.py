@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 import devagent.memory.retriever as retriever_module
-from devagent.memory import Chunk, ChunkType, LineRange, KeywordRetriever
+from devagent.memory import Chunk, ChunkType, KeywordRetriever, LineRange
 from devagent.memory.retriever import (
     BM25Config,
     RetrievalError,
@@ -16,25 +16,26 @@ from devagent.memory.retriever import (
 
 
 @pytest.mark.parametrize(
-    ("field", "value"),
+    ("field", "value", "expected_exception"),
     [
-        ("k1", True),
-        ("k1", "1.5"),
-        ("k1", float("nan")),
-        ("k1", float("inf")),
-        ("b", True),
-        ("b", "0.75"),
-        ("b", float("nan")),
-        ("b", float("-inf")),
-        ("max_excerpt_chars", True),
-        ("max_excerpt_chars", 10.5),
+        ("k1", True, TypeError),
+        ("k1", "1.5", TypeError),
+        ("k1", float("nan"), ValueError),
+        ("k1", float("inf"), ValueError),
+        ("b", True, TypeError),
+        ("b", "0.75", TypeError),
+        ("b", float("nan"), ValueError),
+        ("b", float("-inf"), ValueError),
+        ("max_excerpt_chars", True, TypeError),
+        ("max_excerpt_chars", 10.5, TypeError),
     ],
 )
 def test_bm25_config_rejects_invalid_types_and_non_finite_values(
     field: str,
     value: object,
+    expected_exception: type[Exception],
 ) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(expected_exception):
         BM25Config(**{field: value})  # type: ignore[arg-type]
 
 

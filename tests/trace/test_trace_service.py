@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from devagent.event import (
     AgentError,
@@ -46,7 +46,7 @@ def test_trace_service_returns_steps_sorted_by_sequence_id():
 def test_trace_summary_extracts_final_status_and_answer():
     event_bus = InMemoryEventBus()
     trace_service = TraceService(event_bus=event_bus)
-    finished_at = datetime(2026, 7, 9, 8, 0, tzinfo=timezone.utc)
+    finished_at = datetime(2026, 7, 9, 8, 0, tzinfo=UTC)
     event_bus.publish(
         AgentStarted(
             task_id="task2",

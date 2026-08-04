@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import UTC
 
 import pytest
 
@@ -34,8 +34,8 @@ def test_permission_request_defaults():
     assert request.request_id
     assert request.status == PermissionStatus.PENDING
     assert request.decision is None
-    assert request.created_at.tzinfo == timezone.utc
-    assert request.updated_at.tzinfo == timezone.utc
+    assert request.created_at.tzinfo == UTC
+    assert request.updated_at.tzinfo == UTC
     assert request.resolved_at is None
 
 

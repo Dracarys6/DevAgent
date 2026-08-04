@@ -1,9 +1,10 @@
 import json
 import os
-from pathlib import Path
 import threading
+from pathlib import Path
 from typing import Annotated
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import (
     APIRouter,
@@ -14,13 +15,12 @@ from fastapi import (
     Request,
     status,
 )
-import httpx
 from pydantic import ValidationError
 
 from devagent.integrations.github import (
     DeliveryStoreCapacityError,
-    GitHubPullRequestWebhook,
     GitHubIntegrationSettings,
+    GitHubPullRequestWebhook,
     GitHubReviewTask,
     GitHubReviewTaskManager,
     GitHubSignatureError,
@@ -131,6 +131,15 @@ def _create_github_review_llm_client():
 async def receive_github_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
+    secret: Annotated[str, Depends(get_github_webhook_secret)],
+    delivery_store: Annotated[
+        WebhookDeliveryStore,
+        Depends(get_delivery_store),
+    ],
+    task_manager: Annotated[
+        GitHubReviewTaskManager | None,
+        Depends(get_github_review_task_manager),
+    ],
     x_hub_signature_256: Annotated[
         str | None,
         Header(alias="X-Hub-Signature-256"),
@@ -143,11 +152,6 @@ async def receive_github_webhook(
         str | None,
         Header(alias="X-GitHub-Delivery"),
     ] = None,
-    secret: str = Depends(get_github_webhook_secret),
-    delivery_store: WebhookDeliveryStore = Depends(get_delivery_store),
-    task_manager: GitHubReviewTaskManager | None = Depends(
-        get_github_review_task_manager
-    ),
 ) -> GitHubWebhookResponse:
     body = await request.body()
     try:
@@ -290,9 +294,10 @@ def _ignored_delivery_id(delivery_id: str | None) -> str:
 )
 def get_github_review_task(
     task_id: str,
-    task_manager: GitHubReviewTaskManager | None = Depends(
-        get_github_review_task_manager
-    ),
+    task_manager: Annotated[
+        GitHubReviewTaskManager | None,
+        Depends(get_github_review_task_manager),
+    ],
 ) -> GitHubReviewTask:
     if task_manager is None:
         raise HTTPException(

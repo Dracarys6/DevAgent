@@ -228,7 +228,7 @@ def test_parse_openai_response_requires_choice_message():
 
 
 def test_parse_openai_response_explains_text_response_and_base_url():
-    with pytest.raises(ValueError, match="base_url.*?/v1"):
+    with pytest.raises(TypeError, match="base_url.*?/v1"):
         parse_openai_response("<!doctype html>")
 
 

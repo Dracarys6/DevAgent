@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Any
 
-from pydantic import SecretStr
 import pytest
+from pydantic import SecretStr
 
 from devagent.integrations.github.client import (
     GitHubClientError,

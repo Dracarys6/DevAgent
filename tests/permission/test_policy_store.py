@@ -79,7 +79,7 @@ def test_match_policy_with_same_tool_name():
 
 def test_match_policy_without_same_tool_name():
     store = InMemoryPermissionPolicyStore()
-    policy = store.create_policy(
+    store.create_policy(
         name="Test Policy1",
         decision=PermissionDecision.ALLOW,
         tool_name="test_tool",
@@ -98,7 +98,7 @@ def test_match_policy_without_same_tool_name():
 
 def test_match_policy_with_different_risk_levels():
     store = InMemoryPermissionPolicyStore()
-    policy = store.create_policy(
+    store.create_policy(
         name="Test Policy1",
         decision=PermissionDecision.ALLOW,
         tool_name="test_tool",
@@ -117,7 +117,7 @@ def test_match_policy_with_different_risk_levels():
 
 def test_match_policy_with_different_tool_arguments():
     store = InMemoryPermissionPolicyStore()
-    policy = store.create_policy(
+    store.create_policy(
         name="Test Policy1",
         decision=PermissionDecision.ALLOW,
         tool_name="test_tool",
@@ -175,7 +175,7 @@ def test_deepcopy_on_get_policy():
 
 def test_deepcopy_on_list_policies():
     store = InMemoryPermissionPolicyStore()
-    policy1 = store.create_policy(
+    store.create_policy(
         name="Test Policy1",
         decision=PermissionDecision.ALLOW,
         tool_name="test_tool",
@@ -183,7 +183,7 @@ def test_deepcopy_on_list_policies():
         tool_arguments={"arg1": "value1"},
         reason="Test reason",
     )
-    policy2 = store.create_policy(
+    store.create_policy(
         name="Test Policy2",
         decision=PermissionDecision.DENY,
         tool_name="test_tool",
@@ -263,7 +263,7 @@ def test_list_policies_can_filter_enabled_only():
         decision=PermissionDecision.ALLOW,
         risk_levels=[RiskLevel.LOW],
     )
-    disabled = store.create_policy(
+    store.create_policy(
         name="Disabled Policy",
         decision=PermissionDecision.DENY,
         risk_levels=[RiskLevel.HIGH],
@@ -277,7 +277,7 @@ def test_list_policies_can_filter_enabled_only():
 
 def test_match_the_newest_policy():
     store = InMemoryPermissionPolicyStore()
-    policy1 = store.create_policy(
+    store.create_policy(
         name="Test Policy1",
         decision=PermissionDecision.ALLOW,
         tool_name="test_tool",

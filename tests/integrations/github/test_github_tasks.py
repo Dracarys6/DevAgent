@@ -5,8 +5,8 @@ import pytest
 from devagent.diagnosis import Evidence, EvidenceKind
 from devagent.integrations.github import (
     DeliveryState,
-    GitHubReviewTaskManager,
     GitHubReviewPorts,
+    GitHubReviewTaskManager,
     GitHubReviewTaskStatus,
     InMemoryWebhookDeliveryStore,
 )

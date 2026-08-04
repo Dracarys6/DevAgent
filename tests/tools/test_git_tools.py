@@ -4,14 +4,14 @@ from pathlib import Path
 import pytest
 
 from devagent.tools.git_tools import (
+    TRUNCATION_MARKER,
+    GitCommitSummaryError,
     GitCompareError,
     GitCompareResult,
-    GitCommitSummaryError,
     GitDiffError,
-    TRUNCATION_MARKER,
+    get_git_commit_summary,
     git_compare,
     git_diff,
-    get_git_commit_summary,
 )
 
 

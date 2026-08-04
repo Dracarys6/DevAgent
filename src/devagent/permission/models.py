@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -42,8 +42,8 @@ class PermissionRequest(BaseModel):
     status: PermissionStatus = PermissionStatus.PENDING
     decision: PermissionDecision | None = None
     decision_reason: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     resolved_at: datetime | None = None
 
     def resolve(
@@ -58,7 +58,7 @@ class PermissionRequest(BaseModel):
                 f"权限请求已处理，不能重复审批: {self.status.value}"
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if decision == PermissionDecision.ALLOW:
             self.status = PermissionStatus.APPROVED
         elif decision == PermissionDecision.DENY:
@@ -79,6 +79,6 @@ class PermissionPolicy(BaseModel):
     risk_levels: list[RiskLevel] = Field(default_factory=list)  # 策略适用的风险等级
     decision: PermissionDecision  # 匹配后允许还是拒绝
     enabled: bool = True  # 策略是否启用
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     arguments_fingerprint: str | None = None  # 策略适用的工具参数指纹
     reason: str | None = None  # 策略的理由
