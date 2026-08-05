@@ -109,6 +109,33 @@ def test_connect_applies_pragmas_and_row_factory(tmp_path: Path) -> None:
         connection.close()
 
 
+def test_connect_closes_connection_when_configuration_is_interrupted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class InterruptingConnection:
+        row_factory: object | None = None
+        closed = False
+
+        def execute(self, _statement: str) -> None:
+            raise KeyboardInterrupt
+
+        def close(self) -> None:
+            self.closed = True
+
+    connection = InterruptingConnection()
+    monkeypatch.setattr(
+        "devagent.storage.database.sqlite3.connect",
+        lambda *_args, **_kwargs: connection,
+    )
+    database = make_database(tmp_path)
+
+    with pytest.raises(KeyboardInterrupt):
+        database.connect()
+
+    assert connection.closed is True
+
+
 def test_transaction_commits_all_statements_and_closes_connection(
     tmp_path: Path,
 ) -> None:

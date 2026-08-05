@@ -57,6 +57,8 @@ PRAGMA journal_mode = WAL;
 
 连接设置 `sqlite3.Row`，方便 Repository 按列名读取。连接按操作创建并及时关闭，不跨线程
 共享。`busy_timeout` 只能吸收短暂写锁竞争，不能补救长事务或高并发写入架构。
+连接配置和显式事务都在 `BaseException` 边界清理资源，确保普通异常以及
+`KeyboardInterrupt` / `SystemExit` 等进程控制异常不会留下未关闭连接或未回滚事务。
 
 ## Schema v1
 

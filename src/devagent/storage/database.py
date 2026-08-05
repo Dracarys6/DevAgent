@@ -57,7 +57,7 @@ class SQLiteDatabase:
             connection.row_factory = sqlite3.Row
             connection.execute("PRAGMA foreign_keys = ON")
             connection.execute(f"PRAGMA busy_timeout = {self.settings.busy_timeout_ms}")
-        except Exception:
+        except BaseException:
             connection.close()
             raise
         return connection
