@@ -202,6 +202,11 @@ PR 评论发布另以 `(repository_full_name, pull_number, head_sha)` 唯一约�
 GitHub summary comment locator；失败记录可由 redelivery 重新 claim。数据库只能控制本地状态，
 不能回滚已发生的 GitHub 请求，因此摘要同时使用固定 marker 执行 upsert。
 
+Schema v3 移除 publication 到 delivery 的数据库外键生命周期耦合，但保留 `delivery_id` 审计
+字段和索引。原因是失败 publication 必须保留，而 processing delivery 必须可释放后重新 claim；
+若使用父表外键，删除 delivery 会被历史 publication 阻止。迁移通过新表复制、删除旧表和
+重命名完成，并验证已有发布记录不丢失。
+
 ## 验证
 
 ```bash

@@ -7,6 +7,7 @@ from devagent.storage import (
     MIGRATIONS,
     SCHEMA_V1,
     SCHEMA_V2,
+    SCHEMA_V3,
     Migration,
     MigrationError,
     SQLiteDatabase,
@@ -83,7 +84,7 @@ def test_changed_applied_migration_checksum_is_rejected(tmp_path: Path) -> None:
     connection = database.connect()
     try:
         with pytest.raises(MigrationError, match="checksum 不一致"):
-            apply_migrations(connection, (changed, SCHEMA_V2))
+            apply_migrations(connection, (changed, SCHEMA_V2, SCHEMA_V3))
     finally:
         connection.close()
 
@@ -96,7 +97,7 @@ def test_database_version_above_supported_is_rejected(tmp_path: Path) -> None:
         connection.execute(
             """
             INSERT INTO schema_migrations(version, name, checksum, applied_at)
-            VALUES (3, 'future', 'future-checksum', '2026-08-05T00:00:00+00:00')
+            VALUES (4, 'future', 'future-checksum', '2026-08-05T00:00:00+00:00')
             """
         )
         with pytest.raises(MigrationError, match="程序支持范围"):
@@ -109,7 +110,7 @@ def test_failed_migration_rolls_back_schema_and_version_record(tmp_path: Path) -
     database = make_database(tmp_path)
     database.initialize()
     broken = Migration(
-        version=3,
+        version=4,
         name="broken_migration",
         statements=(
             "CREATE TABLE migration_probe(id TEXT PRIMARY KEY)",
@@ -125,7 +126,7 @@ def test_failed_migration_rolls_back_schema_and_version_record(tmp_path: Path) -
             "SELECT name FROM sqlite_master WHERE name = 'migration_probe'"
         ).fetchone()
         version = connection.execute(
-            "SELECT version FROM schema_migrations WHERE version = 3"
+            "SELECT version FROM schema_migrations WHERE version = 4"
         ).fetchone()
     finally:
         connection.close()
@@ -161,3 +162,45 @@ def test_migration_checksum_is_stable_and_sensitive_to_sql() -> None:
 
     assert same.checksum == SCHEMA_V1.checksum
     assert changed.checksum != SCHEMA_V1.checksum
+
+
+def test_schema_v3_preserves_existing_publication_and_allows_delivery_release(
+    tmp_path: Path,
+) -> None:
+    connection = sqlite3.connect(tmp_path / "upgrade-v3.db", isolation_level=None)
+    try:
+        connection.execute("PRAGMA foreign_keys = ON")
+        apply_migrations(connection, (SCHEMA_V1, SCHEMA_V2))
+        connection.execute(
+            """
+            INSERT INTO webhook_deliveries(delivery_id, state, updated_at)
+            VALUES ('delivery-1', 'processing', '2026-08-05T00:00:00+00:00')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO github_review_publications(
+                publication_id, delivery_id, repository_full_name,
+                pull_number, head_sha, status, created_at, updated_at
+            ) VALUES (
+                'publication-1', 'delivery-1', 'openai/devagent',
+                42, 'bbbbbbb', 'failed',
+                '2026-08-05T00:00:00+00:00', '2026-08-05T00:00:00+00:00'
+            )
+            """
+        )
+
+        apply_migrations(connection, MIGRATIONS)
+        connection.execute(
+            "DELETE FROM webhook_deliveries WHERE delivery_id = 'delivery-1'"
+        )
+        publication = connection.execute(
+            """
+            SELECT delivery_id, status FROM github_review_publications
+            WHERE publication_id = 'publication-1'
+            """
+        ).fetchone()
+    finally:
+        connection.close()
+
+    assert publication == ("delivery-1", "failed")

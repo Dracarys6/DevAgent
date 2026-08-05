@@ -1065,6 +1065,10 @@ Day 63：RAG 增强对比与第 9 周验收 [x]
 
 ### 第 10 周：持久化深化 + Trace / Evaluation 数据闭环
 
+状态：已完成（Day64-Day70）。任务、结构化事件与 sequence、工具调用、权限请求/策略、
+Evaluation 运行、GitHub delivery 与 PR publication 已接入 SQLite Repository，并通过统一数据库
+的 adapter 重建验收。
+
 ```text
 重点：让任务、事件、工具调用和权限策略可以跨进程保存，支撑 Trace 回放和评测报告。
 产出：storage 模块、Repository 接口、数据库设计文档、持久化测试。
@@ -1081,6 +1085,9 @@ Day 63：RAG 增强对比与第 9 周验收 [x]
 5. Evaluation 运行结果可保存、可对比。
 6. GitHub webhook delivery 和 PR review 发布状态可持久化，服务重启后仍能避免重复审查与重复评论。
 ```
+
+完成指标：1000 条事件重放 p95 4.82ms；12 路并发 webhook claim 仅 1 个成功；关键持久化
+对象跨 adapter 重建恢复率 100%。
 
 ### 第 11 周：Multi-Agent 基础闭环 + 父子 Trace
 

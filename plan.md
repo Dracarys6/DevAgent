@@ -1741,7 +1741,7 @@ Hybrid RRF；Hybrid + Rerank 仅在高价值且允许额外模型延迟时显式
 * [x] 完成 Log Diagnosis 标准化 live report。
 * [x] 完成 Local Code Review 标准化 live report。
 * [ ] 完成 GitHub PR 标准化 live report。
-* [ ] 将 eval cases、run metadata、prediction 和 metrics 持久化。
+* [x] 将 eval run metadata、完整脱敏结果和 metrics 持久化，并支持同类基线比较。
 * [ ] 从真实 provider metadata 统计 token 与调用成本。
 
 ### 示例评测用例
@@ -2867,7 +2867,8 @@ MCP 工具能接入 ToolRegistry
 
 ```text
 第 9 周：RAG 增强，在同一评测集上比较 BM25、embedding、hybrid search 和 rerank。
-第 10 周：持久化深化，补齐任务、事件、工具调用、权限策略和 Evaluation 结果落库。
+第 10 周：持久化深化已完成，任务、事件与序号、工具调用、权限请求/策略、Evaluation 结果、
+GitHub delivery 与 review publication 均已落库，并通过共享数据库重建验收。
 第 11 周：Multi-Agent 基础闭环，完成最小协议、受控子任务、父子 Trace、证据汇总和部分失败降级。
 第 12 周：Multi-Agent 完整化，补齐预算控制、取消传播、并发限制和安全增强。
 第 13 周：最终交付，整理 README、架构图、安全设计、Evaluation 报告、Demo 脚本和面试材料。
@@ -3189,7 +3190,7 @@ RAG / Memory BM25 基线 + Evaluation + 上下文压缩
 向量检索 + 混合召回 + rerank + RAG 检索质量对比
 
 第 10 周：
-持久化深化 + Trace / Evaluation 数据闭环
+持久化深化 + Trace / Evaluation 数据闭环（已完成）
 
 第 11 周：
 Multi-Agent 基础闭环 + 父子 Trace + 证据汇总

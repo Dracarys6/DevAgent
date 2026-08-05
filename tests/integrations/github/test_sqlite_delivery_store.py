@@ -112,3 +112,25 @@ def test_failed_publication_can_be_reclaimed_by_redelivery(tmp_path: Path) -> No
     assert retried.acquired is True
     assert retried.publication.status == PublicationStatus.PROCESSING
     assert retried.publication.delivery_id == "delivery-2"
+
+
+def test_failed_publication_does_not_block_delivery_release(tmp_path: Path) -> None:
+    database = make_database(tmp_path)
+    deliveries = SQLiteWebhookDeliveryStore(database)
+    deliveries.claim("delivery-1")
+    publications = SQLiteGitHubReviewPublicationStore(database)
+    claim = publications.claim(
+        delivery_id="delivery-1",
+        repository_full_name="openai/devagent",
+        pull_number=42,
+        head_sha="b" * 40,
+    )
+    publications.mark_failed(claim.publication.publication_id)
+
+    deliveries.release("delivery-1")
+
+    assert deliveries.get_state("delivery-1") is None
+    assert deliveries.claim("delivery-1") is True
+    assert publications.get(claim.publication.publication_id).status == (
+        PublicationStatus.FAILED
+    )

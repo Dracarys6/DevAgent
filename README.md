@@ -4,11 +4,11 @@
 
 DevAgent 不只是一个调用大模型 API 的聊天机器人。它围绕真实研发工作流，逐步实现代码仓库分析、CI 失败诊断、日志根因分析、安全工具调用、RAG/Memory、执行轨迹回放、Agent Evaluation 和受控多 Agent 编排。
 
-当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具、证据驱动诊断、代码合入审查，以及 BM25、向量、Hybrid RRF、可降级 Rerank 和上下文压缩。RAG 已完成 36 条路径级固定集对比、两次真实 Agent 正负样本稳定性验收，并将开放式 Agent、领域业务和高价值重排拆分为不同默认策略。CI Diagnosis、Log Diagnosis 和 Local Code Review 也已通过固定证据完成真实 provider 验收。其余业务链路的真实验收状态单独列出，不用 Mock 结果代替。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求、诊断报告和 GitHub PR 建议状态。
+当前项目处于持续开发阶段，已完成工具与权限执行链、Agent Runtime、任务 API、EventBus、SSE/WebSocket、Trace 回放、CI / Git / 日志工具、证据驱动诊断、代码合入审查，以及 BM25、向量、Hybrid RRF、可降级 Rerank 和上下文压缩。第十周进一步完成 SQLite 持久化闭环，任务、结构化事件与序号、工具调用、权限请求/策略、Evaluation 运行、GitHub delivery 与审查发布状态均可跨进程恢复。RAG 已完成 36 条路径级固定集对比、两次真实 Agent 正负样本稳定性验收，并将开放式 Agent、领域业务和高价值重排拆分为不同默认策略。CI Diagnosis、Log Diagnosis 和 Local Code Review 也已通过固定证据完成真实 provider 验收。其余业务链路的真实验收状态单独列出，不用 Mock 结果代替。项目同时提供 React 可视化控制台，用于查看任务、事件流、Trace、权限请求、诊断报告和 GitHub PR 建议状态。
 
 ```text
 当前进度：Agent Runtime + Tool/Permission/Event/Trace + Diagnosis/Review + 分场景 RAG + ContextManager + 离线/真实 Evaluation + React Console
-当前阶段：第 9 周 RAG 增强已完成；开放式 Agent 使用 BM25，领域锚定业务使用 Hybrid，高价值任务显式启用 Rerank
+当前阶段：第 10 周持久化数据闭环已完成；下一阶段进入 Multi-Agent 基础闭环与父子 Trace
 测试状态：使用 `uv run --locked pytest -q` 执行全量回归
 Python 要求：3.11+
 环境管理：uv + `pyproject.toml` + `uv.lock`
@@ -48,6 +48,9 @@ Python 要求：3.11+
 | 后台任务执行 | `TaskManager` 编排 AgentRuntime，创建任务后后台推进到 DONE / FAILED | 已完成基础版 |
 | 任务事件查询 | `InMemoryEventStore` 保存 Agent events，支持按 task_id 查询执行轨迹 | 已完成基础版 |
 | 多任务集成测试 | 验证任务状态隔离、事件隔离、取消语义和第三周 API 闭环 | 已完成基础版 |
+| SQLite 持久化 | 任务、结构化事件/序号、工具调用、权限请求/策略和 Trace 可跨进程恢复 | 已完成第 10 周验收 |
+| Evaluation 历史 | 保存完整脱敏 run、指标与模型配置，支持同类基线比较 API | 已完成第 10 周验收 |
+| GitHub 幂等状态 | delivery 原子 claim、PR head 发布去重与外部 comment locator 持久化 | 已完成第 10 周验收 |
 | Git / CI / 日志工具 | 支持受限 Git diff、压缩 CI 失败证据和结构化日志检索 | 已完成基础版 |
 | SSE / WebSocket | 支持任务事件实时推送、断开清理和历史事件衔接 | 已完成基础版 |
 | Trace 查询 | 将事件流聚合为任务摘要和可回放步骤 | 已完成基础版 |
@@ -457,8 +460,9 @@ flowchart TD
     D --> E[CI / 日志诊断闭环]
     E --> F[代码合入审查 + Review Evaluation]
     F --> G[RAG / Memory + 上下文压缩]
-    G --> H[Multi-Agent + 持久化扩展]
-    H --> I[最终交付 + Demo 稳定性]
+    G --> H[持久化 + Trace / Evaluation 数据闭环]
+    H --> I[Multi-Agent + 父子 Trace]
+    I --> J[最终交付 + Demo 稳定性]
 
     style A fill:#2d7d46,color:#fff
     style B fill:#d9e8ff,color:#111
@@ -469,11 +473,13 @@ flowchart TD
     style G fill:#f4d7e6,color:#111
     style H fill:#e3dcff,color:#111
     style I fill:#e3dcff,color:#111
+    style J fill:#e3dcff,color:#111
 ```
 
 详细资料：
 
 - [项目设计文档](plan.md)
+- [数据库与持久化设计](docs/database.md)
 - [开发学习计划](learning_plan.md)
 - [Evaluation 指标与基线](docs/evaluation.md)
 - [RAG Evaluation Baseline](eval/reports/rag_baseline.md)

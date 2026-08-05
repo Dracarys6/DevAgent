@@ -211,7 +211,36 @@ SCHEMA_V2 = Migration(
     ),
 )
 
-MIGRATIONS: tuple[Migration, ...] = (SCHEMA_V1, SCHEMA_V2)
+SCHEMA_V3 = Migration(
+    version=3,
+    name="decouple_review_publication_delivery_lifecycle",
+    statements=(
+        """
+        CREATE TABLE github_review_publications_v3 (
+            publication_id TEXT PRIMARY KEY,
+            delivery_id TEXT NOT NULL,
+            repository_full_name TEXT NOT NULL,
+            pull_number INTEGER NOT NULL CHECK (pull_number > 0),
+            head_sha TEXT NOT NULL,
+            status TEXT NOT NULL,
+            external_comment_id TEXT,
+            error_message TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (repository_full_name, pull_number, head_sha)
+        )
+        """,
+        """
+        INSERT INTO github_review_publications_v3
+        SELECT * FROM github_review_publications
+        """,
+        "DROP TABLE github_review_publications",
+        "ALTER TABLE github_review_publications_v3 RENAME TO github_review_publications",
+        "CREATE INDEX idx_review_publications_delivery ON github_review_publications(delivery_id)",
+    ),
+)
+
+MIGRATIONS: tuple[Migration, ...] = (SCHEMA_V1, SCHEMA_V2, SCHEMA_V3)
 
 
 def apply_migrations(
