@@ -152,6 +152,7 @@ The core goal is to build a reliable Agent backend with typed messages, tool cal
 ## Error Feedback Rules
 
 - When the developer points out a mistake in implementation, planning, testing, documentation, or process, fix the immediate issue first.
+- At the start of a resumed session or before advancing to a new day, re-read the current Git HEAD, working-tree status, and relevant files. Never infer current progress from a previous turn's repository state.
 - After fixing the issue, add a concise rule or clarification to `AGENTS.md` if the mistake could reasonably recur.
 - The new rule should describe the prevention pattern, not just the specific incident.
 - If the mistake only affects a narrow module, update the nearest module doc or daily doc as well as `AGENTS.md` when useful.
