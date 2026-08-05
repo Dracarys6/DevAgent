@@ -36,6 +36,7 @@ from devagent.tools import (
     ToolRegistry,
 )
 from devagent.tools.builtin import create_builtin_registry
+from devagent.tools.call_store import ToolCallStore
 from devagent.tools.knowledge_tools import KnowledgeRetriever, knowledge_retrieve
 
 from .models import AgentTask, InvalidTaskTransitionError, TaskStatus
@@ -109,6 +110,7 @@ class TaskManager:
         policy_store: InMemoryPermissionPolicyStore | None = None,
         sequence_allocator: SequenceAllocator | None = None,
         knowledge_retriever: KnowledgeRetriever = knowledge_retrieve,
+        tool_call_store: ToolCallStore | None = None,
     ) -> None:
         self.repository = repository
         self._runtime_factory = runtime_factory or self._create_runtime
@@ -122,6 +124,7 @@ class TaskManager:
         )
         self.policy_store = policy_store or InMemoryPermissionPolicyStore()
         self._knowledge_retriever = knowledge_retriever
+        self.tool_call_store = tool_call_store
         self._suspended_runtimes: dict[str, RuntimeLike] = {}
 
     def _create_runtime(self, task: AgentTask) -> AgentRuntime:
@@ -131,6 +134,7 @@ class TaskManager:
             registry=tool_registry,
             permission_manager=self.permission_manager,
             policy_store=self.policy_store,
+            tool_call_store=self.tool_call_store,
         )
         runtime = AgentRuntime(
             llm_client=client,

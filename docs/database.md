@@ -172,6 +172,17 @@ uv run uvicorn devagent.api.app:app \
 `GET /api/v1/agent/tasks/{task_id}/trace` 重放已提交的结构化事件。该能力不会恢复旧进程中的
 AgentRuntime、后台线程或悬挂的权限审批；这些状态需要各自的恢复策略。
 
+## 工具调用与权限持久化
+
+`PermissionRequestStore` 将请求创建、查询、筛选和决策抽离出 Manager。SQLite adapter 在
+`BEGIN IMMEDIATE` 中读取当前请求并执行 `PermissionRequest.resolve()`，因此两个并发审批
+不能都基于 `PENDING` 成功。权限策略保存匹配条件的参数指纹，不保存原始敏感参数。
+
+`ToolCallStore` 记录工具调用的 `STARTED`、`WAITING_PERMISSION`、`EXECUTED` 或 `BLOCKED`
+状态、脱敏参数、统一 `ToolResult` 和耗时。`ToolExecutor` 在真实工具调用前后执行短数据库
+事务，绝不在数据库事务中运行 Shell、Git 或网络请求。进程重启后可以审计调用事实和审批
+结果，但旧进程内的暂停 Runtime 不会凭空恢复。
+
 ## 验证
 
 ```bash

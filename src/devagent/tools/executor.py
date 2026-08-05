@@ -1,4 +1,5 @@
 from enum import Enum
+from time import perf_counter
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -24,6 +25,8 @@ from devagent.permission.policy_store import InMemoryPermissionPolicyStore
 from devagent.security import CommandGuard
 from devagent.tools.models import ErrorCode, RiskLevel, ToolResult
 from devagent.tools.registry import ToolRegistry
+
+from .call_store import ToolCallRecord, ToolCallStore
 
 
 class ToolExecutionStatus(str, Enum):
@@ -61,14 +64,28 @@ class ToolExecutor:
         permission_manager: InMemoryPermissionManager | None = None,
         policy_store: InMemoryPermissionPolicyStore | None = None,
         command_guard: CommandGuard | None = None,
+        tool_call_store: ToolCallStore | None = None,
     ) -> None:
         self.registry = registry
         self.permission_manager = permission_manager or InMemoryPermissionManager()
         self.policy_store = policy_store or InMemoryPermissionPolicyStore()
         self.command_guard = command_guard or CommandGuard()
+        self.tool_call_store = tool_call_store
         self._resumed_permission_request_ids: set[str] = set()
 
     def execute(
+        self,
+        tool_call: ToolCall,
+        context: ToolExecutionContext | None = None,
+    ) -> ToolExecutionResult:
+        context = context or ToolExecutionContext()
+        started = perf_counter()
+        self._record_tool_start(tool_call, context)
+        result = self._execute_once(tool_call, context)
+        self._record_tool_result(tool_call, context, result, started)
+        return result
+
+    def _execute_once(
         self,
         tool_call: ToolCall,
         context: ToolExecutionContext | None = None,
@@ -249,6 +266,23 @@ class ToolExecutor:
         permission_request_id: str,
         context: ToolExecutionContext | None = None,
     ) -> ToolExecutionResult:
+        context = context or ToolExecutionContext()
+        request = self.permission_manager.get_request(permission_request_id)
+        tool_call = ToolCall(
+            id=request.tool_call_id or "",
+            name=request.tool_name,
+            arguments=request.tool_arguments,
+        )
+        started = perf_counter()
+        result = self._resume_once(permission_request_id, context)
+        self._record_tool_result(tool_call, context, result, started)
+        return result
+
+    def _resume_once(
+        self,
+        permission_request_id: str,
+        context: ToolExecutionContext | None = None,
+    ) -> ToolExecutionResult:
         """按一次已处理的权限请求恢复原始工具调用。"""
         context = context or ToolExecutionContext()
         if permission_request_id in self._resumed_permission_request_ids:
@@ -323,6 +357,43 @@ class ToolExecutor:
 
         self._resumed_permission_request_ids.add(permission_request_id)
         return result
+
+    def _record_tool_start(
+        self,
+        tool_call: ToolCall,
+        context: ToolExecutionContext,
+    ) -> None:
+        if self.tool_call_store is None or context.task_id is None:
+            return
+        tool = self.registry.get(tool_call.name)
+        self.tool_call_store.start(
+            ToolCallRecord(
+                task_id=context.task_id,
+                tool_call_id=context.tool_call_id or tool_call.id,
+                session_id=context.session_id,
+                tool_name=tool_call.name,
+                arguments=tool_call.arguments,
+                risk_level=tool.risk_level.value if tool else None,
+                status="STARTED",
+            )
+        )
+
+    def _record_tool_result(
+        self,
+        tool_call: ToolCall,
+        context: ToolExecutionContext,
+        result: ToolExecutionResult,
+        started: float,
+    ) -> None:
+        if self.tool_call_store is None or context.task_id is None:
+            return
+        self.tool_call_store.save_result(
+            context.task_id,
+            context.tool_call_id or tool_call.id,
+            status=result.status.value,
+            result=result.tool_result,
+            duration_ms=(perf_counter() - started) * 1000,
+        )
 
     def _validate_resume_request(
         self,

@@ -12,6 +12,7 @@ from .builtin import (
     SearchLogTool,
     create_builtin_registry,
 )
+from .call_store import SQLiteToolCallStore, ToolCallRecord, ToolCallStore
 from .executor import (
     ToolExecutionContext,
     ToolExecutionResult,
@@ -35,8 +36,11 @@ __all__ = [
     "ReadFileTool",
     "RiskLevel",
     "RunShellTool",
+    "SQLiteToolCallStore",
     "SearchCodeTool",
     "SearchLogTool",
+    "ToolCallRecord",
+    "ToolCallStore",
     "ToolExecutionContext",
     "ToolExecutionResult",
     "ToolExecutionStatus",

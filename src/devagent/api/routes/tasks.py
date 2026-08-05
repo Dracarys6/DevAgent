@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from devagent.agent import AgentEvent
@@ -9,11 +11,8 @@ from devagent.api.schemas import (
     AgentTaskListResponse,
     AgentTaskResponse,
 )
-from devagent.event import create_configured_event_runtime
-from devagent.permission import (
-    InMemoryPermissionManager,
-    InMemoryPermissionPolicyStore,
-)
+from devagent.event import EVENT_DATABASE_PATH_ENV, create_configured_event_runtime
+from devagent.permission import create_permission_runtime
 from devagent.task.factory import create_configured_task_repository
 from devagent.task.manager import TaskManager
 from devagent.task.models import AgentTask, InvalidTaskTransitionError
@@ -27,12 +26,13 @@ event_runtime = create_configured_event_runtime()
 event_bus = event_runtime.event_bus
 sequence_allocator = event_runtime.sequence_allocator
 
-permission_manager = InMemoryPermissionManager(
+permission_runtime = create_permission_runtime(
+    os.getenv(EVENT_DATABASE_PATH_ENV),
     event_bus=event_bus,
     sequence_allocator=sequence_allocator,
 )
-
-permission_policy_store = InMemoryPermissionPolicyStore()
+permission_manager = permission_runtime.manager
+permission_policy_store = permission_runtime.policy_store
 
 task_manager = TaskManager(
     repository=task_repository,
@@ -40,6 +40,7 @@ task_manager = TaskManager(
     permission_manager=permission_manager,
     policy_store=permission_policy_store,
     sequence_allocator=sequence_allocator,
+    tool_call_store=permission_runtime.tool_call_store,
 )
 
 

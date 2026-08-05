@@ -13,9 +13,12 @@ from devagent.permission import (
     RiskLevel,
 )
 from devagent.security import CommandGuard
+from devagent.storage import SQLiteDatabase, SQLiteSettings
+from devagent.task import AgentTask, SQLiteTaskRepository
 from devagent.tools import (
     BaseTool,
     ErrorCode,
+    SQLiteToolCallStore,
     ToolExecutionContext,
     ToolExecutionStatus,
     ToolExecutor,
@@ -130,6 +133,29 @@ def test_low_risk_tool_executes_directly():
     assert result.tool_result.success is True
     assert result.tool_result.content == "hello"
     assert shell_tool.call_count == 0
+
+
+def test_executor_persists_complete_tool_call_lifecycle(tmp_path: Path):
+    database = SQLiteDatabase(SQLiteSettings(path=tmp_path / "executor.db"))
+    database.initialize()
+    SQLiteTaskRepository(database).create(
+        AgentTask(task_id="task_1", question="persist tool call")
+    )
+    store = SQLiteToolCallStore(database)
+    registry = ToolRegistry()
+    registry.register(EchoTool())
+    executor = ToolExecutor(registry=registry, tool_call_store=store)
+
+    result = executor.execute(
+        ToolCall(id="call-1", name="echo", arguments={"text": "hello"}),
+        ToolExecutionContext(task_id="task_1"),
+    )
+
+    record = store.get("task_1", "call-1")
+    assert result.tool_result == ToolResult.ok("hello")
+    assert record.status == ToolExecutionStatus.EXECUTED.value
+    assert record.result == ToolResult.ok("hello")
+    assert record.finished_at is not None
 
 
 def test_unknown_tool_returns_tool_not_found_result():

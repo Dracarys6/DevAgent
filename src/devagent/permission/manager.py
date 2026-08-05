@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Any
 
 from devagent.event import (
@@ -13,10 +12,10 @@ from devagent.event import (
 from devagent.tools.models import RiskLevel
 
 from .models import PermissionDecision, PermissionRequest, PermissionStatus
-
-
-class PermissionRequestNotFoundError(KeyError):
-    """查询的权限请求不存在。"""
+from .request_store import (
+    InMemoryPermissionRequestStore,
+    PermissionRequestStore,
+)
 
 
 class InMemoryPermissionManager:
@@ -27,8 +26,9 @@ class InMemoryPermissionManager:
         event_bus: InMemoryEventBus | None = None,
         sequence_allocator: SequenceAllocator | None = None,
         session_id: str | None = None,
+        request_store: PermissionRequestStore | None = None,
     ) -> None:
-        self._requests: dict[str, PermissionRequest] = {}
+        self.request_store = request_store or InMemoryPermissionRequestStore()
         self.event_bus = event_bus
         self.sequence_allocator = sequence_allocator or InMemorySequenceAllocator()
         self.session_id = session_id
@@ -55,7 +55,7 @@ class InMemoryPermissionManager:
             risk_level=risk_level,
             reason=reason,
         )
-        self._requests[request.request_id] = deepcopy(request)
+        request = self.request_store.create(request)
         self._publish_event(
             self._build_permission_requested_event(
                 request,
@@ -64,19 +64,11 @@ class InMemoryPermissionManager:
                 session_id=session_id,
             )
         )
-        return deepcopy(request)
+        return request
 
     def get_request(self, request_id: str) -> PermissionRequest:
         """返回权限请求的深拷贝，避免外部修改内部状态。"""
-        if request_id not in self._requests:
-            raise PermissionRequestNotFoundError(f"权限请求不存在: {request_id}")
-        return deepcopy(self._requests[request_id])
-
-    def _get_stored_request(self, request_id: str) -> PermissionRequest:
-        """返回内部存储对象，仅供需要修改状态的管理器方法使用。"""
-        if request_id not in self._requests:
-            raise PermissionRequestNotFoundError(f"权限请求不存在: {request_id}")
-        return self._requests[request_id]
+        return self.request_store.get(request_id)
 
     def resolve(
         self,
@@ -88,8 +80,7 @@ class InMemoryPermissionManager:
         session_id: str | None = None,
     ) -> PermissionRequest:
         """解决权限请求并发布处理结果事件。"""
-        request = self._get_stored_request(request_id)
-        request.resolve(decision, decision_reason)
+        request = self.request_store.resolve(request_id, decision, decision_reason)
         self._publish_event(
             self._build_permission_resolved_event(
                 request,
@@ -98,18 +89,14 @@ class InMemoryPermissionManager:
                 session_id=session_id,
             )
         )
-        return deepcopy(request)
+        return request
 
     def list_pending(self) -> list[PermissionRequest]:
         """列出所有待处理的权限请求。"""
-        return [
-            deepcopy(r)
-            for r in self._requests.values()
-            if r.status == PermissionStatus.PENDING
-        ]
+        return self.request_store.list(status=PermissionStatus.PENDING)
 
     def list_all(self) -> list[PermissionRequest]:
-        return [deepcopy(r) for r in self._requests.values()]
+        return self.request_store.list()
 
     def check_request_status(self, request_id: str) -> PermissionStatus:
         request = self.get_request(request_id)
