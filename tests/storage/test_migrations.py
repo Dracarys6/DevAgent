@@ -51,6 +51,20 @@ def test_apply_migrations_supports_default_tuple_rows(tmp_path: Path) -> None:
     assert row == (SCHEMA_V1.version, SCHEMA_V1.name, SCHEMA_V1.checksum)
 
 
+def test_apply_migrations_rejects_existing_transaction(tmp_path: Path) -> None:
+    connection = sqlite3.connect(
+        tmp_path / "nested-transaction.db", isolation_level=None
+    )
+    try:
+        connection.execute("BEGIN")
+        with pytest.raises(MigrationError, match="已有事务"):
+            apply_migrations(connection)
+        assert connection.in_transaction is True
+    finally:
+        connection.rollback()
+        connection.close()
+
+
 def test_changed_applied_migration_checksum_is_rejected(tmp_path: Path) -> None:
     database = make_database(tmp_path)
     database.initialize()

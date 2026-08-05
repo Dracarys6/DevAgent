@@ -201,6 +201,8 @@ def apply_migrations(
     migrations: tuple[Migration, ...] = MIGRATIONS,
 ) -> None:
     """在一个事务内校验并应用缺失 migration。"""
+    if connection.in_transaction:
+        raise MigrationError("migration 不能在已有事务中执行")
     ordered = _validate_migrations(migrations)
     try:
         connection.execute("BEGIN IMMEDIATE")
@@ -243,7 +245,7 @@ def apply_migrations(
                 ),
             )
         connection.commit()
-    except Exception:
+    except BaseException:
         connection.rollback()
         raise
 

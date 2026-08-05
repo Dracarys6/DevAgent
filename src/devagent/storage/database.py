@@ -69,7 +69,7 @@ class SQLiteDatabase:
             connection.execute("BEGIN")
             yield connection
             connection.commit()
-        except Exception:
+        except BaseException:
             connection.rollback()
             raise
         finally:

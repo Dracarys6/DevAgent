@@ -37,6 +37,8 @@ Repository / Store Protocol
 - `SQLiteDatabase.initialize()`：启用 WAL 并应用 migration。
 
 `src/devagent/storage/migrations.py` 提供不可变 migration、checksum 校验和 Schema v1。
+`apply_migrations()` 自己拥有完整事务，必须在没有活动事务的连接上调用；它同时兼容
+`sqlite3` 默认 tuple row 和 `SQLiteDatabase` 配置的 `sqlite3.Row`。
 
 ## 连接配置
 
@@ -89,6 +91,9 @@ Authorization 明文。
 4. 拒绝同版本名称或 checksum 漂移。
 5. 顺序执行缺失 migration 并记录版本。
 6. 任一 SQL 失败时回滚该次 migration 的 DDL 和版本记录。
+
+Migration 不允许嵌套在业务事务中。否则 migration 内部的 commit / rollback 会改变调用方
+事务的所有权，使业务写入和 schema 变更产生无法解释的原子性边界。
 
 已经发布的 migration 不允许原地修改。Schema 变化必须新增连续版本，否则旧数据库和新
 数据库可能在同一个版本号下形成不同结构。

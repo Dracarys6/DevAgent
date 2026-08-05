@@ -17,6 +17,18 @@ EXPECTED_TABLES = {
     "github_review_publications",
 }
 
+EXPECTED_INDEXES = {
+    "idx_agent_events_task_timestamp",
+    "idx_agent_events_type_timestamp",
+    "idx_tool_calls_task_started",
+    "idx_permission_requests_task_status",
+    "idx_permission_policies_tool_enabled",
+    "idx_eval_runs_type_started",
+    "idx_eval_runs_model_started",
+    "idx_webhook_deliveries_repo_updated",
+    "idx_review_publications_delivery",
+}
+
 
 def make_database(tmp_path: Path, *, busy_timeout_ms: int = 2_000) -> SQLiteDatabase:
     return SQLiteDatabase(
@@ -70,9 +82,16 @@ def test_initialize_creates_schema_v1_and_is_idempotent(tmp_path: Path) -> None:
         migration_count = connection.execute(
             "SELECT COUNT(*) AS count FROM schema_migrations"
         ).fetchone()["count"]
+        indexes = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            )
+        }
     finally:
         connection.close()
     assert EXPECTED_TABLES <= tables
+    assert EXPECTED_INDEXES <= indexes
     assert migration_count == 1
 
 
@@ -128,6 +147,27 @@ def test_transaction_rolls_back_all_statements_and_closes_connection(
 
     with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
         transaction_connection.execute("SELECT 1")
+    connection = database.connect()
+    try:
+        count = connection.execute(
+            "SELECT COUNT(*) AS count FROM agent_tasks"
+        ).fetchone()["count"]
+    finally:
+        connection.close()
+    assert count == 0
+
+
+def test_transaction_rolls_back_process_interrupt(tmp_path: Path) -> None:
+    database = make_database(tmp_path)
+    database.initialize()
+
+    with (
+        pytest.raises(KeyboardInterrupt),
+        database.transaction() as transaction_connection,
+    ):
+        insert_task(transaction_connection)
+        raise KeyboardInterrupt
+
     connection = database.connect()
     try:
         count = connection.execute(
