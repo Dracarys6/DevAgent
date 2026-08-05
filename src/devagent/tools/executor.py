@@ -8,6 +8,7 @@ from devagent.event import (
     EventBusDeliveryError,
     InMemoryEventBus,
     InMemorySequenceAllocator,
+    SequenceAllocator,
     ToolCallFailed,
     ToolCallFinished,
     ToolCallStarted,
@@ -42,7 +43,7 @@ class ToolExecutionContext(BaseModel):
     tool_call_id: str | None = None
     workspace: str | None = None
     event_bus: InMemoryEventBus | None = None
-    sequence_allocator: InMemorySequenceAllocator | None = None
+    sequence_allocator: SequenceAllocator | None = None
 
 
 class ToolExecutionResult(BaseModel):
@@ -350,7 +351,7 @@ class ToolExecutor:
         *,
         tool_call: ToolCall,
         context: ToolExecutionContext,
-        sequence_allocator: InMemorySequenceAllocator,
+        sequence_allocator: SequenceAllocator,
         tool_call_id: str,
     ) -> ToolExecutionResult | None:
         # ! 审批与实际执行之间环境可能变化，Shell 恢复前必须再次经过安全规则。
@@ -424,7 +425,7 @@ class ToolExecutor:
         *,
         tool_call: ToolCall,
         context: ToolExecutionContext,
-        sequence_allocator: InMemorySequenceAllocator,
+        sequence_allocator: SequenceAllocator,
         tool_call_id: str,
     ) -> None:
         if context.event_bus is None or context.task_id is None:
@@ -448,7 +449,7 @@ class ToolExecutor:
         result: ToolExecutionResult,
         tool_call: ToolCall,
         context: ToolExecutionContext,
-        sequence_allocator: InMemorySequenceAllocator,
+        sequence_allocator: SequenceAllocator,
         tool_call_id: str,
         status: ToolExecutionStatus,
     ) -> None:
@@ -481,7 +482,7 @@ class ToolExecutor:
         *,
         tool_call: ToolCall,
         context: ToolExecutionContext,
-        sequence_allocator: InMemorySequenceAllocator,
+        sequence_allocator: SequenceAllocator,
         tool_call_id: str,
         success: bool,
         status: ToolExecutionStatus,
@@ -510,7 +511,7 @@ class ToolExecutor:
         *,
         tool_call: ToolCall,
         context: ToolExecutionContext,
-        sequence_allocator: InMemorySequenceAllocator,
+        sequence_allocator: SequenceAllocator,
         tool_call_id: str,
         error_code: ErrorCode | str | None,
         error_message: str,

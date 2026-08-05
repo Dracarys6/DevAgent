@@ -2,6 +2,7 @@ from .database import SQLiteDatabase, SQLiteSettings
 from .migrations import (
     MIGRATIONS,
     SCHEMA_V1,
+    SCHEMA_V2,
     Migration,
     MigrationError,
     apply_migrations,
@@ -10,6 +11,7 @@ from .migrations import (
 __all__ = [
     "MIGRATIONS",
     "SCHEMA_V1",
+    "SCHEMA_V2",
     "Migration",
     "MigrationError",
     "SQLiteDatabase",

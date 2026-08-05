@@ -5,6 +5,7 @@ from devagent.event import (
     EventBusDeliveryError,
     EventType,
     InMemoryEventBus,
+    InMemoryStructuredEventStore,
 )
 
 
@@ -122,7 +123,10 @@ def test_failing_subscriber_does_not_block_other_subscribers():
 
     assert [event.sequence_id for event in received] == [1]
     assert len(exc_info.value.failures) == 1
-    assert exc_info.value.failures[0].subscription_id == broken_subscription.subscription_id
+    assert (
+        exc_info.value.failures[0].subscription_id
+        == broken_subscription.subscription_id
+    )
     assert exc_info.value.failures[0].error_message == "boom"
 
 
@@ -194,3 +198,49 @@ def test_replayed_events_are_copies_to_protect_stored_event():
     received[0].message = "modified replay"
 
     assert bus.list_events("task_1")[0].message == "started"
+
+
+def test_publish_persists_before_delivering_to_subscriber() -> None:
+    calls: list[str] = []
+
+    class RecordingStore(InMemoryStructuredEventStore):
+        def append(self, event: BaseEvent) -> None:
+            calls.append("store")
+            super().append(event)
+
+    bus = InMemoryEventBus(RecordingStore())
+    bus.subscribe("task_1", lambda _event: calls.append("subscriber"))
+
+    bus.publish(make_event())
+
+    assert calls == ["store", "subscriber"]
+
+
+def test_store_failure_prevents_subscriber_delivery() -> None:
+    received: list[BaseEvent] = []
+
+    class FailingStore(InMemoryStructuredEventStore):
+        def append(self, event: BaseEvent) -> None:
+            raise RuntimeError("storage unavailable")
+
+    bus = InMemoryEventBus(FailingStore())
+    bus.subscribe("task_1", received.append)
+
+    with pytest.raises(RuntimeError, match="storage unavailable"):
+        bus.publish(make_event())
+
+    assert received == []
+
+
+def test_subscriber_failure_does_not_remove_persisted_event() -> None:
+    bus = InMemoryEventBus()
+
+    def fail(_event: BaseEvent) -> None:
+        raise RuntimeError("subscriber failed")
+
+    bus.subscribe("task_1", fail)
+
+    with pytest.raises(EventBusDeliveryError):
+        bus.publish(make_event())
+
+    assert [event.sequence_id for event in bus.list_events("task_1")] == [1]

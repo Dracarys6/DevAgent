@@ -13,6 +13,7 @@ from devagent.event import (
     InMemorySequenceAllocator,
     LLMCallFinished,
     LLMCallStarted,
+    SequenceAllocator,
 )
 from devagent.llm.base import LLMClient
 from devagent.llm.models import LLMResponse, LLMResponseType, ToolCall
@@ -64,7 +65,7 @@ class AgentRuntime:
         session_id: str | None = None,
         context_manager: ContextManager | None = None,
         tool_executor: ToolExecutor | None = None,
-        sequence_allocator: InMemorySequenceAllocator | None = None,
+        sequence_allocator: SequenceAllocator | None = None,
         workspace: str | None = None,
     ) -> None:
         if tool_executor is not None and tool_executor.registry is not tool_registry:

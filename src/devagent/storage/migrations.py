@@ -193,7 +193,25 @@ SCHEMA_V1 = Migration(
     ),
 )
 
-MIGRATIONS: tuple[Migration, ...] = (SCHEMA_V1,)
+SCHEMA_V2 = Migration(
+    version=2,
+    name="persistent_event_sequence",
+    statements=(
+        """
+        ALTER TABLE agent_events
+        ADD COLUMN event_model TEXT NOT NULL DEFAULT 'BaseEvent'
+        """,
+        """
+        CREATE TABLE event_sequences (
+            task_id TEXT PRIMARY KEY,
+            next_sequence_id INTEGER NOT NULL CHECK (next_sequence_id > 0),
+            FOREIGN KEY (task_id) REFERENCES agent_tasks(task_id)
+        )
+        """,
+    ),
+)
+
+MIGRATIONS: tuple[Migration, ...] = (SCHEMA_V1, SCHEMA_V2)
 
 
 def apply_migrations(

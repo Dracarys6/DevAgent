@@ -1,9 +1,17 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
-from devagent.event import BaseEvent, InMemoryEventBus
+from devagent.event import BaseEvent
+
+
+class EventHistory(Protocol):
+    def list_events(
+        self,
+        task_id: str,
+        after_sequence_id: int | None = None,
+    ) -> list[BaseEvent]: ...
 
 
 class TraceStep(BaseModel):
@@ -50,7 +58,7 @@ BASE_EVENT_FIELDS = [
 
 
 class TraceService:
-    def __init__(self, event_bus: InMemoryEventBus) -> None:
+    def __init__(self, event_bus: EventHistory) -> None:
         self.event_bus = event_bus
 
     def get_trace(self, task_id: str) -> TaskTrace:

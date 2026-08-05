@@ -36,7 +36,7 @@ Repository / Store Protocol
 - `SQLiteDatabase.transaction()`：显式 BEGIN、COMMIT、ROLLBACK 和关闭连接。
 - `SQLiteDatabase.initialize()`：启用 WAL 并应用 migration。
 
-`src/devagent/storage/migrations.py` 提供不可变 migration、checksum 校验和 Schema v1。
+`src/devagent/storage/migrations.py` 提供不可变 migration、checksum 校验和当前 Schema v2。
 `apply_migrations()` 自己拥有完整事务，必须在没有活动事务的连接上调用；它同时兼容
 `sqlite3` 默认 tuple row 和 `SQLiteDatabase` 配置的 `sqlite3.Row`。
 
@@ -82,6 +82,26 @@ Authorization 明文。
 现有 `WebhookDeliveryStore.claim(delivery_id)` 契约只保证传入 delivery ID。SQLite adapter
 可以直接实现当前幂等接口；应用层未来扩展元数据时再填充这两列，不能为了满足 `NOT NULL`
 约束伪造业务值。`state` 仍受 `processing` / `completed` CHECK 约束。
+
+## Schema v2：事件持久化与序号
+
+Schema v2 为 `agent_events` 增加 `event_model`，用于从 JSON 恢复
+`AgentStarted`、`ToolCallFinished` 等具体 Pydantic 子类；只保存 `event_type` 无法恢复每种事件
+独有字段。新增的 `event_sequences` 保存每个任务下一条可分配序号。
+
+`SQLiteSequenceAllocator.next()` 在 `BEGIN IMMEDIATE` 事务中读取并推进序号。同一任务的并发
+调用因此串行取得唯一、单调递增的 reservation；进程在事件写入前崩溃时可能留下序号空洞，
+但不会重用已分配序号。Trace 只要求顺序唯一，不要求绝对连续。
+
+`InMemoryEventBus` 接受 `EventStore` 注入，发布顺序固定为：
+
+```text
+validate event -> persist event -> deliver subscriber copies
+```
+
+持久化失败时不投递实时事件，避免客户端看到无法重放的数据；单个订阅者失败时事件仍保留在
+Store 中，可通过 Trace、SSE 或 WebSocket 的 sequence cursor 补拉。SQLite adapter 继续在
+写入前使用模型已有的敏感参数脱敏逻辑，不能将 token 或 Authorization 明文写入数据库。
 
 ## Migration 规则
 
@@ -148,14 +168,16 @@ uv run uvicorn devagent.api.app:app \
 ```
 
 进程重启时使用同一个 `DEVAGENT_DATABASE_PATH`，即可通过
-`GET /api/v1/agent/tasks/{task_id}` 查询已提交任务。该能力恢复的是 task record，不会自动
-恢复旧进程中的 AgentRuntime、后台线程或悬挂的权限审批。
+`GET /api/v1/agent/tasks/{task_id}` 查询任务，并通过
+`GET /api/v1/agent/tasks/{task_id}/trace` 重放已提交的结构化事件。该能力不会恢复旧进程中的
+AgentRuntime、后台线程或悬挂的权限审批；这些状态需要各自的恢复策略。
 
 ## 验证
 
 ```bash
 uv run pytest tests/storage -q
 uv run pytest tests/task tests/api/test_task_persistence.py -q
+uv run pytest tests/event tests/trace tests/api/test_trace_persistence.py -q
 uv run ruff check src/devagent/storage tests/storage
 uv run ruff format --check src/devagent/storage tests/storage
 uv run pytest -q

@@ -6,6 +6,7 @@ import pytest
 from devagent.storage import (
     MIGRATIONS,
     SCHEMA_V1,
+    SCHEMA_V2,
     Migration,
     MigrationError,
     SQLiteDatabase,
@@ -18,7 +19,7 @@ def make_database(tmp_path: Path) -> SQLiteDatabase:
     return SQLiteDatabase(SQLiteSettings(path=tmp_path / "devagent.db"))
 
 
-def test_schema_v1_is_recorded_once(tmp_path: Path) -> None:
+def test_all_migrations_are_recorded_once(tmp_path: Path) -> None:
     database = make_database(tmp_path)
     database.initialize()
     database.initialize()
@@ -30,25 +31,30 @@ def test_schema_v1_is_recorded_once(tmp_path: Path) -> None:
         ).fetchall()
     finally:
         connection.close()
-    assert len(rows) == 1
-    assert dict(rows[0]) == {
-        "version": 1,
-        "name": SCHEMA_V1.name,
-        "checksum": SCHEMA_V1.checksum,
-    }
+    assert [dict(row) for row in rows] == [
+        {
+            "version": migration.version,
+            "name": migration.name,
+            "checksum": migration.checksum,
+        }
+        for migration in MIGRATIONS
+    ]
 
 
 def test_apply_migrations_supports_default_tuple_rows(tmp_path: Path) -> None:
     connection = sqlite3.connect(tmp_path / "plain-connection.db", isolation_level=None)
     try:
         apply_migrations(connection)
-        row = connection.execute(
+        rows = connection.execute(
             "SELECT version, name, checksum FROM schema_migrations"
-        ).fetchone()
+        ).fetchall()
     finally:
         connection.close()
 
-    assert row == (SCHEMA_V1.version, SCHEMA_V1.name, SCHEMA_V1.checksum)
+    assert rows == [
+        (migration.version, migration.name, migration.checksum)
+        for migration in MIGRATIONS
+    ]
 
 
 def test_apply_migrations_rejects_existing_transaction(tmp_path: Path) -> None:
@@ -77,7 +83,7 @@ def test_changed_applied_migration_checksum_is_rejected(tmp_path: Path) -> None:
     connection = database.connect()
     try:
         with pytest.raises(MigrationError, match="checksum 不一致"):
-            apply_migrations(connection, (changed,))
+            apply_migrations(connection, (changed, SCHEMA_V2))
     finally:
         connection.close()
 
@@ -90,7 +96,7 @@ def test_database_version_above_supported_is_rejected(tmp_path: Path) -> None:
         connection.execute(
             """
             INSERT INTO schema_migrations(version, name, checksum, applied_at)
-            VALUES (2, 'future', 'future-checksum', '2026-08-05T00:00:00+00:00')
+            VALUES (3, 'future', 'future-checksum', '2026-08-05T00:00:00+00:00')
             """
         )
         with pytest.raises(MigrationError, match="程序支持范围"):
@@ -103,7 +109,7 @@ def test_failed_migration_rolls_back_schema_and_version_record(tmp_path: Path) -
     database = make_database(tmp_path)
     database.initialize()
     broken = Migration(
-        version=2,
+        version=3,
         name="broken_migration",
         statements=(
             "CREATE TABLE migration_probe(id TEXT PRIMARY KEY)",
@@ -114,12 +120,12 @@ def test_failed_migration_rolls_back_schema_and_version_record(tmp_path: Path) -
     connection = database.connect()
     try:
         with pytest.raises(sqlite3.OperationalError, match="no such table"):
-            apply_migrations(connection, (SCHEMA_V1, broken))
+            apply_migrations(connection, (*MIGRATIONS, broken))
         table = connection.execute(
             "SELECT name FROM sqlite_master WHERE name = 'migration_probe'"
         ).fetchone()
         version = connection.execute(
-            "SELECT version FROM schema_migrations WHERE version = 2"
+            "SELECT version FROM schema_migrations WHERE version = 3"
         ).fetchone()
     finally:
         connection.close()

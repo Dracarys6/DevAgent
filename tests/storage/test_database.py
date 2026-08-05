@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from devagent.storage import SQLiteDatabase, SQLiteSettings
+from devagent.storage import MIGRATIONS, SQLiteDatabase, SQLiteSettings
 
 EXPECTED_TABLES = {
     "schema_migrations",
@@ -15,6 +15,7 @@ EXPECTED_TABLES = {
     "eval_runs",
     "webhook_deliveries",
     "github_review_publications",
+    "event_sequences",
 }
 
 EXPECTED_INDEXES = {
@@ -65,7 +66,7 @@ def insert_task(connection: sqlite3.Connection, task_id: str = "task-1") -> None
     )
 
 
-def test_initialize_creates_schema_v1_and_is_idempotent(tmp_path: Path) -> None:
+def test_initialize_creates_current_schema_and_is_idempotent(tmp_path: Path) -> None:
     database = make_database(tmp_path)
 
     database.initialize()
@@ -92,7 +93,7 @@ def test_initialize_creates_schema_v1_and_is_idempotent(tmp_path: Path) -> None:
         connection.close()
     assert EXPECTED_TABLES <= tables
     assert EXPECTED_INDEXES <= indexes
-    assert migration_count == 1
+    assert migration_count == len(MIGRATIONS)
 
 
 def test_connect_applies_pragmas_and_row_factory(tmp_path: Path) -> None:

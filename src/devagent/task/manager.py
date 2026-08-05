@@ -13,9 +13,11 @@ from devagent.agent import (
     AgentRuntime,
 )
 from devagent.event import (
+    AgentRunEventStore,
     InMemoryEventBus,
     InMemoryEventStore,
     InMemorySequenceAllocator,
+    SequenceAllocator,
 )
 from devagent.llm import (
     LLMClient,
@@ -101,11 +103,11 @@ class TaskManager:
         repository: TaskRepository,
         runtime_factory: RuntimeFactory | None = None,
         llm_client_factory: LLMClientFactory | None = None,
-        event_store: InMemoryEventStore | None = None,
+        event_store: AgentRunEventStore | None = None,
         event_bus: InMemoryEventBus | None = None,
         permission_manager: InMemoryPermissionManager | None = None,
         policy_store: InMemoryPermissionPolicyStore | None = None,
-        sequence_allocator: InMemorySequenceAllocator | None = None,
+        sequence_allocator: SequenceAllocator | None = None,
         knowledge_retriever: KnowledgeRetriever = knowledge_retrieve,
     ) -> None:
         self.repository = repository

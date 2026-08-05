@@ -8,6 +8,7 @@ from devagent.event import (
     InMemorySequenceAllocator,
     PermissionRequested,
     PermissionResolved,
+    SequenceAllocator,
 )
 from devagent.tools.models import RiskLevel
 
@@ -18,14 +19,13 @@ class PermissionRequestNotFoundError(KeyError):
     """查询的权限请求不存在。"""
 
 
-
 class InMemoryPermissionManager:
     """内存中的权限管理器"""
 
     def __init__(
         self,
         event_bus: InMemoryEventBus | None = None,
-        sequence_allocator: InMemorySequenceAllocator | None = None,
+        sequence_allocator: SequenceAllocator | None = None,
         session_id: str | None = None,
     ) -> None:
         self._requests: dict[str, PermissionRequest] = {}
@@ -43,7 +43,7 @@ class InMemoryPermissionManager:
         task_id: str | None = None,
         tool_call_id: str | None = None,
         event_bus: InMemoryEventBus | None = None,
-        sequence_allocator: InMemorySequenceAllocator | None = None,
+        sequence_allocator: SequenceAllocator | None = None,
         session_id: str | None = None,
     ) -> PermissionRequest:
         """创建并保存权限请求，然后发布请求事件。"""
@@ -84,7 +84,7 @@ class InMemoryPermissionManager:
         decision: PermissionDecision,
         decision_reason: str | None = None,
         event_bus: InMemoryEventBus | None = None,
-        sequence_allocator: InMemorySequenceAllocator | None = None,
+        sequence_allocator: SequenceAllocator | None = None,
         session_id: str | None = None,
     ) -> PermissionRequest:
         """解决权限请求并发布处理结果事件。"""
@@ -134,7 +134,7 @@ class InMemoryPermissionManager:
         request: PermissionRequest,
         *,
         event_bus: InMemoryEventBus | None = None,
-        sequence_allocator: InMemorySequenceAllocator | None = None,
+        sequence_allocator: SequenceAllocator | None = None,
         session_id: str | None = None,
     ) -> PermissionRequested | None:
         if request.task_id is None:
@@ -167,7 +167,7 @@ class InMemoryPermissionManager:
         request: PermissionRequest,
         *,
         event_bus: InMemoryEventBus | None = None,
-        sequence_allocator: InMemorySequenceAllocator | None = None,
+        sequence_allocator: SequenceAllocator | None = None,
         session_id: str | None = None,
     ) -> PermissionResolved | None:
         if request.task_id is None or request.decision is None:

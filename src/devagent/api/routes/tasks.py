@@ -9,7 +9,7 @@ from devagent.api.schemas import (
     AgentTaskListResponse,
     AgentTaskResponse,
 )
-from devagent.event import InMemoryEventBus, InMemorySequenceAllocator
+from devagent.event import create_configured_event_runtime
 from devagent.permission import (
     InMemoryPermissionManager,
     InMemoryPermissionPolicyStore,
@@ -23,9 +23,9 @@ router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-tasks"])
 
 task_repository = create_configured_task_repository()
 
-event_bus = InMemoryEventBus()
-
-sequence_allocator = InMemorySequenceAllocator()
+event_runtime = create_configured_event_runtime()
+event_bus = event_runtime.event_bus
+sequence_allocator = event_runtime.sequence_allocator
 
 permission_manager = InMemoryPermissionManager(
     event_bus=event_bus,

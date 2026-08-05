@@ -5,6 +5,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from .models import BaseEvent
+from .store import EventStore, InMemoryStructuredEventStore
 
 EventHandler = Callable[[BaseEvent], None]
 
@@ -22,9 +23,7 @@ class EventSubscriberError(BaseModel):
 class EventBusDeliveryError(RuntimeError):
     def __init__(self, failures: list[EventSubscriberError]) -> None:
         self.failures = failures
-        super().__init__(
-            f"事件投递失败: {len(failures)} 个订阅者处理失败"
-        )
+        super().__init__(f"事件投递失败: {len(failures)} 个订阅者处理失败")
 
 
 class _Subscriber(BaseModel):
@@ -36,13 +35,12 @@ class _Subscriber(BaseModel):
 
 
 class InMemoryEventBus:
-    def __init__(self) -> None:
+    def __init__(self, event_store: EventStore | None = None) -> None:
         self._subscribers: dict[str, _Subscriber] = {}
-        self._events_by_task_id: dict[str, list[BaseEvent]] = {}
+        self.event_store = event_store or InMemoryStructuredEventStore()
 
     def publish(self, event: BaseEvent) -> None:
-        stored_event = deepcopy(event)
-        self._events_by_task_id.setdefault(event.task_id, []).append(stored_event)
+        self.event_store.append(deepcopy(event))
 
         failures: list[EventSubscriberError] = []
         subscribers = [
@@ -98,9 +96,7 @@ class InMemoryEventBus:
         task_id: str,
         after_sequence_id: int | None = None,
     ) -> list[BaseEvent]:
-        events = self._events_by_task_id.get(task_id, [])
-        return [
-            deepcopy(event)
-            for event in events
-            if after_sequence_id is None or event.sequence_id > after_sequence_id
-        ]
+        return self.event_store.list(
+            task_id,
+            after_sequence_id=after_sequence_id,
+        )
