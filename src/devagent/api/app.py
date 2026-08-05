@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from devagent.api.routes import (
     diagnoses_router,
+    evals_router,
     git_commits_router,
     github_webhooks_router,
     knowledge_router,
@@ -33,6 +34,7 @@ app.include_router(stream_router)
 app.include_router(websocket_router)
 app.include_router(traces_router)
 app.include_router(diagnoses_router)
+app.include_router(evals_router)
 app.include_router(reviews_router)
 app.include_router(git_commits_router)
 app.include_router(github_webhooks_router)

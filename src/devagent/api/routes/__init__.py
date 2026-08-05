@@ -1,6 +1,7 @@
 """DevAgent HTTP Router。"""
 
 from .diagnoses import router as diagnoses_router
+from .evals import router as evals_router
 from .git_commits import router as git_commits_router
 from .github_webhooks import router as github_webhooks_router
 from .knowledge import router as knowledge_router
@@ -13,6 +14,7 @@ from .websocket import router as websocket_router
 
 __all__ = [
     "diagnoses_router",
+    "evals_router",
     "git_commits_router",
     "github_webhooks_router",
     "knowledge_router",

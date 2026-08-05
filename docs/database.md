@@ -183,6 +183,15 @@ AgentRuntime、后台线程或悬挂的权限审批；这些状态需要各自�
 事务，绝不在数据库事务中运行 Shell、Git 或网络请求。进程重启后可以审计调用事实和审批
 结果，但旧进程内的暂停 Runtime 不会凭空恢复。
 
+## Evaluation 数据闭环
+
+`SQLiteEvalRunRepository` 将不同评测器已经验证过的 Pydantic run 统一保存为 envelope：评测
+类型、数据集、provider/model、API 模式、配置、指标、完整脱敏结果、schema 状态和延迟。
+指标仍保留各业务自己的语义，Repository 不把 Hit Rate、NDCG、正确率和延迟强行合成总分。
+
+比较接口只对相同 `eval_type` 的共同顶层数值指标计算 `candidate - baseline`。布尔值不会被当成
+0/1 参与差值，指标“越高越好还是越低越好”仍由对应评测报告解释。
+
 ## 验证
 
 ```bash
