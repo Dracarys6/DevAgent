@@ -116,10 +116,46 @@ Migration 不允许嵌套在业务事务中。否则 migration 内部的 commit 
 持有写锁并放大请求排队。未来跨多个 Repository 的原子操作应复用同一个 transaction
 connection，或在其上增加 Unit of Work。
 
+任务状态更新属于 read-modify-write，`SQLiteTaskRepository` 使用 `BEGIN IMMEDIATE` 在
+读取当前状态前取得写资格，再调用 `AgentTask.transition_to()` 校验并写回。第二个 writer
+会按 `busy_timeout` 等待，在第一个事务提交后读取最新状态，避免两个请求都基于旧状态提交。
+
+## Task Repository
+
+`TaskManager` 依赖 `TaskRepository` Protocol，不直接依赖内存或 SQLite 实现。两个 adapter
+统一以下契约：
+
+- `create` 遇到重复 `task_id` 时抛出 `TaskAlreadyExistsError`，不静默覆盖。
+- `get` 和 `update_status` 找不到任务时抛出 `TaskNotFoundError`。
+- 非法状态转移继续由 `AgentTask.transition_to()` 抛出领域异常。
+- SQLite 约束、查询和反序列化错误转换为 `TaskPersistenceError`。
+- `list` 明确保持创建顺序，返回模型与仓库状态相互隔离。
+
+API 默认保留内存模式。为真实服务显式配置数据库文件：
+
+```bash
+DEVAGENT_DATABASE_PATH=.devagent/devagent.db \
+  uv run uvicorn devagent.api.app:app --host 127.0.0.1 --port 8000
+```
+
+若使用 `.env`，启动时显式传递：
+
+```bash
+uv run uvicorn devagent.api.app:app \
+  --env-file .env \
+  --host 127.0.0.1 \
+  --port 8000
+```
+
+进程重启时使用同一个 `DEVAGENT_DATABASE_PATH`，即可通过
+`GET /api/v1/agent/tasks/{task_id}` 查询已提交任务。该能力恢复的是 task record，不会自动
+恢复旧进程中的 AgentRuntime、后台线程或悬挂的权限审批。
+
 ## 验证
 
 ```bash
 uv run pytest tests/storage -q
+uv run pytest tests/task tests/api/test_task_persistence.py -q
 uv run ruff check src/devagent/storage tests/storage
 uv run ruff format --check src/devagent/storage tests/storage
 uv run pytest -q

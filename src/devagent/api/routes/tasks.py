@@ -14,13 +14,14 @@ from devagent.permission import (
     InMemoryPermissionManager,
     InMemoryPermissionPolicyStore,
 )
+from devagent.task.factory import create_configured_task_repository
 from devagent.task.manager import TaskManager
 from devagent.task.models import AgentTask, InvalidTaskTransitionError
-from devagent.task.repository import InMemoryTaskRepository, TaskNotFoundError
+from devagent.task.repository import TaskNotFoundError
 
 router = APIRouter(prefix="/api/v1/agent/tasks", tags=["agent-tasks"])
 
-task_repository = InMemoryTaskRepository()
+task_repository = create_configured_task_repository()
 
 event_bus = InMemoryEventBus()
 

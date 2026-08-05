@@ -63,6 +63,10 @@ logs/
 # 数据库/临时数据文件
 *.sqlite3
 *.db
+*.sqlite3-wal
+*.sqlite3-shm
+*.db-wal
+*.db-shm
 *.sql
 *.dump
 

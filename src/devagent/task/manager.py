@@ -37,7 +37,7 @@ from devagent.tools.builtin import create_builtin_registry
 from devagent.tools.knowledge_tools import KnowledgeRetriever, knowledge_retrieve
 
 from .models import AgentTask, InvalidTaskTransitionError, TaskStatus
-from .repository import InMemoryTaskRepository
+from .repository import TaskRepository
 
 
 class RuntimeLike(Protocol):
@@ -98,7 +98,7 @@ RuntimeFactory = Callable[[AgentTask], RuntimeLike]
 class TaskManager:
     def __init__(
         self,
-        repository: InMemoryTaskRepository,
+        repository: TaskRepository,
         runtime_factory: RuntimeFactory | None = None,
         llm_client_factory: LLMClientFactory | None = None,
         event_store: InMemoryEventStore | None = None,

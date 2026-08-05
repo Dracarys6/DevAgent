@@ -205,6 +205,40 @@ def test_transaction_rolls_back_process_interrupt(tmp_path: Path) -> None:
     assert count == 0
 
 
+def test_transaction_can_begin_immediate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class RecordingConnection:
+        def __init__(self) -> None:
+            self.statements: list[str] = []
+            self.committed = False
+            self.closed = False
+
+        def execute(self, statement: str) -> None:
+            self.statements.append(statement)
+
+        def commit(self) -> None:
+            self.committed = True
+
+        def rollback(self) -> None:
+            raise AssertionError("成功事务不应 rollback")
+
+        def close(self) -> None:
+            self.closed = True
+
+    connection = RecordingConnection()
+    database = make_database(tmp_path)
+    monkeypatch.setattr(database, "connect", lambda: connection)
+
+    with database.transaction(immediate=True) as yielded:
+        assert yielded is connection
+
+    assert connection.statements == ["BEGIN IMMEDIATE"]
+    assert connection.committed is True
+    assert connection.closed is True
+
+
 def test_committed_data_survives_new_database_instance(tmp_path: Path) -> None:
     path = tmp_path / "persistent.db"
     first = SQLiteDatabase(SQLiteSettings(path=path))
