@@ -14,6 +14,8 @@ from devagent.review import (
     WebhookDeliveryStore,
 )
 
+from .publication_store import GitHubReviewPublicationStore, PublicationStatus
+
 
 class CodeReviewRunner(Protocol):
     def review(
@@ -82,6 +84,7 @@ class GitHubReviewTaskManager:
         port_factory: GitHubReviewPortFactory | None = None,
         source: PullRequestSource | None = None,
         publisher: ReviewPublisher | None = None,
+        publication_store: GitHubReviewPublicationStore | None = None,
     ) -> None:
         if port_factory is None:
             if source is None or publisher is None:
@@ -95,6 +98,7 @@ class GitHubReviewTaskManager:
         self._port_factory = port_factory
         self._service = service
         self._delivery_store = delivery_store
+        self._publication_store = publication_store
         self._tasks: dict[str, GitHubReviewTask] = {}
         self._task_ids_by_delivery: dict[str, str] = {}
         self._lock = threading.Lock()
@@ -146,7 +150,37 @@ class GitHubReviewTaskManager:
                 workspace=snapshot.workspace,
             )
             task.report_id = report.review_id
-            ports.publisher.publish(pull_request=snapshot, report=report)
+            publication = None
+            if self._publication_store is not None:
+                claim = self._publication_store.claim(
+                    delivery_id=task.delivery_id,
+                    repository_full_name=snapshot.locator.repository,
+                    pull_number=snapshot.locator.number,
+                    head_sha=snapshot.head_sha,
+                )
+                publication = claim.publication
+                if not claim.acquired:
+                    if publication.status == PublicationStatus.COMPLETED:
+                        self._delivery_store.mark_completed(task.delivery_id)
+                        with self._lock:
+                            task.status = GitHubReviewTaskStatus.COMPLETED
+                            task.error_message = None
+                            return task.model_copy(deep=True)
+                    raise RuntimeError("GitHub review publication 正在处理中")
+            try:
+                publish_result = ports.publisher.publish(
+                    pull_request=snapshot,
+                    report=report,
+                )
+            except Exception:
+                if publication is not None and self._publication_store is not None:
+                    self._publication_store.mark_failed(publication.publication_id)
+                raise
+            if publication is not None and self._publication_store is not None:
+                self._publication_store.mark_completed(
+                    publication.publication_id,
+                    publish_result.external_comment_id,
+                )
             self._delivery_store.mark_completed(task.delivery_id)
         except Exception:  # noqa: BLE001
             # ! 外部异常可能包含 token 或响应正文，任务只保存固定脱敏信息。

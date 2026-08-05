@@ -15,6 +15,7 @@ from .auth import (
     GitHubHTTPClient,
     GitHubInstallationTokenProvider,
 )
+from .publication_store import GitHubReviewPublicationStore
 from .real_client import GitHubWorkspaceProvider, RealGitHubClient
 from .tasks import (
     GitHubReviewPortFactory,
@@ -72,6 +73,7 @@ def create_real_github_review_task_manager(
     llm_client: LLMClient,
     delivery_store: WebhookDeliveryStore,
     http_client: GitHubHTTPClient,
+    publication_store: GitHubReviewPublicationStore | None = None,
 ) -> GitHubReviewTaskManager:
     private_key_path = settings.app_private_key_path.expanduser().resolve()
     if not private_key_path.is_file():
@@ -109,4 +111,5 @@ def create_real_github_review_task_manager(
         ),
         delivery_store=delivery_store,
         port_factory=port_factory,
+        publication_store=publication_store,
     )

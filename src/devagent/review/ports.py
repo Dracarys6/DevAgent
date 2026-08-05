@@ -47,6 +47,7 @@ class ReviewPublishResult(ReviewPortModel):
     summary_published: bool
     inline_comment_count: int = Field(ge=0)
     downgraded_finding_count: int = Field(ge=0)
+    external_comment_id: str | None = None
 
 
 class PullRequestSource(Protocol):

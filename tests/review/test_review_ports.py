@@ -99,6 +99,7 @@ def test_review_publish_result_tracks_publish_outcomes() -> None:
         "summary_published": True,
         "inline_comment_count": 3,
         "downgraded_finding_count": 1,
+        "external_comment_id": None,
     }
 
 

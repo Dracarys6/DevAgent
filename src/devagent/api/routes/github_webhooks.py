@@ -27,6 +27,8 @@ from devagent.integrations.github import (
     GitHubWebhookResponse,
     GitHubWebhookStatus,
     InMemoryWebhookDeliveryStore,
+    SQLiteGitHubReviewPublicationStore,
+    SQLiteWebhookDeliveryStore,
     create_real_github_review_task_manager,
     verify_github_signature,
 )
@@ -36,6 +38,7 @@ from devagent.review import (
     PullRequestLocator,
     WebhookDeliveryStore,
 )
+from devagent.storage import SQLiteDatabase, SQLiteSettings
 
 from .reviews import create_review_llm_client
 
@@ -48,7 +51,15 @@ TRIGGER_ACTIONS = frozenset(
     {"opened", "reopened", "synchronize", "ready_for_review"}
 )
 
-_delivery_store = InMemoryWebhookDeliveryStore()
+_database_path = os.getenv("DEVAGENT_DATABASE_PATH")
+if _database_path:
+    _github_database = SQLiteDatabase(SQLiteSettings(path=_database_path))
+    _github_database.initialize()
+    _delivery_store = SQLiteWebhookDeliveryStore(_github_database)
+    _publication_store = SQLiteGitHubReviewPublicationStore(_github_database)
+else:
+    _delivery_store = InMemoryWebhookDeliveryStore()
+    _publication_store = None
 _UNINITIALIZED = object()
 _review_task_manager: GitHubReviewTaskManager | None | object = _UNINITIALIZED
 _review_task_manager_lock = threading.Lock()
@@ -107,6 +118,7 @@ def _create_configured_task_manager() -> GitHubReviewTaskManager | None:
             llm_client=_create_github_review_llm_client(),
             delivery_store=_delivery_store,
             http_client=httpx.Client(),
+            publication_store=_publication_store,
         )
     except (CodeReviewServiceError, OSError, ValueError):
         # ! 配置错误可能包含本地路径或 provider 细节，HTTP 层只暴露固定 503。

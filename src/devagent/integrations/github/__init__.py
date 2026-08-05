@@ -28,6 +28,7 @@ from .delivery_store import (
     DeliveryState,
     DeliveryStoreCapacityError,
     InMemoryWebhookDeliveryStore,
+    SQLiteWebhookDeliveryStore,
 )
 from .factory import (
     GitHubIntegrationSettings,
@@ -42,6 +43,13 @@ from .models import (
     GitHubRepository,
     GitHubWebhookResponse,
     GitHubWebhookStatus,
+)
+from .publication_store import (
+    GitHubReviewPublication,
+    GitHubReviewPublicationStore,
+    PublicationClaim,
+    PublicationStatus,
+    SQLiteGitHubReviewPublicationStore,
 )
 from .real_client import RealGitHubClient
 from .security import GitHubSignatureError, verify_github_signature
@@ -83,6 +91,8 @@ __all__ = [
     "GitHubRepository",
     "GitHubReviewPortFactory",
     "GitHubReviewPorts",
+    "GitHubReviewPublication",
+    "GitHubReviewPublicationStore",
     "GitHubReviewPublishError",
     "GitHubReviewPublisher",
     "GitHubReviewTask",
@@ -93,8 +103,12 @@ __all__ = [
     "GitHubWebhookStatus",
     "InMemoryWebhookDeliveryStore",
     "InstallationToken",
+    "PublicationClaim",
+    "PublicationStatus",
     "RealGitHubClient",
     "RealGitHubReviewPortFactory",
+    "SQLiteGitHubReviewPublicationStore",
+    "SQLiteWebhookDeliveryStore",
     "create_real_github_review_task_manager",
     "verify_github_signature",
 ]

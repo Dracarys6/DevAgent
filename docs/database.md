@@ -192,6 +192,16 @@ AgentRuntime、后台线程或悬挂的权限审批；这些状态需要各自�
 比较接口只对相同 `eval_type` 的共同顶层数值指标计算 `candidate - baseline`。布尔值不会被当成
 0/1 参与差值，指标“越高越好还是越低越好”仍由对应评测报告解释。
 
+## GitHub 外部副作用幂等
+
+`SQLiteWebhookDeliveryStore.claim()` 依赖 `delivery_id` 主键和
+`INSERT ... ON CONFLICT DO NOTHING`，并发进程中只有一个调用者获得调度资格。完成记录不会在
+重启后消失；失败调度只释放仍处于 processing 的 delivery。
+
+PR 评论发布另以 `(repository_full_name, pull_number, head_sha)` 唯一约束去重。发布成功记录
+GitHub summary comment locator；失败记录可由 redelivery 重新 claim。数据库只能控制本地状态，
+不能回滚已发生的 GitHub 请求，因此摘要同时使用固定 marker 执行 upsert。
+
 ## 验证
 
 ```bash

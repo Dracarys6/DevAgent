@@ -107,7 +107,7 @@ class GitHubReviewPublisher:
                 raise GitHubReviewPublishError("发布 GitHub inline comment 失败") from exc
 
         try:
-            self._client.upsert_summary_comment(
+            external_comment_id = self._client.upsert_summary_comment(
                 repository=locator.repository,
                 number=locator.number,
                 marker=GITHUB_REVIEW_MARKER,
@@ -125,6 +125,7 @@ class GitHubReviewPublisher:
             summary_published=True,
             inline_comment_count=inline_count,
             downgraded_finding_count=len(downgraded),
+            external_comment_id=external_comment_id,
         )
 
 

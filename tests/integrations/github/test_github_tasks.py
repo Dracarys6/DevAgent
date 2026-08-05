@@ -9,6 +9,8 @@ from devagent.integrations.github import (
     GitHubReviewTaskManager,
     GitHubReviewTaskStatus,
     InMemoryWebhookDeliveryStore,
+    SQLiteGitHubReviewPublicationStore,
+    SQLiteWebhookDeliveryStore,
 )
 from devagent.review import (
     CodeReviewReport,
@@ -17,6 +19,7 @@ from devagent.review import (
     ReviewPublishResult,
     ReviewStatus,
 )
+from devagent.storage import SQLiteDatabase, SQLiteSettings
 
 
 def make_locator() -> PullRequestLocator:
@@ -88,6 +91,7 @@ class FixedPublisher:
             summary_published=True,
             inline_comment_count=0,
             downgraded_finding_count=0,
+            external_comment_id="summary-1",
         )
 
 
@@ -230,3 +234,45 @@ def test_task_manager_rejects_duplicate_delivery_and_unknown_task(
         manager.get_task("unknown")
     with pytest.raises(KeyError, match="不存在"):
         manager.run_task("unknown")
+
+
+def test_task_manager_skips_duplicate_publication_for_same_pr_head(
+    tmp_path: Path,
+) -> None:
+    database = SQLiteDatabase(SQLiteSettings(path=tmp_path / "publication.db"))
+    database.initialize()
+    delivery_store = SQLiteWebhookDeliveryStore(database)
+    publication_store = SQLiteGitHubReviewPublicationStore(database)
+    delivery_store.claim("delivery-1")
+    first_publisher = FixedPublisher()
+    first = GitHubReviewTaskManager(
+        source=FixedSource(make_snapshot(tmp_path)),
+        service=FixedService(make_report()),
+        publisher=first_publisher,
+        delivery_store=delivery_store,
+        publication_store=publication_store,
+    )
+    first_task = first.create_task(
+        delivery_id="delivery-1", installation_id=123, locator=make_locator()
+    )
+    assert first.run_task(first_task.task_id).status == GitHubReviewTaskStatus.COMPLETED
+
+    delivery_store.claim("delivery-2")
+    duplicate_publisher = FixedPublisher()
+    duplicate = GitHubReviewTaskManager(
+        source=FixedSource(make_snapshot(tmp_path)),
+        service=FixedService(make_report()),
+        publisher=duplicate_publisher,
+        delivery_store=delivery_store,
+        publication_store=publication_store,
+    )
+    duplicate_task = duplicate.create_task(
+        delivery_id="delivery-2", installation_id=123, locator=make_locator()
+    )
+
+    completed = duplicate.run_task(duplicate_task.task_id)
+
+    assert completed.status == GitHubReviewTaskStatus.COMPLETED
+    assert len(first_publisher.calls) == 1
+    assert duplicate_publisher.calls == []
+    assert delivery_store.get_state("delivery-2") == DeliveryState.COMPLETED
